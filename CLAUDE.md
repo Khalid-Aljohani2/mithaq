@@ -1,10 +1,17 @@
-# CLAUDE.md — ScopeGuard AI
+# CLAUDE.md — Mithaq
 
 ## Product
 
-ScopeGuard AI reads a project's **Statement of Work (SOW)**, checks each incoming
+**Mithaq** (ميثاق — Arabic for a binding covenant between two parties).
+
+> One contract. Two parties. One record of every change.
+
+Mithaq reads a project's **Statement of Work (SOW)**, checks each incoming
 client request against it, and — when a request is **out of scope** — drafts a
 **change request with a cost quote**.
+
+The name is the product thesis: the SOW is the covenant, and every request is
+judged against it rather than against memory or goodwill.
 
 24-hour hackathon MVP. Optimise for a working demo, not for completeness.
 

@@ -18,7 +18,7 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | `motion` | 14.8.0 | npm registry | https://motion.dev/docs/react-quick-start |
 | `radix-ui` | 1.8.1 | npm registry (installed by `shadcn init`) | https://ui.shadcn.com/docs/installation/next |
 | `class-variance-authority` | 0.7.1 | npm registry (installed by `shadcn init`) | https://ui.shadcn.com/docs/installation/next |
-| `cn` | 0.5.1 | npm registry (installed by `shadcn init`) | https://ui.shadcn.com/docs/installation/next |
+| `cn` | 0.5.1 | npm registry (installed by `shadcn init`) | https://github.com/shadcn-ui/cn |
 | `lucide-react` | 1.65.0 | npm registry (installed by `shadcn init`) | https://ui.shadcn.com/docs/installation/next |
 | `tw-animate-css` | 1.4.0 | npm registry (installed by `shadcn init`) | https://ui.shadcn.com/docs/installation/next |
 
@@ -86,11 +86,36 @@ Transitive packages pinned by pip resolution (not declared directly):
 | `Settings(BaseSettings)` + `SettingsConfigDict(env_file=...)` in `app/config.py` | https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/ |
 | `TestClient` usage in `tests/test_health.py` | https://fastapi.tiangolo.com/tutorial/testing/ |
 
+## Supply-chain verification: the `cn` package (checked 2026-10-30)
+
+`shadcn init` pulls in a package literally named `cn`. A two-letter name on npm
+with a 2013 creation date is exactly the shape of a hijacked package, so it was
+audited before being kept.
+
+| Check | Result |
+| --- | --- |
+| npm maintainer | `shadcn <m@shadcn.com>` — the shadcn/ui maintainer |
+| Repository | `git+https://github.com/shadcn-ui/cn.git` — the official `shadcn-ui` GitHub org |
+| Publisher | GitHub Actions via npm trusted publishing (`npm-oidc-no-reply@github.com`) |
+| Provenance | SLSA v1 attestation present (`https://registry.npmjs.org/-/npm/v1/attestations/cn@0.5.1`) |
+| Runtime dependencies | none |
+| `0.5.1` published | 2026-10-30T05:48:54Z |
+
+Confirmed that the `nova` preset genuinely references it, straight from the
+official registry rather than from the CLI binary:
+
+- `https://ui.shadcn.com/r/styles/radix-nova/index.json` → `"dependencies": ["class-variance-authority", "cn", "lucide-react", "radix-ui"]`
+- `https://ui.shadcn.com/r/styles/radix-nova/utils.json` → `"dependencies": ["cn"]` and file content `export { cn } from "cn"`
+
+Per the project README, `cn` "replaces tailwind-merge and clsx. Same APIs. Full
+parity." It is kept. `clsx` + `tailwind-merge` are **not** installed; the manual
+shadcn install path (https://ui.shadcn.com/docs/installation/manual) would use
+those two instead, and remains the fallback if `cn` is ever dropped.
+
+The same registry response lists `shadcn` under `devDependencies`, which
+confirms moving the CLI out of runtime `dependencies` matches upstream intent.
+
 ## Could not verify from an official source
 
-- **`cn` (0.5.1)** — pulled in automatically by `shadcn init` under the `nova`
-  preset; `src/lib/utils.ts` is generated as `export { cn } from "cn"`.
-  ui.shadcn.com documents the `cn` helper but does not document this package by
-  name, so the package choice is the CLI's, not a documented instruction.
 - **`[tool.ruff] src`** — accepted by `ruff 0.17.3` (it errors on unknown keys),
   but not shown on the configuration page fetched above.

@@ -47,9 +47,9 @@ export default function Home() {
       >
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">ScopeGuard AI</CardTitle>
+            <CardTitle className="text-2xl">Mithaq</CardTitle>
             <CardDescription>
-              Keeps client requests inside the Statement of Work.
+              One contract. Two parties. One record of every change.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

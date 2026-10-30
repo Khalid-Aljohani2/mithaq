@@ -1,4 +1,8 @@
-# ScopeGuard AI
+# Mithaq
+
+**ميثاق** — Arabic for a binding covenant between two parties.
+
+> One contract. Two parties. One record of every change.
 
 Reads a project's Statement of Work (SOW), checks each incoming client request
 against it, and — when a request falls outside the agreed scope — drafts a

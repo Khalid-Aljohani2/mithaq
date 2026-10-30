@@ -1,4 +1,4 @@
-/** Typed client for the ScopeGuard AI FastAPI backend. */
+/** Typed client for the Mithaq FastAPI backend. */
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";

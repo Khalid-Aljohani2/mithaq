@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Runtime configuration for the ScopeGuard AI API."""
+    """Runtime configuration for the Mithaq API."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "ScopeGuard AI API"
+    app_name: str = "Mithaq API"
     app_version: str = "0.1.0"
 
     # Only the Next.js dev origin may call this API.

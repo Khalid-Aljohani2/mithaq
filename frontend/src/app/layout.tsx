@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScopeGuard AI",
-  description: "Checks client requests against the Statement of Work.",
+  title: "Mithaq",
+  description: "One contract. Two parties. One record of every change.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
