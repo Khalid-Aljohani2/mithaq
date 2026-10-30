@@ -133,6 +133,14 @@ class ContractRepository(ABC):
         """Return one variation order, or None."""
 
     @abstractmethod
+    def get_variation_order_for_request(self, cr_id: str) -> VariationOrder | None:
+        """Return the variation order issued for a change request, or None.
+
+        Asked of the store rather than derived from the id convention, so the
+        convention can change without every caller learning about it.
+        """
+
+    @abstractmethod
     def list_variation_orders(self, contract_id: str) -> list[VariationOrder]:
         """Every variation order issued against a contract."""
 

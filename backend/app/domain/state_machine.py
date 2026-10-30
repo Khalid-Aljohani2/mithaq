@@ -28,6 +28,11 @@ ALLOWED_TRANSITIONS: dict[CRState, frozenset[CRState]] = {
     ),
     CRState.IN_ANALYSIS: frozenset(
         {
+            # Stage 2 runs inside the analysis, so the gap list is found after
+            # the request has already entered IN_ANALYSIS. Asking the requester
+            # for paperwork is a non-commitment action (FR-04), which is why
+            # this move is absent from COMMITTING_TRANSITIONS below.
+            CRState.AWAITING_DOCUMENTS,
             CRState.CLOSED_IN_SCOPE,  # stage 3 says it is already in scope
             CRState.RECOMMENDED,  # stages 3-7 produced a recommendation
             CRState.REJECTED,

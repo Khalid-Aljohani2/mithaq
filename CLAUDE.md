@@ -201,5 +201,8 @@ curl.exe http://localhost:8000/api/health
   invocations, so the engine uses `NullPool` and pooling belongs to the managed
   Postgres pooler.
 - Local dev runs Python 3.11; Vercel's floor is 3.12. CI tests both.
-- Frontend types that mirror backend schemas live in `src/lib/api.ts` and are
-  kept in sync by hand — if a Pydantic model changes, change the TS type too.
+- Frontend types that mirror backend schemas are **generated**, not written:
+  `npm run gen:api` reads the backend's `/openapi.json` into
+  `src/lib/api-types.ts`, and `src/lib/api.ts` re-exports from it. After any
+  change to a Pydantic model, start the backend and regenerate — never edit
+  `api-types.ts` by hand.

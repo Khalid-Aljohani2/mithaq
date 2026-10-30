@@ -21,6 +21,7 @@ from app.analysis.schemas import (
 from app.domain.change_request import text_fingerprint
 from app.domain.enums import ChangeKind, ImpactType, Stage
 from app.seed.demo_requests import (
+    TEXT_GOV_WITHIN_LIMITS,
     TEXT_IN_SCOPE,
     TEXT_NCR,
     TEXT_PCR_OVER_POLICY,
@@ -244,6 +245,51 @@ _NCR = {
     ),
 }
 
+# ---------------------------------------------------------------------------
+# (f) government PCR inside every Article 67 cap
+# ---------------------------------------------------------------------------
+_GOV_WITHIN_LIMITS = {
+    Stage.INTAKE: _intake(
+        confidence=Decimal("0.95"),
+        requester_name_ar="م. فهد القحطاني",
+        requested_change_ar=(
+            "زيادة عدد خوادم بيئة التشغيل باثني عشر خادمًا من نفس الطراز "
+            "المعتمد وبسعر الوحدة المتعاقد عليه."
+        ),
+        impact_type=ImpactType.COST,
+        quoted_phrase_ar="نرجو زيادة عدد خوادم بيئة التشغيل باثني عشر خادمًا إضافيًا",
+    ),
+    Stage.SCOPE_ANALYSIS: _scope(
+        confidence=Decimal("0.92"),
+        in_scope=False,
+        kind=ChangeKind.PCR,
+        matched_line_ids=("ITM-05",),
+        quantity_delta=Decimal("12"),
+        quoted_phrase_ar="من نفس الطراز المعتمد في العقد A-2400 وبسعر الوحدة المتعاقد عليه",
+        reasoning_ar=(
+            "البند ITM-05 قائم في جدول الكميات، والطلب يزيد الكمية "
+            "عليه بنفس المواصفة وسعر الوحدة، فهو زيادة في بند قائم وليس بندًا جديدًا."
+        ),
+    ),
+    Stage.TECHNICAL_ASSESSMENT: _technical(
+        confidence=Decimal("0.94"),
+        changes_approved_product=False,
+        affected_line_ids=("ITM-05",),
+        reasoning_ar=(
+            "الطلب يورّد نفس الطراز المعتمد A-2400، فلا يوجد تغيير "
+            "لمنتج معتمد ولا مخالفة لقيد تعاقدي."
+        ),
+    ),
+    Stage.RISK_COMPLIANCE: _risk(
+        confidence=Decimal("0.9"),
+        delivery_risk_ar="توريد الخوادم ضمن مدة العقد دون تمديد.",
+        operational_risk_ar="يتطلب تهيئة مساحة إضافية في مركز البيانات.",
+        commercial_risk_ar="الزيادة بسعر الوحدة المتعاقد عليه دون انحراف.",
+        compliance_risk_ar="الزيادة ضمن حدود المادة السابعة والستين وحدود السياسة الداخلية.",
+        overall_risk_level="LOW",
+    ),
+}
+
 
 #: fingerprint -> stage -> recorded output
 RECORDINGS: dict[str, dict[Stage, object]] = {
@@ -252,6 +298,7 @@ RECORDINGS: dict[str, dict[Stage, object]] = {
     text_fingerprint(TEXT_SUBSTITUTION): _SUBSTITUTION,
     text_fingerprint(TEXT_PCR_OVER_POLICY): _PCR_OVER_POLICY,
     text_fingerprint(TEXT_NCR): _NCR,
+    text_fingerprint(TEXT_GOV_WITHIN_LIMITS): _GOV_WITHIN_LIMITS,
 }
 
 
@@ -278,6 +325,7 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
         "TECHNICAL_APPROVAL_REQUIRED": "الطلب يغيّر منتجًا معتمدًا ويستوجب اعتمادًا فنيًا.",
         "UNIT_RATE_DEVIATION": "سعر الوحدة المقترح ينحرف عن سعر العقد بما يتجاوز الحد المسموح.",
         "DOCUMENTS_MISSING": "المستندات المطلوبة غير مكتملة.",
+        "CANNOT_PRICE": "تعذّر تسعير الطلب من بيانات العقد، ويلزم توضيح من مقدّم الطلب.",
         "NEW_ITEM_RATE_HUMAN_ENTERED": "البند جديد ولا يوجد سعر تعاقدي مقابل، والسعر مُدخل بشريًا.",
     }
     return NarrativeOutput(

@@ -7,6 +7,7 @@ directions are asserted.
 """
 
 import json
+import pathlib
 from decimal import Decimal
 from typing import Any
 
@@ -28,7 +29,8 @@ from app.analysis.schemas import (
     VODraftOutput,
 )
 from app.domain.enums import ChangeKind, ImpactType
-from eval.run import CASES_PATH, load_cases, run, summarise
+from app.prompts import all_versions
+from eval.run import CASES_PATH, audited, load_cases, run, summarise
 
 CASES = load_cases(None)
 BY_ID = {c["id"]: c for c in CASES}
@@ -226,7 +228,10 @@ def test_report_records_model_split_commit_and_prompt_versions(stub) -> None:  #
     assert meta["model"] == "claude-opus-5-5"
     assert meta["split"] == "dev"
     assert meta["git_commit"]
-    assert meta["prompt_versions"]["INTAKE"] == "v1"
+    # Pinned to the registry, not a literal: a prompt bump is a normal event
+    # and must not fail a harness test.
+    assert meta["prompt_versions"] == all_versions()
+    assert meta["prompt_versions"]["INTAKE"].startswith("v")
     assert meta["run_at"]
 
 
@@ -279,3 +284,203 @@ def test_summarise_handles_an_empty_run() -> None:
     summary = summarise([], [])
     assert summary["cases"] == 0
     assert summary["accuracy_pct"]["recommendation"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# The label audit (docs/eval_label_audit.md)
+# ---------------------------------------------------------------------------
+
+
+AUDITED_IDS = {"DEV-15", "TEST-18", "TEST-24"}
+
+
+def test_the_audited_cases_are_the_ones_the_audit_documents() -> None:
+    assert {c["id"] for c in CASES if c.get("audit")} == AUDITED_IDS
+
+
+def test_every_audit_carries_its_reasoning() -> None:
+    """An override with no stated reason is a silent label change."""
+    for case in CASES:
+        if case.get("audit"):
+            assert case["audit"]["reason"].strip(), case["id"]
+
+
+def test_the_original_labels_are_still_there() -> None:
+    """The audit adds; it never overwrites. Both label sets must survive."""
+    by_id = {c["id"]: c for c in CASES}
+    assert by_id["DEV-15"]["expected_kind"] == "PCR"
+    assert by_id["TEST-18"]["expected_kind"] == "PCR"
+    assert by_id["TEST-24"]["expected_matched_line_ids"] == []
+
+
+def test_the_audit_applies_the_corrections() -> None:
+    by_id = {c["id"]: c for c in CASES}
+    assert audited(by_id["DEV-15"])["expected_kind"] == "SUBSTITUTION"
+    assert audited(by_id["TEST-18"])["expected_kind"] == "SUBSTITUTION"
+    assert audited(by_id["TEST-24"])["expected_matched_line_ids"] == ["ITM-05", "ITM-06"]
+    # TEST-24 stays unclear: only the identifiable lines were corrected.
+    assert audited(by_id["TEST-24"])["expected_kind"] == "UNCLEAR"
+
+
+def test_an_unaudited_case_is_unchanged_by_the_audit() -> None:
+    by_id = {c["id"]: c for c in CASES}
+    assert audited(by_id["TEST-11"]) == by_id["TEST-11"]
+
+
+def test_an_audit_cannot_override_a_field_that_is_not_a_label() -> None:
+    """A typo in an audit key must not silently rewrite the case."""
+    case = {**BY_ID["TEST-11"], "audit": {"text": "rewritten", "reason": "nope"}}
+    assert audited(case)["text"] == BY_ID["TEST-11"]["text"]
+
+
+def test_audited_line_ids_exist_in_the_contract() -> None:
+    from app.seed.demo_contract import build_private_contract
+
+    known = {line.id for line in build_private_contract().breakdown}
+    for case in CASES:
+        for line_id in audited(case)["expected_matched_line_ids"]:
+            assert line_id in known, (case["id"], line_id)
+
+
+def test_a_run_reports_both_label_sets(stub) -> None:  # noqa: ANN001
+    """One run, two scores. The numbers must be comparable, not two runs."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    assert "summary" in report
+    assert "summary_audited" in report
+    assert report["summary"]["cases"] == report["summary_audited"]["cases"]
+    assert report["audited_case_ids"] == ["DEV-15"]
+    assert len(report["cases"]) == len(report["cases_audited"])
+
+
+def test_the_audit_changes_the_score_it_is_supposed_to_change(stub) -> None:  # noqa: ANN001
+    """The stub answers from the original labels, so DEV-15 must now miss.
+
+    This is the control on the dual scoring: if both columns were identical
+    whatever the labels said, the comparison in the summary would be theatre.
+    """
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    original = next(c for c in report["cases"] if c["id"] == "DEV-15")
+    audited_case = next(c for c in report["cases_audited"] if c["id"] == "DEV-15")
+
+    assert original["kind"]["ok"] is True
+    assert audited_case["kind"]["ok"] is False
+    assert audited_case["kind"]["expected"] == "SUBSTITUTION"
+    assert (
+        report["summary"]["accuracy_pct"]["kind"]
+        > (report["summary_audited"]["accuracy_pct"]["kind"])
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-stage latency (docs/decisions/0003-stage-concurrency.md)
+# ---------------------------------------------------------------------------
+
+
+def test_a_run_records_how_long_each_stage_took(stub) -> None:  # noqa: ANN001
+    """So the concurrency question can be answered from data, not from reading."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", 3)
+
+    stage_ms = report["summary"]["stage_ms"]
+    assert "SCOPE_ANALYSIS" in stage_ms
+    assert "TECHNICAL_ASSESSMENT" in stage_ms
+    for stats in stage_ms.values():
+        assert stats["cases"] > 0
+        assert stats["median"] >= 0
+        assert stats["p95"] >= stats["median"]
+
+
+def test_a_stage_a_case_never_reached_is_not_counted_as_zero(stub) -> None:  # noqa: ANN001
+    """An analysis that stopped early did not run the later stages in 0 ms."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    stage_ms = report["summary"]["stage_ms"]
+    reached = {stage: stats["cases"] for stage, stats in stage_ms.items()}
+    # Stage 1 runs on every case; no stage can have run on more than that.
+    assert reached["INTAKE"] == report["summary"]["cases"]
+    assert all(count <= reached["INTAKE"] for count in reached.values())
+
+
+def test_stage_4_still_receives_only_the_lines_stage_3_matched() -> None:
+    """The dependency that keeps the two stages sequential.
+
+    If this ever stops holding, stage 4 no longer depends on stage 3 and the
+    concurrency decision in 0003 is due a revisit - which is exactly what the
+    record says. Asserting it here means the revisit is prompted rather than
+    forgotten.
+    """
+    source = (
+        pathlib.Path(__file__).resolve().parents[1] / "app" / "pipeline" / "runner.py"
+    ).read_text(encoding="utf-8")
+    assert "if view.id in scope.matched_line_ids" in source
+
+
+# ---------------------------------------------------------------------------
+# Publishing the summary (scripts/publish_eval_summary.py)
+# ---------------------------------------------------------------------------
+
+
+def test_cost_is_the_published_rate_times_the_recorded_tokens() -> None:
+    from scripts.publish_eval_summary import cost_usd
+
+    # 1M in and 1M out of Opus at $4/$20.
+    assert cost_usd("claude-opus-5-5", 1_000_000, 1_000_000) == Decimal("24.0000")
+    assert cost_usd("claude-haiku-5-5", 1_000_000, 0) == Decimal("0.1000")
+
+
+def test_an_unpriced_model_reports_no_cost_rather_than_zero() -> None:
+    from scripts.publish_eval_summary import cost_usd
+
+    assert cost_usd("some-model-we-have-no-rate-for", 1_000_000, 1_000_000) is None
+
+
+def test_a_report_with_no_commit_is_refused(stub) -> None:  # noqa: ANN001
+    """A number nobody can tie to code is not evidence."""
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", 2)
+    report["meta"]["git_commit"] = "unknown"
+
+    with pytest.raises(SystemExit):
+        build_summary(report)
+
+
+def test_the_summary_publishes_both_label_sets(stub) -> None:  # noqa: ANN001
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+    report["meta"]["git_commit"] = "abc1234"
+
+    summary = build_summary(report)
+
+    assert summary.commit == "abc1234"
+    assert summary.case_count == 15
+    assert summary.audited_case_ids == ["DEV-15"]
+    # The stub answers from the original labels, so the audited column must be
+    # the lower of the two here. That is the control: if the publisher simply
+    # copied one figure into both, this would not hold.
+    kind = next(f for f in summary.fields if f.field == "kind")
+    assert kind.accuracy_pct > kind.audited_accuracy_pct
+
+
+def test_the_summary_carries_what_makes_it_traceable(stub) -> None:  # noqa: ANN001
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+    report["meta"]["git_commit"] = "abc1234"
+
+    summary = build_summary(report)
+
+    assert summary.prompt_versions == all_versions()
+    assert summary.model
+    assert summary.split == "dev"
+    assert summary.generated_at
+    assert summary.stage_latency

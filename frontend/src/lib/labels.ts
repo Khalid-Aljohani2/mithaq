@@ -222,8 +222,8 @@ export function errorMessage(error: unknown): string {
 }
 
 export const NOTIFICATION_KIND: Record<NotificationKind, string> = {
-  // The backend also uses this kind for "chain complete", so the label stays neutral.
-  APPROVAL_PENDING: "مسار الاعتماد",
+  APPROVAL_PENDING: "اعتماد مطلوب",
+  APPROVAL_COMPLETED: "اكتمل الاعتماد",
   APPROVAL_REMINDER: "تذكير بالاعتماد",
   DOCUMENTS_REQUIRED: "مستندات مطلوبة",
   DOCUMENTS_REMINDER: "تذكير بالمستندات",
@@ -236,6 +236,7 @@ export const NOTIFICATION_KIND: Record<NotificationKind, string> = {
 export const AUDIT_ACTION: Record<AuditAction, string> = {
   CR_RECEIVED: "استلام الطلب",
   CR_ANALYSED: "تحليل الطلب",
+  CR_DOCUMENTS_SUPPLIED: "استكمال المستندات",
   CR_IN_APPROVAL: "بدء مسار الاعتماد",
   CR_STEP_APPROVED: "اعتماد خطوة",
   CR_APPROVED: "اكتمال الاعتماد",

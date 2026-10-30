@@ -6,7 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: The model every AI stage uses unless settings or a per-stage override says
 #: otherwise. Declared here as configuration, not inline at a call site.
-DEFAULT_MODEL = "claude-sonnet-5-5"
+#:
+#: Chosen from the TEST-split comparison, not from preference: all four models
+#: tie at 88% recommendation accuracy, and Opus wins on the three things that
+#: do differ - best or joint-best on every per-stage field, a stable tail
+#: (31.6s p95 against Sonnet's 137.3s), and misses that fall on the safe side.
+#: See docs/decisions/0002-default-model.md.
+DEFAULT_MODEL = "claude-opus-5-5"
 
 
 class Settings(BaseSettings):
@@ -51,7 +57,18 @@ class Settings(BaseSettings):
     #: SDK-level retries for connection errors, 429 and 5xx. The one retry on a
     #: schema-invalid response is separate and lives in the provider (NFR-03).
     llm_max_retries: int = 2
-    llm_max_tokens: int = 4096
+    #: Shared by thinking and output on an adaptive-thinking model, so it has
+    #: to be generous: at 4096 the reasoning consumed the budget and the JSON
+    #: truncated mid-string.
+    llm_max_tokens: int = 16000
+
+    # ---- Reminders (FR-11) ----
+    #: Hours an approval step may sit before it is reminded about. ``None``
+    #: means "use the policy file", which is the normal case: the delay is an
+    #: organisation setting, not a deployment one. The override exists so a
+    #: demo can set it to 0 and show the reminder path working, rather than
+    #: waiting a day for one to appear. 0 is a real value here, not "unset".
+    reminder_pending_approval_hours: int | None = None
 
     # ---- Rate limiting (NFR-08) ----
     #: Requests per window per client IP against the AI endpoints. 0 disables.

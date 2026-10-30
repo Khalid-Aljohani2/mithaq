@@ -109,6 +109,28 @@ def build_request(case: dict[str, Any]) -> ChangeRequest:
     )
 
 
+#: Label fields an audit entry is allowed to override. Anything else in an
+#: ``audit`` object is prose for a human and is ignored here, so a typo in a
+#: field name cannot silently change what is scored.
+AUDITABLE_FIELDS = (
+    "expected_in_scope",
+    "expected_kind",
+    "expected_matched_line_ids",
+    "expected_changes_approved_product",
+    "expected_recommendation",
+)
+
+
+def audited(case: dict[str, Any]) -> dict[str, Any]:
+    """The case as the label audit corrected it (docs/eval_label_audit.md).
+
+    Returns the case unchanged when it carries no audit, so an un-audited case
+    is scored identically by both passes and contributes no difference.
+    """
+    overrides = {k: v for k, v in case.get("audit", {}).items() if k in AUDITABLE_FIELDS}
+    return {**case, **overrides} if overrides else case
+
+
 def score_case(case: dict[str, Any], result: PipelineResult) -> dict[str, Any]:
     """Compare one run against its label."""
     request = result.request
@@ -125,6 +147,10 @@ def score_case(case: dict[str, Any], result: PipelineResult) -> dict[str, Any]:
 
     return {
         "id": case["id"],
+        # Per-stage wall time, so a latency figure can be attributed rather
+        # than just reported. The runner already times every stage; this only
+        # carries the numbers out.
+        "stage_ms": {stage.stage.value: stage.duration_ms for stage in result.stages},
         "split": case["split"],
         "category": case["category"],
         "difficulty": case["difficulty"],
@@ -175,7 +201,30 @@ def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
             "expected": case["expected_changes_approved_product"],
         },
         "recommendation": {**blank, "expected": case["expected_recommendation"]},
+        "stage_ms": {},
         "error": error,
+    }
+
+
+def stage_latencies(scored: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    """Median and p95 per stage, over the cases that reached each stage.
+
+    A stage a case never reached contributes nothing rather than a zero: an
+    analysis that stopped at stage 2 did not run stage 3 in 0 ms.
+    """
+    per_stage: dict[str, list[float]] = {}
+    for case in scored:
+        for stage, ms in case.get("stage_ms", {}).items():
+            per_stage.setdefault(stage, []).append(float(ms))
+    return {
+        stage: {
+            "median": round(statistics.median(values), 1),
+            "p95": round(
+                statistics.quantiles(values, n=20)[-1] if len(values) > 1 else values[0], 1
+            ),
+            "cases": len(values),
+        }
+        for stage, values in sorted(per_stage.items())
     }
 
 
@@ -219,6 +268,7 @@ def summarise(scored: list[dict[str, Any]], latencies: list[float]) -> dict[str,
             "min": round(min(latencies), 1) if latencies else 0.0,
             "max": round(max(latencies), 1) if latencies else 0.0,
         },
+        "stage_ms": stage_latencies(scored),
         "accuracy_by_difficulty": {
             level: percent(
                 sum(1 for s in scored if s["difficulty"] == level and s["recommendation"]["ok"]),
@@ -238,11 +288,19 @@ def run(split: str | None, model: str, limit: int | None) -> dict[str, Any]:
     provider = build_provider(settings)
 
     collector = TokenCollector()
-    logging.getLogger("mithaq.ai").addHandler(collector)
+    ai_logger = logging.getLogger("mithaq.ai")
+    ai_logger.addHandler(collector)
+    # Without this the logger inherits WARNING from root and the ai_call records
+    # never reach the collector, so every run reported zero tokens.
+    previous_level = ai_logger.level
+    ai_logger.setLevel(logging.INFO)
 
     contracts = {c.id: c for c in (build_private_contract(), build_government_contract())}
 
+    # The same run, scored against two label sets. Never two runs: a difference
+    # between the columns has to be the labels, not sampling noise.
     scored: list[dict[str, Any]] = []
+    scored_audited: list[dict[str, Any]] = []
     latencies: list[float] = []
 
     for index, case in enumerate(cases, start=1):
@@ -260,14 +318,18 @@ def run(split: str | None, model: str, limit: int | None) -> dict[str, Any]:
             )
             latencies.append((time.perf_counter() - started) * 1000)
             scored.append(score_case(case, result))
+            scored_audited.append(score_case(audited(case), result))
             mark = "ok " if scored[-1]["recommendation"]["ok"] else "MISS"
         except (AnalysisError, Exception) as error:  # noqa: B014 - report, never crash the run
             latencies.append((time.perf_counter() - started) * 1000)
-            scored.append(failed_case(case, f"{type(error).__name__}: {error}"))
+            message = f"{type(error).__name__}: {error}"
+            scored.append(failed_case(case, message))
+            scored_audited.append(failed_case(audited(case), message))
             mark = "ERR "
         sys.stderr.write(f"  [{index:>2}/{len(cases)}] {mark} {case['id']}\n")
 
-    logging.getLogger("mithaq.ai").removeHandler(collector)
+    ai_logger.removeHandler(collector)
+    ai_logger.setLevel(previous_level)
 
     return {
         "meta": {
@@ -281,12 +343,15 @@ def run(split: str | None, model: str, limit: int | None) -> dict[str, Any]:
             "cases_file": CASES_PATH.name,
         },
         "summary": summarise(scored, latencies),
+        "summary_audited": summarise(scored_audited, latencies),
+        "audited_case_ids": [c["id"] for c in cases if c.get("audit")],
         "tokens": {
             "ai_calls": collector.calls,
             "input_tokens": collector.input_tokens,
             "output_tokens": collector.output_tokens,
         },
         "cases": scored,
+        "cases_audited": scored_audited,
     }
 
 
@@ -312,7 +377,9 @@ def main() -> int:
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     summary = report["summary"]
+    audited_summary = report["summary_audited"]
     accuracy = summary["accuracy_pct"]
+    audited_accuracy = audited_summary["accuracy_pct"]
     injection = summary["injection"]
     latency = summary["latency_ms"]
     tokens = report["tokens"]
@@ -321,11 +388,16 @@ def main() -> int:
         "",
         f"{report['meta']['model']}  split={report['meta']['split']}  "
         f"provider={report['meta']['provider']}",
-        f"  recommendation accuracy : {accuracy['recommendation']}%",
-        f"  scope decision          : {accuracy['in_scope']}%",
-        f"  kind                    : {accuracy['kind']}%",
-        f"  matched lines           : {accuracy['matched_line_ids']}%",
-        f"  technical flag          : {accuracy['changes_approved_product']}%",
+        "                            original  audited",
+        f"  recommendation accuracy : {accuracy['recommendation']:>7}% "
+        f"{audited_accuracy['recommendation']:>7}%",
+        f"  scope decision          : {accuracy['in_scope']:>7}% "
+        f"{audited_accuracy['in_scope']:>7}%",
+        f"  kind                    : {accuracy['kind']:>7}% {audited_accuracy['kind']:>7}%",
+        f"  matched lines           : {accuracy['matched_line_ids']:>7}% "
+        f"{audited_accuracy['matched_line_ids']:>7}%",
+        f"  technical flag          : {accuracy['changes_approved_product']:>7}% "
+        f"{audited_accuracy['changes_approved_product']:>7}%",
         f"  injection passed        : {injection['passed']}/{injection['total']}",
         f"  latency ms median/p95   : {latency['median']}/{latency['p95']}",
         f"  tokens in/out           : {tokens['input_tokens']}/{tokens['output_tokens']}",

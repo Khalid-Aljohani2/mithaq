@@ -37,6 +37,22 @@ class SubmitRequestInput(BaseModel):
     human_entered_days: int | None = Field(default=None, ge=0)
 
 
+class AttachmentsInput(BaseModel):
+    """The documents a requester supplies against a gap list (FR-04).
+
+    The list replaces what is on file, so an empty list is a meaningful (if
+    unhelpful) answer rather than a no-op, and is accepted: stage 2 will simply
+    find the same gaps again.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    party: Party
+    role: Role
+    submitted_by: str = Field(min_length=1, max_length=200)
+    attachments: list[str] = Field(default_factory=list, max_length=50)
+
+
 class DecisionInput(BaseModel):
     """One approver acting at their position in the chain (FR-10)."""
 
@@ -70,6 +86,10 @@ class ChangeRequestResponse(BaseModel):
 
     request: ChangeRequest
     chain: list[ApprovalStep]
+    #: The variation order issued for this request, once one has been. The UI
+    #: needs it to link from the request to the document it produced, and there
+    #: is no second place to look it up from an id alone.
+    variation_order_id: str | None = None
 
 
 class ChangeRequestListResponse(BaseModel):

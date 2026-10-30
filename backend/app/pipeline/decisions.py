@@ -140,7 +140,18 @@ def decide(
             needs_legal_review=needs_legal_review,
         )
 
-    # 5. Stages disagree. A human looks before anything is approved.
+    # 5. The request could not be priced. Approving a change whose value
+    #    nobody can state would be approving a blank cheque.
+    if impact.unpriceable:
+        return Decision(
+            recommendation=Recommendation.REQUEST_REVISION,
+            reason_codes=("CANNOT_PRICE",),
+            confidence=confidence,
+            conflicts=conflicts,
+            needs_legal_review=needs_legal_review,
+        )
+
+    # 6. Stages disagree. A human looks before anything is approved.
     if conflicts:
         return Decision(
             recommendation=Recommendation.REQUEST_REVISION,
@@ -151,7 +162,7 @@ def decide(
             needs_legal_review=needs_legal_review,
         )
 
-    # 6. Approvable. The reasons say what the chain will have to cover.
+    # 7. Approvable. The reasons say what the chain will have to cover.
     if exception_required:
         reasons.append("POLICY_EXCEPTION_REQUIRED")
     else:

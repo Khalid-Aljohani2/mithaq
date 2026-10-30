@@ -35,6 +35,27 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | `@types/react` | 19.3.0 | npm registry | https://nextjs.org/docs/app/getting-started/installation |
 | `@types/react-dom` | 19.3.0 | npm registry | https://nextjs.org/docs/app/getting-started/installation |
 | `shadcn` (CLI) | 4.23.0 | npm registry | https://ui.shadcn.com/docs/cli |
+| `openapi-typescript` | 7.13.0 | npm registry | https://openapi-ts.dev/introduction |
+| `@playwright/test` | 1.64.1 | npm registry | https://playwright.dev/docs/intro |
+
+### Interface dependencies (Step 5A, merged in 4D)
+
+Both are dev dependencies; neither ships in the bundle.
+
+- **`openapi-typescript` 7.13.0** generates `src/lib/api-types.ts` from the
+  backend's own OpenAPI schema via `npm run gen:api`. No frontend type is
+  written by hand from memory of the backend, so a schema change surfaces as a
+  type error rather than a runtime surprise.
+- **`@playwright/test` 1.64.1** drives the screenshot run behind `npm run
+  screens`, which produces `docs/design/screens/`. Chromium is installed
+  separately with `npx playwright install chromium`
+  (https://playwright.dev/docs/browsers).
+
+**No data-fetching library was added.** The only polling is a 30-second
+notification count on `setInterval`; every other view loads once and reloads
+after an action through a 40-line `useResource` hook. SWR or TanStack Query
+would add a runtime dependency to solve deduplication and cache-invalidation
+problems that one user, two contracts and a handful of views do not have.
 
 ### Version choices that are not simply "npm latest"
 

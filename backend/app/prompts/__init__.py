@@ -12,10 +12,17 @@ PROMPT_DIR = Path(__file__).parent
 
 #: Which prompt file each stage uses. Bump the version here, not in code.
 PROMPT_VERSIONS: dict[str, str] = {
-    "INTAKE": "v1",
-    "SCOPE_ANALYSIS": "v1",
-    "TECHNICAL_ASSESSMENT": "v1",
-    "RISK_COMPLIANCE": "v1",
+    # v2: confidence calibration, after round 0 showed a hedging intake stage
+    # vetoing classifications the model was 0.95 sure of.
+    # v3: impact_type rules. Round 1 left intake at 0.62 on a substitution
+    # because "does this change cost?" is unanswerable from a text that quotes
+    # no price - which is most texts. The rules decide it without one.
+    "INTAKE": "v3",
+    "SCOPE_ANALYSIS": "v2",
+    "TECHNICAL_ASSESSMENT": "v2",
+    "RISK_COMPLIANCE": "v2",
+    # Unchanged: these two write prose about a decision already made, and
+    # neither appeared in a dev failure.
     "ORCHESTRATOR": "v1",
     "ISSUE_VO": "v1",
 }

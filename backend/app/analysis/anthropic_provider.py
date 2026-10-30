@@ -21,10 +21,11 @@ Three properties carry the requirements:
 
 import logging
 import time
+from functools import cache
 from typing import TypeVar
 
 import anthropic
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, create_model
 
 from app.analysis.provider import AnalysisError, AnalysisProvider
 from app.analysis.schemas import (
@@ -50,6 +51,27 @@ logger = logging.getLogger("mithaq.ai")
 TOutput = TypeVar("TOutput", bound=AIOutput)
 
 PROVIDER_NAME = "anthropic"
+
+#: Fields the system owns, not the model. Asking a model to emit these wastes
+#: output tokens and invites nonsense - an early run came back with
+#: "provider": "scope_analysis" - so they are stripped from the schema the
+#: model sees and set from code afterwards.
+_ENVELOPE_FIELDS = ("provider", "recorded")
+
+
+@cache
+def payload_schema(output_type: type[BaseModel]) -> type[BaseModel]:
+    """Derive the model-facing schema: the stage output minus the envelope.
+
+    Derived rather than hand-written so it cannot drift from the real schema
+    when a field is added.
+    """
+    fields = {
+        name: (field.annotation, field)
+        for name, field in output_type.model_fields.items()
+        if name not in _ENVELOPE_FIELDS
+    }
+    return create_model(f"{output_type.__name__}Payload", **fields)  # type: ignore[call-overload]
 
 
 class ProviderCallFailedError(AnalysisError):
@@ -107,9 +129,17 @@ class AnthropicProvider(AnalysisProvider):
                     max_tokens=self._settings.llm_max_tokens,
                     system=system,
                     messages=[{"role": "user", "content": user_content}],
-                    output_format=output_type,
+                    output_format=payload_schema(output_type),
                     **self._effort_kwargs(),
                 )
+            except ValidationError as error:
+                # The SDK validates inside parse(), so a truncated or malformed
+                # response raises here rather than returning. Without this the
+                # retry path below would never run for the likeliest failure.
+                latency_ms = int((time.perf_counter() - started) * 1000)
+                last_error = error
+                self._log(stage, model, latency_ms, None, "unparseable", attempt)
+                continue
             except anthropic.APIError as error:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 last_error = error

@@ -18,9 +18,9 @@ from decimal import Decimal
 from app.domain.change_request import ChangeRequest
 from app.domain.enums import ChangeCategory, ChangeKind, OrderStatus
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
-from app.domain.rules import RuleResult
+from app.domain.rules import CapLine, RuleResult
 from app.pipeline.costing import CostImpact
-from app.policy.loader import get_policy
+from app.policy.loader import PolicyThreshold, get_policy
 from app.regulations.loader import get_limits
 from app.services.rules_engine import evaluate
 
@@ -267,3 +267,115 @@ def check_article_67(
         findings.append("Within every Article 67 cap.")
 
     return LegalCheck(applies=True, results=tuple(results), findings_en=tuple(findings))
+
+
+def _cap_line(
+    scope: str,
+    threshold: PolicyThreshold,
+    unit: str,
+    basis: Decimal,
+    used: Decimal,
+    pending: Decimal,
+) -> CapLine:
+    """Turn one configured threshold into a ledger line.
+
+    The cap percentage comes from the policy file, never from Python (NFR-16),
+    and headroom is computed from values rather than from rounded percentages -
+    the same reason the Article 67 engine compares values.
+    """
+    cap_pct = threshold.cap_pct
+    assert cap_pct is not None  # noqa: S101 - guaranteed by the caller's key
+    cap_value = basis * cap_pct / _HUNDRED
+    headroom = cap_value - used
+    return CapLine(
+        scope=scope,
+        source=threshold.source,
+        blocking=threshold.blocking,
+        exception_role=threshold.exception_role,
+        unit=unit,
+        cap_pct=cap_pct,
+        cap_value=cap_value,
+        used_value=used,
+        used_pct=_pct(used, basis),
+        pending_value=pending,
+        pending_pct=_pct(pending, basis),
+        headroom_value=headroom,
+        headroom_pct=_pct(headroom, basis),
+        description_ar=threshold.description_ar,
+        description_en=threshold.description_en,
+    )
+
+
+def policy_usage(
+    contract: Contract,
+    cost_used: Decimal,
+    days_used: int,
+    cost_pending: Decimal,
+    days_pending: int,
+) -> dict[str, CapLine]:
+    """The organisation's own caps as they stand on this contract (FR-10).
+
+    Reported for every contract, government or not: policy applies to both.
+    Article 67 is the layer that applies to government contracts only, and it
+    is reported separately in ``usage``.
+    """
+    policy = get_policy()
+    duration = Decimal(contract.original_duration_days)
+    return {
+        "cost_increase": _cap_line(
+            "cost_increase",
+            policy.thresholds["cost_increase"],
+            "SAR",
+            contract.original_value,
+            cost_used,
+            cost_pending,
+        ),
+        "time_extension": _cap_line(
+            "time_extension",
+            policy.thresholds["time_extension"],
+            "days",
+            duration,
+            Decimal(days_used),
+            Decimal(days_pending),
+        ),
+    }
+
+
+def cited_articles(contract: Contract, request: ChangeRequest) -> tuple[str, ...]:
+    """The Article 67 references a variation order rests on (NFR-02, FR-12).
+
+    Derived from the categories the request actually moves, with every string
+    read from the regulation file. A private contract cites nothing, because
+    Article 67 governs government contracts only - and citing it anyway would
+    be asserting a legal basis that does not exist.
+    """
+    if not contract.is_government or request.kind is None:
+        return ()
+
+    limits = get_limits()
+    refs: list[str] = []
+    for category in _categories_for(request.kind, request.matched_line_ids):
+        rule = limits.categories[category]
+        refs.append(rule.article_ref_en)
+        if rule.counts_toward_combined:
+            refs.append(limits.combined.article_ref_en)
+    # dict.fromkeys keeps first-seen order; a VO should not cite 67(2) twice
+    # just because a substitution touches two categories.
+    return tuple(dict.fromkeys(refs))
+
+
+def _categories_for(
+    kind: ChangeKind, matched_line_ids: tuple[str, ...]
+) -> tuple[ChangeCategory, ...]:
+    """The ledger categories one change kind moves.
+
+    The same mapping :func:`to_ledger_entries` applies, stated once so the
+    citations and the ledger entries cannot drift apart.
+    """
+    if kind is ChangeKind.PCR:
+        return (ChangeCategory.INCREASE_EXISTING if matched_line_ids else ChangeCategory.NEW_ITEMS,)
+    if kind is ChangeKind.NCR:
+        return (ChangeCategory.DECREASE_EXISTING,)
+    if kind is ChangeKind.SUBSTITUTION:
+        return (ChangeCategory.DECREASE_EXISTING, ChangeCategory.INCREASE_EXISTING)
+    return ()

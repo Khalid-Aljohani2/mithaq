@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from app.analysis.provider import AnalysisProvider
 from app.analysis.schemas import VODraftInput
+from app.config import get_settings
 from app.domain.audit import AuditAction, AuditEvent
 from app.domain.change_request import (
     ApprovalStep,
@@ -39,8 +40,10 @@ from app.domain.enums import (
     stage_number,
 )
 from app.domain.models import Contract
+from app.domain.money import money
 from app.domain.state_machine import transition
 from app.pipeline.approvals import chain_is_complete, current_step
+from app.pipeline.limits import cited_articles
 from app.pipeline.runner import PipelineResult, run_analysis
 from app.policy.loader import get_policy
 from app.repositories.base import ContractRepository
@@ -103,11 +106,15 @@ def _audit(
     new: CRState,
     now: datetime,
     reason: str | None = None,
+    actor_party: str | None = None,
+    actor_name: str | None = None,
 ) -> None:
     repo.append_audit(
         AuditEvent(
             occurred_at=now,
             actor_role=actor_role,
+            actor_party=actor_party,
+            actor_name=actor_name,
             action=action,
             entity_type="change_request",
             entity_id=request.id,
@@ -161,6 +168,23 @@ def cumulative_totals(repo: ContractRepository, contract_id: str) -> tuple[Decim
     return cost, days
 
 
+def pending_totals(repo: ContractRepository, contract_id: str) -> tuple[Decimal, int]:
+    """Cost and days that would be committed if everything in flight is approved.
+
+    Reported beside the committed figures rather than added to them: a request
+    under consideration must never silently consume headroom, which is the same
+    rule the Article 67 engine follows for PENDING orders (FR-10).
+    """
+    in_flight = {CRState.RECOMMENDED, CRState.IN_APPROVAL}
+    cost = Decimal("0")
+    days = 0
+    for request in repo.list_change_requests(contract_id):
+        if request.state in in_flight:
+            cost += request.cost_impact or Decimal("0")
+            days += request.time_impact_days or 0
+    return cost, days
+
+
 # ---------------------------------------------------------------------------
 # Stage 1-7: submit and analyse
 # ---------------------------------------------------------------------------
@@ -192,10 +216,69 @@ def submit_request(
         repo,
         stored,
         AuditAction.CR_RECEIVED,
-        payload.requester_party.value,
+        Role.PROJECT_MANAGER.value,
         CRState.RECEIVED,
         CRState.RECEIVED,
         now,
+        actor_party=payload.requester_party.value,
+        actor_name=payload.requester_name,
+    )
+    return stored
+
+
+def replace_attachments(
+    repo: ContractRepository,
+    cr_id: str,
+    party: Party,
+    role: Role,
+    submitted_by: str,
+    attachments: tuple[str, ...],
+    now: datetime,
+) -> ChangeRequest:
+    """Supply the documents a request was waiting for (FR-04).
+
+    A human action, and only the side that raised the request may take it: the
+    other party has no standing to put paperwork into someone else's file, and
+    a UI that merely hides the button is not a control (FR-10).
+
+    The attachments are **replaced**, not merged. The requester is answering a
+    gap list with the file as it now stands, and a merge would quietly keep a
+    document they meant to withdraw.
+
+    The state is left at AWAITING_DOCUMENTS. Supplying documents is not itself
+    a claim that the file is complete - stage 2 decides that, on the next run
+    of the analysis, which this request is now eligible for again.
+    """
+    request = _require_request(repo, cr_id)
+    if request.state is not CRState.AWAITING_DOCUMENTS:
+        raise InvalidStateError(
+            "NOT_AWAITING_DOCUMENTS",
+            f"change request {cr_id} is in {request.state.value}, not awaiting documents",
+        )
+    if party is not request.requester_party:
+        raise WrongRoleError(
+            "WRONG_PARTY",
+            f"{party.value} may not supply documents for a request raised by "
+            f"{request.requester_party.value}",
+        )
+    if role is not Role.PROJECT_MANAGER:
+        raise WrongRoleError(
+            "WRONG_ROLE",
+            f"{role.value} may not supply documents; that is the project manager's action",
+        )
+
+    stored = repo.replace_change_request(request.model_copy(update={"attachments": attachments}))
+    _audit(
+        repo,
+        stored,
+        AuditAction.CR_DOCUMENTS_SUPPLIED,
+        role.value,
+        CRState.AWAITING_DOCUMENTS,
+        CRState.AWAITING_DOCUMENTS,
+        now,
+        reason=f"{len(attachments)} document(s) supplied",
+        actor_party=party.value,
+        actor_name=submitted_by,
     )
     return stored
 
@@ -381,7 +464,7 @@ def decide_step(
     elif chain_is_complete(remaining):
         new_state = transition(previous, CRState.APPROVED, ActorType.HUMAN)
         action = AuditAction.CR_APPROVED
-        kind = NotificationKind.APPROVAL_PENDING
+        kind = NotificationKind.APPROVAL_COMPLETED
         message_ar = f"اكتملت سلسلة الاعتماد للطلب {cr_id}."
         message_en = f"Change request {cr_id} is fully approved."
     else:
@@ -396,7 +479,18 @@ def decide_step(
         updates["revision_count"] = request.revision_count + 1
     stored = repo.replace_change_request(request.model_copy(update=updates))
 
-    _audit(repo, stored, action, role.value, previous, new_state, now, reason)
+    _audit(
+        repo,
+        stored,
+        action,
+        role.value,
+        previous,
+        new_state,
+        now,
+        reason,
+        actor_party=party.value,
+        actor_name=decided_by,
+    )
 
     if decision is ApprovalDecision.APPROVED and new_state is CRState.IN_APPROVAL:
         nxt = current_step(remaining)
@@ -462,9 +556,11 @@ def issue_variation_order(
         )
     )
 
-    articles: tuple[str, ...] = ()
-    if contract.is_government:
-        articles = ("Article 67(1)(a)", "Article 67(1)(b), Article 67(2)")
+    # Which articles this VO rests on is a question for the regulation file,
+    # not for a literal in Python (NFR-02). They are derived from the ledger
+    # entries the request actually produces, so a VO never cites an article
+    # that had nothing to do with it.
+    articles = cited_articles(contract, request)
 
     vo = VariationOrder(
         id=f"{cr_id}-VO",
@@ -508,7 +604,7 @@ def issue_variation_order(
                 finished_at=now,
                 duration_ms=0,
                 status="OK",
-                summary_en=f"Issued {number} for {vo.value} SAR.",
+                summary_en=f"Issued {number} for {money(vo.value)} SAR.",
                 summary_ar=draft.scope_ar,
                 payload={"vo_id": vo.id, "number": number, "value": str(vo.value)},
             )
@@ -521,8 +617,8 @@ def issue_variation_order(
         stored.requester_party,
         Role.PROJECT_MANAGER,
         NotificationKind.VO_ISSUED,
-        f"صدر أمر التغيير {number} بقيمة {vo.value} ريال.",
-        f"Variation order {number} issued for {vo.value} SAR.",
+        f"صدر أمر التغيير {number} بقيمة {money(vo.value)} ريال.",
+        f"Variation order {number} issued for {money(vo.value)} SAR.",
         now,
     )
     return stored_vo
@@ -664,6 +760,18 @@ def record_execution(
 # ---------------------------------------------------------------------------
 
 
+def pending_approval_hours() -> int:
+    """How long an approval step may wait before it is reminded about (FR-11).
+
+    Settings win over the policy file when they say anything at all, so a demo
+    can set the delay to 0 without editing policy. ``is not None`` rather than
+    a truthiness test, because 0 is exactly the value a demo wants and "or"
+    would silently discard it.
+    """
+    override = get_settings().reminder_pending_approval_hours
+    return override if override is not None else get_policy().pending_approval_hours
+
+
 def reminders_for(
     repo: ContractRepository, party: Party, role: Role, now: datetime | None = None
 ) -> list[Notification]:
@@ -673,7 +781,7 @@ def reminders_for(
     running for a reminder to appear.
     """
     now = now or datetime.now(UTC)
-    cutoff = now - timedelta(hours=get_policy().pending_approval_hours)
+    cutoff = now - timedelta(hours=pending_approval_hours())
 
     reminders: list[Notification] = []
     for step in repo.list_pending_steps():

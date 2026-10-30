@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.domain.audit import AuditEvent
 from app.domain.models import ChangeOrder, Contract
-from app.domain.rules import UsageSnapshot
+from app.domain.rules import CapLine, UsageSnapshot
 
 
 class ContractSummary(BaseModel):
@@ -69,8 +69,15 @@ class LedgerResponse(BaseModel):
     contract_id: str
     currency: str
     original_value: Decimal
-    #: Keyed by category name plus "COMBINED".
+    #: Article 67 usage, keyed by category name plus "COMBINED". Every line
+    #: carries the article it rests on, because a ledger mixes several (NFR-02).
     usage: dict[str, UsageSnapshot]
+    #: The organisation's own caps, which apply to every contract and can be
+    #: escalated past by the role each line names. Kept apart from ``usage`` so
+    #: a blocking legal cap is never mistaken for a negotiable one (NFR-16).
+    policy_usage: dict[str, CapLine]
+    #: True when Article 67 applies at all, i.e. this is a government contract.
+    legal_limits_apply: bool
     orders: list[ChangeOrder]
     regulation: RegulationRef
 

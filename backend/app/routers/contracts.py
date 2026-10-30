@@ -3,7 +3,9 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.dependencies import LimitsDep, RepositoryDep
+from app.domain.enums import ContractType
 from app.domain.models import CURRENCY, Contract
+from app.pipeline.limits import policy_usage
 from app.regulations.loader import get_regulation
 from app.schemas.contracts import (
     AuditLogResponse,
@@ -12,6 +14,7 @@ from app.schemas.contracts import (
     LedgerResponse,
     RegulationRef,
 )
+from app.services.change_requests import cumulative_totals, pending_totals
 from app.services.rules_engine import summarise
 
 router = APIRouter(prefix="/api/contracts", tags=["contracts"])
@@ -63,11 +66,15 @@ async def get_ledger(contract_id: str, repo: RepositoryDep, limits: LimitsDep) -
             detail=f"contract {contract_id} not found",
         )
     ledger = repo.get_ledger(contract_id)
+    cost_used, days_used = cumulative_totals(repo, contract_id)
+    cost_pending, days_pending = pending_totals(repo, contract_id)
     return LedgerResponse(
         contract_id=contract_id,
         currency=CURRENCY,
         original_value=contract.original_value,
         usage=summarise(contract, ledger, limits),
+        policy_usage=policy_usage(contract, cost_used, days_used, cost_pending, days_pending),
+        legal_limits_apply=contract.contract_type is ContractType.GOVERNMENT,
         orders=list(ledger.orders),
         regulation=_regulation_ref(),
     )

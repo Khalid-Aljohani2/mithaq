@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-10-30T21:00:43.429488+00:00",
+  "commit": "0f9d437",
+  "model": "claude-opus-5-5",
+  "split": "test",
+  "provider": "anthropic+scripted",
+  "case_count": 25,
+  "prompt_versions": {
+    "INTAKE": "v3",
+    "SCOPE_ANALYSIS": "v2",
+    "TECHNICAL_ASSESSMENT": "v2",
+    "RISK_COMPLIANCE": "v2",
+    "ORCHESTRATOR": "v1",
+    "ISSUE_VO": "v1"
+  },
+  "overall_accuracy_pct": "92.0",
+  "audited_accuracy_pct": "92.0",
+  "audited_case_ids": [
+    "TEST-18",
+    "TEST-24"
+  ],
+  "fields": [
+    {
+      "field": "recommendation",
+      "accuracy_pct": "92.0",
+      "audited_accuracy_pct": "92.0"
+    },
+    {
+      "field": "in_scope",
+      "accuracy_pct": "100.0",
+      "audited_accuracy_pct": "100.0"
+    },
+    {
+      "field": "kind",
+      "accuracy_pct": "92.0",
+      "audited_accuracy_pct": "96.0"
+    },
+    {
+      "field": "matched_line_ids",
+      "accuracy_pct": "92.0",
+      "audited_accuracy_pct": "96.0"
+    },
+    {
+      "field": "changes_approved_product",
+      "accuracy_pct": "96.0",
+      "audited_accuracy_pct": "96.0"
+    }
+  ],
+  "stage_latency": [
+    {
+      "stage": "COST_SCHEDULE_IMPACT",
+      "median_ms": "0.0",
+      "p95_ms": "0.7",
+      "cases": 25
+    },
+    {
+      "stage": "DOCUMENT_VALIDATION",
+      "median_ms": "0.0",
+      "p95_ms": "0.0",
+      "cases": 25
+    },
+    {
+      "stage": "INTAKE",
+      "median_ms": "3705.0",
+      "p95_ms": "7233.9",
+      "cases": 25
+    },
+    {
+      "stage": "ORCHESTRATOR",
+      "median_ms": "5027.0",
+      "p95_ms": "10302.7",
+      "cases": 25
+    },
+    {
+      "stage": "RISK_COMPLIANCE",
+      "median_ms": "6212.0",
+      "p95_ms": "11103.5",
+      "cases": 25
+    },
+    {
+      "stage": "SCOPE_ANALYSIS",
+      "median_ms": "4411.0",
+      "p95_ms": "7322.5",
+      "cases": 25
+    },
+    {
+      "stage": "TECHNICAL_ASSESSMENT",
+      "median_ms": "3980.0",
+      "p95_ms": "10296.3",
+      "cases": 25
+    }
+  ],
+  "latency_p50_ms": "25054.5",
+  "latency_p95_ms": "31950.9",
+  "total_cost_usd": "2.1026",
+  "input_tokens": 291919,
+  "output_tokens": 46746,
+  "injection_passed": 3,
+  "injection_total": 3,
+  "errors": 0,
+  "notes": "Scored against both the original labels and the audited ones (docs/eval_label_audit.md), from a single run."
+}
