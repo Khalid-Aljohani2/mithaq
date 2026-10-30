@@ -342,3 +342,63 @@ wrong before committing:
 | The contract reference wrapped onto two lines in the 390 switcher | References never wrap (`white-space: nowrap`) |
 | The seal was too small to read at 1440 | Raised from 96 to 112px |
 | The register said "1 طلبات" | Arabic count agreement (طلب واحد، طلبان، 3 طلبات، 11 طلبًا) |
+
+## 9. Step 5B, part 1
+
+- **VO document** (`/contracts/[id]/variation-orders/[voId]`). It is the one
+  screen that is a document rather than a tool, so it is set in Naskh. It has
+  a letterhead naming both parties, then four numbered clauses: the change,
+  the affected lines with contract rates, value and time, and the cited
+  articles. Signature blocks follow, with the seal stamped beside them. Print
+  CSS restores the light palette whatever the screen theme, hides the app
+  chrome and the print button, and sets `@page` to A4 portrait. The run
+  asserts that the browser's PDF is exactly one page.
+- **Notifications drawer.** A side sheet from the end edge, newest first.
+  Reminders get an amber edge, a clock and a "تذكير" badge, the only amber
+  in the list. Each item links to its case file and closes the drawer.
+- **Audit page.** A ruled table: number, time, actor, action, entity, previous
+  state, new state, reason. One line under the title says the log is
+  append-only. Analysis entries record the recommendation code as their
+  reason, so it is shown as "التوصية: اعتماد".
+- **Issuing the VO.** When the chain is complete, the case file shows
+  "إصدار أمر التغيير", a human action. Once the VO exists, a block links to the
+  document.
+
+Fixed after reviewing the screenshots: the seal overlapped the double rule
+above the signatures, so it now sits inside the signature block in its own
+reserved space. The drawer's scrim lightened the page in dark mode and is now
+a fixed dark tint. The drawer is captured at the viewport, not the full page.
+Analysis reasons appeared as raw codes ("APPROVE") in the audit log. The
+notification kind `APPROVAL_PENDING` is also sent when a chain completes, so
+it is labelled "مسار الاعتماد" rather than "اعتماد مطلوب".
+
+## 10. Step 5B, part 2
+
+- **Limits page** (`/contracts/[id]/limits`). The policy caps (gross cost
+  increase and time extension) and, on a government contract, each Article 67
+  category. Each row shows cap, approved, pending and headroom, plus the source
+  tag the API sends (النظام or سياسة الجهة). The Arabic article reference
+  comes from the API, and the frontend's own scope-to-article map is gone.
+  Policy over its cap is amber because an exception can pass it; law over its
+  cap is red because nothing can. The VOs that make up the totals are listed
+  below. The workspace summary uses the same rows.
+- **Evaluation page** (`/evaluation`). Written for someone with ten seconds.
+  One sentence comes first: recommendation accuracy on held-out cases. Every
+  section ends with its source (commit, date, model, split). Cost per request
+  is the run's cost divided by its case count, done in exact decimal
+  arithmetic. The four-model comparison is not served by the API, so the page
+  links to the comparison document at the run's commit rather than copying
+  its numbers.
+- **Awaiting documents.** The checklist for the request's impact type comes
+  from the API and marks what is missing. The resubmit form sends the full
+  attachment list, then re-runs the analysis.
+- Missing documents hold a request; they do not block it. The trace marker
+  for that stage is amber, keeping red for the law.
+
+Fixed after reviewing the screenshots:
+- The government VO printed on two pages, which the PDF check caught. Print
+  spacing is tightened, and both VOs are asserted to fit one page.
+- The evaluation headline wrapped a single word onto a second line.
+- USD showed as "$US".
+- A request held at stage 2 was called "not analysed"; it now reads "not yet
+  classified".

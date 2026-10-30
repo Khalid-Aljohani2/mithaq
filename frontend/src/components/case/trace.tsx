@@ -12,7 +12,7 @@ import { STAGES } from "@/lib/labels";
 import { payloadEntries } from "@/lib/payload";
 import { cn } from "@/lib/utils";
 
-type Marker = "done" | "active" | "waiting" | "blocked" | "na";
+type Marker = "done" | "active" | "waiting" | "blocked" | "held" | "na";
 
 type Row = {
   no: number;
@@ -25,6 +25,11 @@ type Row = {
 };
 
 function fromResult(result: StageResult): Pick<Row, "marker" | "status"> {
+  // Missing paperwork holds the request; it is not a legal block, so it is
+  // amber, not red.
+  if (result.status === "BLOCKED" && result.stage === "DOCUMENT_VALIDATION") {
+    return { marker: "held", status: "بانتظار المستندات" };
+  }
   if (result.status === "BLOCKED") return { marker: "blocked", status: "محجوب" };
   if (result.status === "OK") return { marker: "done", status: "تم" };
   return { marker: "done", status: result.status };
@@ -196,6 +201,7 @@ function MarkerDot({ marker }: { marker: Marker }) {
         marker === "active" && "border-ink",
         marker === "waiting" && "border-rule-strong",
         marker === "blocked" && "border-legal bg-legal",
+        marker === "held" && "border-amber bg-amber",
         marker === "na" && "border-dashed border-rule-strong",
       )}
     >
@@ -231,7 +237,11 @@ function TraceRow({
           <span
             className={cn(
               "text-xs",
-              row.marker === "blocked" ? "font-medium text-legal" : "text-ink-muted",
+              row.marker === "blocked"
+                ? "font-medium text-legal"
+                : row.marker === "held"
+                  ? "font-medium text-amber"
+                  : "text-ink-muted",
             )}
           >
             {row.status}

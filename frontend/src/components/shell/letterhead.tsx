@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronDown, Check } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ChevronDown, Check } from "lucide-react";
 import { Popover } from "radix-ui";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { api, type Party, type Role } from "@/lib/api";
+import type { Party, Role } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import {
   CONTRACT_TYPE_LABEL,
@@ -19,9 +20,10 @@ import {
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
-const POLL_MS = 30_000;
+import { NotificationBell } from "./notifications";
 
 export function Letterhead() {
+  const pathname = usePathname();
   return (
     <header className="rule-double bg-sheet">
       <div className="mx-auto grid max-w-[90rem] grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-4 py-3 md:grid-cols-[auto_1fr_auto] md:px-8">
@@ -30,7 +32,14 @@ export function Letterhead() {
           <ContractSwitcher />
           <RoleSwitcher />
         </div>
-        <div className="col-start-2 row-start-1 md:col-start-3">
+        <div className="col-start-2 row-start-1 flex items-center gap-2 md:col-start-3">
+          <Link
+            href="/evaluation"
+            className="inline-flex min-h-11 items-center rounded-[var(--radius-ctl)] px-3 text-sm font-medium underline-offset-4 hover:underline aria-[current=page]:underline"
+            aria-current={pathname === "/evaluation" ? "page" : undefined}
+          >
+            نتائج التقييم
+          </Link>
           <NotificationBell />
         </div>
       </div>
@@ -188,62 +197,5 @@ function RoleSwitcher() {
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
-  );
-}
-
-function NotificationBell() {
-  const { persona } = useSession();
-  const [count, setCount] = useState<number | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const load = () =>
-      api
-        .notifications(persona.party, persona.role, controller.signal)
-        .then((r) => {
-          setCount(r.notifications.length);
-          setFailed(false);
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) setFailed(true);
-        });
-    load();
-    const timer = window.setInterval(load, POLL_MS);
-    return () => {
-      controller.abort();
-      window.clearInterval(timer);
-    };
-  }, [persona.party, persona.role]);
-
-  const label = failed
-    ? "تعذر تحميل الإشعارات"
-    : count === null
-      ? "جارٍ تحميل الإشعارات"
-      : count === 0
-        ? "لا إشعارات لدورك"
-        : `${count} إشعارات لدورك`;
-
-  // The drawer arrives in 5B; for now the bell reports the count only.
-  return (
-    <span
-      role="status"
-      aria-label={label}
-      title={label}
-      className="relative inline-flex size-11 items-center justify-center rounded-[var(--radius-ctl)] border border-rule-strong bg-sheet"
-    >
-      <Bell aria-hidden className="size-5" />
-      {count !== null && count > 0 && (
-        <span
-          aria-hidden
-          className="absolute -top-1.5 -end-1.5 min-w-5 rounded-full border-2 border-sheet bg-amber px-1 text-center text-2xs leading-4 font-semibold text-sheet"
-        >
-          {count}
-        </span>
-      )}
-      {failed && (
-        <span aria-hidden className="absolute -top-1 -end-1 size-2.5 rounded-full bg-legal" />
-      )}
-    </span>
   );
 }

@@ -8,6 +8,8 @@
 import {
   ApiError,
   type ActorType,
+  type AuditAction,
+  type NotificationKind,
   type ChangeKind,
   type ContractType,
   type CRState,
@@ -66,7 +68,7 @@ export function kindShort(kind: ChangeKind | null | undefined): string {
 
 /** Full label for a kind: "PCR (طلب تغيير موجب)" or the name alone. */
 export function kindFull(kind: ChangeKind | null | undefined): string {
-  if (!kind) return "لم يُحلَّل بعد";
+  if (!kind) return "لم يُصنَّف بعد";
   const { abbr, name } = KIND[kind];
   return abbr ? `${abbr} (${name})` : name;
 }
@@ -177,13 +179,22 @@ export const REASON_CODE: Record<string, string> = {
   STAGE_CONFLICT: "تعارض بين نتائج المراحل.",
 };
 
-/** Ledger scopes and the English article ref the API returns for each (gap 3). */
-export const SCOPE: Record<string, { name: string; articleEn: string }> = {
-  NEW_ITEMS: { name: "بنود جديدة", articleEn: "Article 67(1)(a)" },
-  INCREASE_EXISTING: { name: "زيادة كميات قائمة", articleEn: "Article 67(1)(b)" },
-  DECREASE_EXISTING: { name: "تخفيض كميات قائمة", articleEn: "Article 67(1)(c)" },
-  NON_FINANCIAL: { name: "تغييرات غير مالية", articleEn: "Article 67(3)" },
-  COMBINED: { name: "إجمالي التغييرات", articleEn: "Article 67(2)" },
+/** Display names for limit scopes. Citations come from the API, not from here. */
+export const SCOPE_NAME: Record<string, string> = {
+  NEW_ITEMS: "بنود جديدة",
+  INCREASE_EXISTING: "زيادة كميات قائمة",
+  DECREASE_EXISTING: "تخفيض كميات قائمة",
+  NON_FINANCIAL: "تغييرات غير مالية",
+  COMBINED: "إجمالي التغييرات",
+  cost_increase: "الزيادة الإجمالية في التكلفة",
+  time_extension: "التمديد الإجمالي للمدة",
+};
+
+/** Where a threshold comes from (NFR-16). */
+export const SOURCE_LABEL: Record<string, string> = {
+  law: "النظام",
+  organization_policy: "سياسة الجهة",
+  default: "قيمة افتراضية",
 };
 
 /** What went wrong, and what to do about it. */
@@ -217,4 +228,40 @@ export function errorMessage(error: unknown): string {
     return error.detail || `رفض الخادم الطلب (HTTP ${error.status}).`;
   }
   return "حدث خطأ غير متوقع. أعد تحميل الصفحة.";
+}
+
+export const NOTIFICATION_KIND: Record<NotificationKind, string> = {
+  APPROVAL_PENDING: "اعتماد مطلوب",
+  APPROVAL_COMPLETED: "اكتمل الاعتماد",
+  APPROVAL_REMINDER: "تذكير بالاعتماد",
+  DOCUMENTS_REQUIRED: "مستندات مطلوبة",
+  DOCUMENTS_REMINDER: "تذكير بالمستندات",
+  CR_REJECTED: "رُفض الطلب",
+  CR_REVISION_REQUESTED: "طُلب تعديل",
+  CR_CLOSED_IN_SCOPE: "أُغلق داخل النطاق",
+  VO_ISSUED: "صدر أمر التغيير",
+  LEGAL_REVIEW_REQUIRED: "مراجعة نظامية مطلوبة",
+};
+
+export const AUDIT_ACTION: Record<AuditAction, string> = {
+  CR_RECEIVED: "استلام الطلب",
+  CR_ANALYSED: "تحليل الطلب",
+  CR_DOCUMENTS_SUPPLIED: "استكمال المستندات",
+  CR_IN_APPROVAL: "بدء مسار الاعتماد",
+  CR_STEP_APPROVED: "اعتماد خطوة",
+  CR_LEGAL_CAP_REFUSED: "رفض لتجاوز حد نظامي",
+  CR_APPROVED: "اكتمال الاعتماد",
+  CR_REJECTED: "رفض الطلب",
+  CR_REVISION_REQUESTED: "طلب تعديل",
+  VO_ISSUED: "إصدار أمر التغيير",
+  EXECUTION_STARTED: "بدء التنفيذ",
+  CR_CLOSED: "إغلاق الطلب",
+  DEMO_RESET: "إعادة ضبط العرض",
+};
+
+/** The audit log's actor: a role name, or CODE for the system itself. */
+export function auditActor(actor: string): string {
+  if (actor === "CODE") return "النظام";
+  if (actor === "AI") return "الوكيل";
+  return actor in ROLE_LABEL ? ROLE_LABEL[actor as Role] : actor;
 }

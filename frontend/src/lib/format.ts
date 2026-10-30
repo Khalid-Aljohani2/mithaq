@@ -124,6 +124,44 @@ export function countRequests(n: number): string {
   return `${plain.format(n)} طلبًا`;
 }
 
+/** As countRequests, for audit log entries (قيد). */
+export function countEntries(n: number): string {
+  if (n === 1) return "قيد واحد";
+  if (n === 2) return "قيدان";
+  if (n >= 3 && n <= 10) return `${plain.format(n)} قيود`;
+  return `${plain.format(n)} قيدًا`;
+}
+
+/**
+ * Exact decimal division for display, e.g. total cost over case count. Done
+ * on scaled integers (BigInt), so no binary float enters the result.
+ */
+export function divideDecimal(value: string, divisor: number, places = 4): string | null {
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!m || !Number.isInteger(divisor) || divisor <= 0) return null;
+  const [, sign, int, frac = ""] = m;
+  // BigInt() rather than `10n` literals: the tsconfig target is ES2017.
+  const ten = BigInt(10);
+  const scale = ten ** BigInt(places);
+  const scaled = BigInt(int + frac.padEnd(places, "0").slice(0, places));
+  const q = ((scaled * ten) / BigInt(divisor) + BigInt(5)) / ten; // round half up
+  const whole = q / scale;
+  const rest = (q % scale).toString().padStart(places, "0");
+  return `${sign}${whole}.${rest}`;
+}
+
+const usd = new Intl.NumberFormat(LOCALE, {
+  numberingSystem: "latn",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
+
+/** "$0.0841", kept left to right inside Arabic text. */
+export function formatUsd(value: string | null | undefined): string {
+  if (!value) return "غير متاح";
+  return ltr(`$${usd.format(asLiteral(value))}`);
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${plain.format(ms)} ملّي ث`;
   return `${plain.format(Math.round(ms / 100) / 10)} ث`;

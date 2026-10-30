@@ -14,6 +14,8 @@ export type ActorType = Schemas["ActorType"];
 export type AnalysisResponse = Schemas["AnalysisResponse"];
 export type ApprovalDecision = Schemas["ApprovalDecision"];
 export type ApprovalStep = Schemas["ApprovalStep"];
+export type AuditAction = Schemas["AuditAction"];
+export type AuditEvent = Schemas["AuditEvent"];
 export type AttachmentsInput = Schemas["AttachmentsInput"];
 export type BreakdownLine = Schemas["BreakdownLine"];
 export type CapLine = Schemas["CapLine"];
@@ -32,6 +34,8 @@ export type EvalStageLatency = Schemas["EvalStageLatency"];
 export type EvalSummaryResponse = Schemas["EvalSummaryResponse"];
 export type HealthResponse = Schemas["HealthResponse"];
 export type LedgerResponse = Schemas["LedgerResponse"];
+export type Notification = Schemas["Notification"];
+export type NotificationKind = Schemas["NotificationKind"];
 export type NotificationListResponse = Schemas["NotificationListResponse"];
 export type OrderStatus = Schemas["OrderStatus"];
 export type Party = Schemas["Party"];
@@ -198,6 +202,11 @@ export const api = {
       { method: "POST", body: JSON.stringify(body) },
     ),
 
+  issueVariationOrder: (crId: string) =>
+    request<Schemas["VariationOrderResponse"]>(
+      `/api/change-requests/${enc(crId)}/variation-order`,
+      { method: "POST" },
+    ),
   variationOrder: (voId: string, signal?: AbortSignal) =>
     request<VariationOrderResponse>(`/api/variation-orders/${enc(voId)}`, {
       signal,
@@ -209,6 +218,11 @@ export const api = {
       { signal },
     ),
 
+  audit: (contractId: string, signal?: AbortSignal) =>
+    request<Schemas["AuditLogResponse"]>(
+      `/api/contracts/${enc(contractId)}/audit`,
+      { signal },
+    ),
   /** The stage 2 checklist, so a requester sees it before stage 2 does. */
   requiredDocuments: (signal?: AbortSignal) =>
     request<RequiredDocumentsResponse>("/api/policy/required-documents", {

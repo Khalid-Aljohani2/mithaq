@@ -37,11 +37,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Providers>
           <a
             href="#main"
-            className="sr-only z-50 bg-sheet px-3 py-2 focus:not-sr-only focus:absolute focus:start-2 focus:top-2"
+            className="sr-only z-50 bg-sheet print:hidden px-3 py-2 focus:not-sr-only focus:absolute focus:start-2 focus:top-2"
           >
             انتقل إلى المحتوى
           </a>
-          <Letterhead />
+          <div className="print:hidden">
+            <Letterhead />
+          </div>
           <main id="main" className="flex-1">
             {children}
           </main>

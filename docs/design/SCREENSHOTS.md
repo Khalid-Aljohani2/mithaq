@@ -13,6 +13,7 @@ replay recorded outputs, so every run produces the same screens.
 # The variables apply to this process only; no .env file changes.
 cd ..\ScopeGuardAi\backend
 $env:DATABASE_URL = ""; $env:LLM_PROVIDER = "scripted"; $env:ALLOWED_ORIGINS = "http://localhost:3010"
+$env:REMINDER_PENDING_APPROVAL_HOURS = "0"   # reminders show at once, for the drawer screen
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8010
 
 # Terminal 2: this worktree's frontend, built against that backend.
@@ -27,8 +28,10 @@ npm run screens
 ```
 
 Restart the backend before each run. The suite moves the seeded requests into
-a spread of states through the real API (analyse, start approval, one approval
-each on CR-B and CR-C), and its last test approves CR-C through the UI.
+a spread of states through the real API: CR-C through its whole chain and its
+VO, CR-D (private) to the finance manager's step. The last tests change state:
+the finance manager signs CR-D through the UI, a notification opens its case
+file, and the VO is printed to PDF.
 
 The in-memory store is used instead of the shared Postgres database so the run
 never touches data another session depends on.
@@ -46,12 +49,20 @@ never touches data another session depends on.
 | `case-received` | A seeded request before analysis, with "تحليل الطلب" |
 | `case-analysing` | The trace while analysis runs (the analyse call is held so the moment can be captured) |
 | `case-closed-in-scope` | CR-A: closed as in scope, with the matching breakdown line as evidence |
-| `case-recommended-policy` | CR-D on the private contract: policy exception, human-entered rate, "بدء مسار الاعتماد" |
-| `case-in-approval-my-step` | CR-C viewed as the technical manager: one seal, then this role's slot with its actions |
-| `case-approved-seal` | CR-B: fully approved, seal in the slot |
+| `case-recommended` | CR-B: recommended, chain shown, "بدء مسار الاعتماد" |
+| `case-in-approval-my-step` | CR-D on the private contract viewed as the finance manager: policy exception, one seal, then this role's slot with its actions |
+| `case-vo-issued` | CR-C after its full chain (project manager, technical manager) and VO issue: two seals and the link to the VO document |
 | `case-legal-block` | CR-D on the government contract: legal block, articles cited, contractor consent slot active |
+| `vo-document` | VO-001 as a document on screen, with the print button |
+| `vo-document-print-a4.png`, `vo-document.pdf` | The same VO in print media: the A4 render and the browser's Print to PDF output, asserted to be exactly one page |
+| `vo-document-government` (+ `-print-a4.png`, `.pdf`) | VO-001 on the government contract from CR-F-GOV-OK after its four-signature chain: cites Article 67 by its Arabic reference, one A4 page |
+| `notifications-drawer` | The drawer for the client's finance manager: a reminder (amber, labelled) above the stored notifications, newest first |
+| `case-awaiting-documents` | CR-B's seeded text resubmitted without its cost quote: the required checklist for its impact type, the missing one marked, and the resubmit form |
+| `limits-government`, `limits-private` | Policy caps (cost and time) and, on the government contract, each Article 67 category with its Arabic reference; the VOs that make up the totals |
+| `evaluation` | The published evaluation: headline first, then both label sets, latency and cost, the model comparison link, and the method |
+| `audit-private`, `audit-government` | The append-only audit log for each contract |
 
-Not captured: **awaiting documents**. The view is built, but the backend
-currently answers 500 when analysis finds missing documents
-(`IllegalTransitionError: IN_ANALYSIS -> AWAITING_DOCUMENTS`), so there is no
-real state to photograph.
+The run's last tests change state: the finance manager signs CR-D through the
+UI, a notification opens its case file, the awaiting request is resubmitted
+with its missing document and re-analysed, and both VOs are printed to PDF and
+asserted to be exactly one page each.
