@@ -23,11 +23,12 @@ def main() -> int:
     inserted = seed_all()
     if any(inserted.values()):
         sys.stdout.write(
-            f"seeded {inserted['contracts']} contract(s) and "
-            f"{inserted['change_requests']} change request(s)\n"
+            f"seeded {inserted['contracts']} contract(s), "
+            f"repaired {inserted['repaired']} contract(s), "
+            f"seeded {inserted['change_requests']} change request(s)\n"
         )
     else:
-        sys.stdout.write("demo data already present; nothing to do\n")
+        sys.stdout.write("demo data already present and whole; nothing to do\n")
     return 0
 
 

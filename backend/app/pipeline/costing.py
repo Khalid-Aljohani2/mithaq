@@ -58,6 +58,11 @@ class CostImpact:
     #: True when any figure rests on a human-entered rate rather than the
     #: contract (open question Q1).
     rate_human_entered: bool = False
+    #: True when the request could not be priced from the information given.
+    #: The orchestrator turns this into a request for revision: the alternative
+    #: is a crash, and a figure nobody can justify is worse than asking.
+    unpriceable: bool = False
+    unpriceable_reason: str = ""
     notes_en: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -101,6 +106,20 @@ def _require_line(contract: Contract, line_id: str) -> Decimal:
     if line is None:
         raise CostingError("UNKNOWN_LINE", f"breakdown line {line_id} is not in the contract")
     return line.unit_rate
+
+
+def _unpriceable(reason: str, days: int) -> CostImpact:
+    """A zero impact that tells stage 7 to send the request to a human."""
+    return CostImpact(
+        cost_impact=Decimal("0"),
+        added_value=Decimal("0"),
+        removed_value=Decimal("0"),
+        time_impact_days=days,
+        impact_type=ImpactType.TIME if days else ImpactType.NONE,
+        unpriceable=True,
+        unpriceable_reason=reason,
+        notes_en=(reason,),
+    )
 
 
 def compute_impact(
@@ -170,14 +189,32 @@ def compute_impact(
         )
 
     if scope.kind is ChangeKind.NCR:
-        if not scope.matched_line_ids or scope.quantity_delta is None:
-            raise CostingError(
-                "LINE_REQUIRED", "a decrease must name the breakdown line it reduces"
+        if not scope.matched_line_ids:
+            # Nothing to price against. A human decides what was meant rather
+            # than the request crashing the pipeline.
+            return _unpriceable(
+                "a decrease that names no breakdown line cannot be priced",
+                policy_days,
             )
+
         line_id = scope.matched_line_ids[0]
-        rate = _require_line(contract, line_id)
-        removed = scope.quantity_delta * rate
-        notes.append(f"-{scope.quantity_delta} x {rate} from contract line {line_id}.")
+        line = contract.line(line_id)
+        if line is None:
+            raise CostingError("UNKNOWN_LINE", f"breakdown line {line_id} is not in the contract")
+
+        if scope.quantity_delta is None:
+            # "Drop the module entirely" names no quantity. Removing a whole
+            # line is worth that line's contract total - the same reasoning as
+            # a substitution with no stated count, and the figure comes from
+            # the contract rather than from anyone's estimate.
+            removed = line.total
+            notes.append(f"Whole line removed; priced at the contract total of {line_id}.")
+        else:
+            removed = scope.quantity_delta * line.unit_rate
+            notes.append(
+                f"-{scope.quantity_delta} x {line.unit_rate} from contract line {line_id}."
+            )
+
         return CostImpact(
             cost_impact=-removed,
             added_value=Decimal("0"),

@@ -661,13 +661,43 @@ def _insert_contract(session: Session, contract: Contract) -> None:
 
 
 def seed_all() -> dict[str, int]:
-    """Idempotently ensure the demo contracts and requests exist."""
-    inserted = {"contracts": 0, "change_requests": 0}
+    """Idempotently ensure the demo contracts and requests exist, and are whole.
+
+    "Present" is not the same as "correct". A contract row can survive a
+    migration that drops its breakdown table, leaving a row with no lines -
+    which fails ``Contract``'s validator (the lines must sum to the contract
+    value) and turns every read of that contract into a 500. A loader that only
+    checks for the row's existence skips it forever, so this repairs it.
+    """
+    inserted = {"contracts": 0, "repaired": 0, "change_requests": 0}
     with session_scope() as session:
         for contract in build_demo_contracts():
-            if session.get(ContractRow, contract.id) is None:
+            row = session.get(ContractRow, contract.id)
+            if row is None:
                 _insert_contract(session, contract)
                 inserted["contracts"] += 1
+            elif len(row.breakdown) != len(contract.breakdown):
+                # Rebuild the breakdown from the seed. The relationship is
+                # delete-orphan, so clearing it removes the stale rows.
+                row.breakdown.clear()
+                session.flush()
+                row.breakdown = [
+                    BreakdownLineRow(
+                        contract_id=contract.id,
+                        id=line.id,
+                        description_ar=line.description_ar,
+                        unit_ar=line.unit_ar,
+                        quantity=line.quantity,
+                        unit_rate=line.unit_rate,
+                        total=line.total,
+                        approved_product_ar=line.approved_product_ar,
+                        restrictions_ar=list(line.restrictions_ar),
+                    )
+                    for line in contract.breakdown
+                ]
+                row.contract_type = contract.contract_type.value
+                row.original_value = contract.original_value
+                inserted["repaired"] += 1
         session.flush()
         for request in build_demo_requests():
             if session.get(ChangeRequestRow, request.id) is None:

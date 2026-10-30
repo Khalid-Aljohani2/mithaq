@@ -278,6 +278,7 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
         "TECHNICAL_APPROVAL_REQUIRED": "الطلب يغيّر منتجًا معتمدًا ويستوجب اعتمادًا فنيًا.",
         "UNIT_RATE_DEVIATION": "سعر الوحدة المقترح ينحرف عن سعر العقد بما يتجاوز الحد المسموح.",
         "DOCUMENTS_MISSING": "المستندات المطلوبة غير مكتملة.",
+        "CANNOT_PRICE": "تعذّر تسعير الطلب من بيانات العقد، ويلزم توضيح من مقدّم الطلب.",
         "NEW_ITEM_RATE_HUMAN_ENTERED": "البند جديد ولا يوجد سعر تعاقدي مقابل، والسعر مُدخل بشريًا.",
     }
     return NarrativeOutput(
