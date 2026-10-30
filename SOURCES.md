@@ -266,6 +266,32 @@ those two instead, and remains the fallback if `cn` is ever dropped.
 The same registry response lists `shadcn` under `devDependencies`, which
 confirms moving the CLI out of runtime `dependencies` matches upstream intent.
 
+## Problem-statement figures (checked 2026-10-31)
+
+The change-order processing figures in `README.md` come from one document:
+
+| | |
+|---|---|
+| Study | *Construction Contract Modifications: A Joint Study by the U.S. Army Corps of Engineers and the Associated General Contractors of America* |
+| Published | February 2021 |
+| URL | https://www.agc.org/sites/default/files/USACE-AGC%20Joint%20Study%20on%20Construction%20Contract%20Modifications.pdf |
+| Checked | 2026-10-31, HTTP 200, `application/pdf`, 360,106 bytes |
+
+Figures used: a contractor submits a proposal in roughly **30 days** from a
+request; the government then issues the modification in roughly **90 days** on
+average with a **55-day median**; and the two sides' recorded initiation dates
+for the same change differ by about **30 days**.
+
+**How these were obtained, stated plainly.** The URL above was verified to
+resolve and to be the right document, but its text could not be extracted in
+this environment — the PDF is a scanned/encoded layout, no PDF text extractor
+is installed, and adding one would have meant a new dependency. The figures
+therefore come from search-engine extraction of that same document, run twice
+with different queries and agreeing both times. That is weaker than reading the
+primary text, which is why it is recorded here rather than presented as a
+direct quotation. **Verify against the PDF before relying on the exact
+numbers.**
+
 ## Could not verify from an official source
 
 - **`[tool.ruff] src`** — accepted by `ruff 0.17.3` (it errors on unknown keys),
