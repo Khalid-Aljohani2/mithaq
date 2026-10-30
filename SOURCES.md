@@ -60,6 +60,7 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | `sqlalchemy` | 2.1.6 | PyPI | https://docs.sqlalchemy.org/en/20/core/pooling.html |
 | `psycopg[binary]` | 3.3.6 | PyPI | https://www.psycopg.org/psycopg3/docs/basic/install.html |
 | `alembic` | 1.20.1 | PyPI | https://alembic.sqlalchemy.org/en/latest/tutorial.html |
+| `anthropic` | 2.3.0 | PyPI | https://platform.claude.com/docs/en/api/sdks |
 
 ### Dev
 
@@ -152,6 +153,42 @@ allows "causes the deployment to fail before the build step".
   of two engines and reads `pg_prepared_statements` from the server: ours
   prepares **0**, an engine without `connect_args` prepares **1**. The control
   case is kept in the test so the assertion cannot quietly become vacuous.
+
+## Anthropic API (checked 2026-10-30)
+
+| Thing | Value | Official doc |
+| --- | --- | --- |
+| Python SDK | `anthropic==2.3.0` (PyPI) | https://platform.claude.com/docs/en/api/sdks |
+| Schema-valid JSON | `client.messages.parse(output_format=<PydanticModel>)` -> `.parsed_output`; wire form is `output_config.format` with `type: json_schema` | https://platform.claude.com/docs/en/build-with-claude/structured-outputs |
+| Schema constraints | `additionalProperties: false` and an explicit `required`; `minimum`/`maximum`/`minLength` are **not** supported and the SDK strips them into field descriptions | https://platform.claude.com/docs/en/build-with-claude/structured-outputs |
+| Model IDs | `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | https://platform.claude.com/docs/en/about-claude/models/overview |
+| Timeouts / retries | client `timeout` (seconds) and `max_retries` (default 2, retries 408/409/429/5xx and connection errors) | https://platform.claude.com/docs/en/api/sdks |
+| Token usage | `response.usage.input_tokens` / `.output_tokens` / `.cache_read_input_tokens` | https://platform.claude.com/docs/en/build-with-claude/token-counting |
+| Errors | `BadRequestError`, `AuthenticationError`, `RateLimitError`, `APIStatusError`, `APIConnectionError` | https://platform.claude.com/docs/en/api/errors |
+| Models API | `client.models.list()` / `.retrieve(id)`, with `max_input_tokens`, `max_tokens`, `capabilities` | https://platform.claude.com/docs/en/api/models/list |
+
+### Model lineup, verified rather than assumed
+
+| Model | ID | Input $/MTok | Output $/MTok | Context | Default effort |
+| --- | --- | --- | --- | --- | --- |
+| Claude Fable 5.1 | `claude-fable-5-1` | 10 | 50 | 1M | high |
+| Claude Opus 5.5 | `claude-opus-5-5` | 4 | 20 | 1M | medium |
+| Claude Sonnet 5.5 | `claude-sonnet-5-5` | 2 | 10 | 1M | high |
+| Claude Haiku 5.5 | `claude-haiku-5-5` | from 0.10 | from 0.50 | 1M | medium |
+
+These four IDs were checked against the models overview page before any code
+was written. A bundled reference listed an older lineup (`claude-sonnet-5`,
+`claude-haiku-4-5`) because its snapshot predated these releases; the live doc
+is authoritative and the four IDs requested are all real and current.
+
+Two behaviours that shaped the implementation, both from the overview page:
+
+- **Claude Sonnet 5.5 reports `thinking.types.disabled.supported = false`.** The
+  provider therefore never sends a `thinking` block at all - a disabled-thinking
+  request would be a 400 on the default model.
+- **Each model has its own default effort.** `output_config.effort` is sent only
+  when `LLM_EFFORT` is configured, so an unset value takes the model's default
+  rather than silently overriding it.
 
 ## Legal source: the regulation file
 

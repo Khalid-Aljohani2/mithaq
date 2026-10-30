@@ -123,6 +123,21 @@ def compute_impact(
             notes_en=("In scope: covered by the existing breakdown, costs nothing extra.",),
         )
 
+    if scope.kind is ChangeKind.UNCLEAR:
+        # The analysis could not classify the request, so there is nothing to
+        # price. Returning a zero impact rather than raising lets stage 7 reach
+        # its own conclusion - REQUEST_REVISION, asking the requester - which is
+        # what FR-05 asks for. Raising here would turn "we need to ask a human"
+        # into a crash.
+        return CostImpact(
+            cost_impact=Decimal("0"),
+            added_value=Decimal("0"),
+            removed_value=Decimal("0"),
+            time_impact_days=0,
+            impact_type=ImpactType.NONE,
+            notes_en=("Unclassified: cannot be priced until the request is clarified.",),
+        )
+
     if scope.kind is ChangeKind.PCR:
         if scope.matched_line_ids and scope.quantity_delta is not None:
             line_id = scope.matched_line_ids[0]

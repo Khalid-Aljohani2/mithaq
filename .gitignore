@@ -32,5 +32,8 @@ next-env.d.ts
 Thumbs.db
 
 # ---- Logs ----
+# Evaluation run artefacts: the harness and the cases are source, a run is not.
+backend/eval/results/
+
 *.log
 npm-debug.log*

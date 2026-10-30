@@ -146,7 +146,9 @@ def to_ledger_entries(
     an *existing* line rather than a new item: the line stays, its approved
     product changes.
     """
-    if kind is ChangeKind.IN_SCOPE:
+    if kind in {ChangeKind.IN_SCOPE, ChangeKind.UNCLEAR}:
+        # Nothing to put on the ledger: one is not a change, the other is not
+        # yet known to be one.
         return ()
 
     base = {

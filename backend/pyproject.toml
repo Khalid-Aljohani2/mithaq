@@ -10,6 +10,11 @@ select = ["E", "F", "I", "B", "UP", "N", "ANN"]
 # FastAPI declares query and header parameters as argument defaults. B008 reads
 # that as a function call in a default, which is exactly the intended idiom.
 "app/routers/*.py" = ["B008"]
+# The docstring holds an ASCII reference table of the contract breakdown;
+# wrapping it would make it unreadable, which is the opposite of the point.
+"eval/build_cases.py" = ["E501"]
+# Test helpers legitimately take **kwargs of mixed type.
+"tests/*.py" = ["ANN401"]
 
 [tool.ruff.format]
 quote-style = "double"

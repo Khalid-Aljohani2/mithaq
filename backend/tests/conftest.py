@@ -27,6 +27,7 @@ from app.db.engine import normalise_database_url  # noqa: E402
 from app.db.tables import Base  # noqa: E402
 from app.dependencies import get_repository  # noqa: E402
 from app.main import app  # noqa: E402
+from app.rate_limit import reset_rate_limiter  # noqa: E402
 from app.repositories.base import ContractRepository  # noqa: E402
 from app.repositories.memory import InMemoryContractRepository  # noqa: E402
 from app.repositories.postgres import PostgresContractRepository  # noqa: E402
@@ -109,6 +110,18 @@ def repository(
     else:
         repo = InMemoryContractRepository()
     yield repo
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limiter() -> Iterator[None]:
+    """Each test gets the full AI rate-limit budget.
+
+    Without this the suite shares one client IP and trips its own limiter
+    partway through, which looks like a workflow failure and is not one.
+    """
+    reset_rate_limiter()
+    yield
+    reset_rate_limiter()
 
 
 @pytest.fixture

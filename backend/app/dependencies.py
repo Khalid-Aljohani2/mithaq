@@ -15,8 +15,8 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from app.analysis.fallback import build_provider
 from app.analysis.provider import AnalysisProvider
-from app.analysis.scripted import ScriptedProvider
 from app.config import Settings, get_settings
 from app.regulations.loader import Limits, get_limits
 from app.repositories.base import ContractRepository
@@ -48,13 +48,18 @@ def reset_repository_cache() -> None:
 
 @lru_cache(maxsize=1)
 def _provider_singleton() -> AnalysisProvider:
-    """The analysis provider.
+    """The analysis provider, chosen from settings.
 
-    Step 4A ships only the scripted one, which replays recorded outputs and
-    doubles as the fallback mode (FR-19). Step 4B adds a live provider behind
-    the same interface; nothing above this function changes.
+    LLM_PROVIDER=anthropic with a key gives the live provider behind a
+    recorded-output fallback (FR-19); anything else gives the scripted
+    provider, which is what lets the whole suite and the demo run with no key.
     """
-    return ScriptedProvider()
+    return build_provider(get_settings())
+
+
+def reset_provider_cache() -> None:
+    """Drop the cached provider so the next call re-reads settings."""
+    _provider_singleton.cache_clear()
 
 
 def get_provider() -> AnalysisProvider:
