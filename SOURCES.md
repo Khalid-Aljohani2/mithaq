@@ -98,6 +98,9 @@ Transitive packages pinned by pip resolution (not declared directly):
 | Vercel FastAPI entrypoint | `app/main.py` with an instance named `app` | https://vercel.com/docs/frameworks/backend/fastapi |
 | Vercel `functions` config | `vercel.json` keyed by the resolved entrypoint | https://vercel.com/docs/frameworks/backend/fastapi |
 | Vercel Python version | 3.12 (default), 3.13, 3.14 - **3.11 is not supported** | https://vercel.com/docs/functions/runtimes/python/python-version |
+| Vercel function region | `"regions": ["dub1"]`; Hobby = single region | https://vercel.com/docs/functions/configuring-functions/region |
+| `dub1` = `eu-west-1` = Dublin, Ireland | region list table | https://vercel.com/docs/regions |
+| psycopg prepared statements off | `prepare_threshold=None` | https://www.psycopg.org/psycopg3/docs/advanced/prepare.html |
 | Postgres image | `postgres:18.6-trixie` | https://hub.docker.com/_/postgres |
 | Postgres 18 volume path | mount at `/var/lib/postgresql`, not `/data` | https://github.com/docker-library/postgres/pull/1259 |
 | `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` (v7.0.1) | https://github.com/actions/checkout |
@@ -114,6 +117,28 @@ The Vercel FastAPI page states Vercel "looks for a `FastAPI` instance named
 `app` at supported entrypoints", listing `main.py` inside `app/` - which is
 exactly where ours already lives, so the backend needs no entrypoint shim.
 
+### Supabase transaction pooler and prepared statements
+
+Production connects through Supabase's shared pooler in **transaction mode**
+(port 6543), which does not support prepared statements. psycopg's own docs are
+explicit about this class of middleware:
+
+> "Unless a connection pooling middleware explicitly declares otherwise, they
+> are not compatible with prepared statements, because the same client
+> connection may change the server session it refers to. If such middleware is
+> used you should disable prepared statements, by setting the
+> `Connection.prepare_threshold` attribute to `None`."
+> — https://www.psycopg.org/psycopg3/docs/advanced/prepare.html
+
+The same page documents that `prepare_threshold` can be passed as a `connect()`
+keyword (since psycopg 3.1), which is how `app/db/engine.py` sets it, via
+SQLAlchemy's `connect_args`.
+
+Vercel's region limits table gives Hobby a **single** function region. That is a
+limit on the *number* of regions, not a lock to the `iad1` default, so pinning
+the one region to `dub1` is allowed on Hobby. Deploying more than the plan
+allows "causes the deployment to fail before the build step".
+
 ### Verified empirically rather than from a doc page
 
 - **`postgresql+psycopg://` selects psycopg 3.** The SQLAlchemy PostgreSQL
@@ -121,6 +146,11 @@ exactly where ours already lives, so the backend needs no entrypoint shim.
   the URL prefix. Confirmed directly instead:
   `make_url("postgresql+psycopg://...").get_dialect().__name__` returns
   `PGDialect_psycopg` on the installed SQLAlchemy 2.1.6.
+- **That disabling prepared statements actually works.** Rather than trusting
+  the keyword reached the driver, a test runs the same query ten times on each
+  of two engines and reads `pg_prepared_statements` from the server: ours
+  prepares **0**, an engine without `connect_args` prepares **1**. The control
+  case is kept in the test so the assertion cannot quietly become vacuous.
 
 ## Legal source: the regulation file
 

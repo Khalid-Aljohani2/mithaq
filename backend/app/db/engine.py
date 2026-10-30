@@ -28,6 +28,25 @@ _LEGACY_PREFIXES = ("postgres://", "postgresql://")
 #: The psycopg 3 dialect. Verified: this URL resolves to PGDialect_psycopg.
 _TARGET_PREFIX = "postgresql+psycopg://"
 
+#: Passed to psycopg on every connection this module opens.
+#:
+#: ``prepare_threshold=None`` disables automatic prepared statements. This is
+#: mandatory in production: Supabase's shared pooler in **transaction mode**
+#: (port 6543) hands the same client connection a different server session
+#: between statements, so a prepared statement created on one session is simply
+#: not there on the next, and the query fails.
+#:
+#: psycopg states it directly: "Unless a connection pooling middleware
+#: explicitly declares otherwise, they are not compatible with prepared
+#: statements... If such middleware is used you should disable prepared
+#: statements, by setting the Connection.prepare_threshold attribute to None."
+#: https://www.psycopg.org/psycopg3/docs/advanced/prepare.html
+#:
+#: It is set unconditionally rather than only for port 6543, because the cost
+#: is a little lost statement caching and the failure mode is a production-only
+#: error that local development would never reproduce.
+CONNECT_ARGS: dict[str, object] = {"prepare_threshold": None}
+
 
 def normalise_database_url(url: str) -> str:
     """Point any Postgres URL at the psycopg 3 driver.
@@ -43,13 +62,12 @@ def normalise_database_url(url: str) -> str:
 
 
 def build_engine(url: str) -> Engine:
-    """Create an engine with pooling disabled."""
+    """Create an engine with pooling disabled and prepared statements off."""
     return create_engine(
         normalise_database_url(url),
         poolclass=NullPool,
         future=True,
-        # Money is NUMERIC in the database and Decimal in Python. Never float.
-        connect_args={},
+        connect_args=dict(CONNECT_ARGS),
     )
 
 

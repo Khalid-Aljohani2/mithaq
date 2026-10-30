@@ -46,57 +46,72 @@ create a repo and push, including the Actions workflow.
 
 ---
 
-## (b) Create the Postgres database
+## (b) Create the Postgres database (Supabase)
 
-You need a **managed** Postgres that Vercel Functions can reach, with a
-**pooled** connection string and SSL. The local Docker container is for
-development only and is not reachable from Vercel.
+The database lives in **Supabase, AWS `eu-west-1` (Ireland)**. Pick that region
+when you create the project — the Vercel function is pinned to Dublin to sit
+beside it, and moving one without the other throws the latency away.
 
-Pick one provider:
+1. supabase.com → **New project**.
+   - Region: **West EU (Ireland) / eu-west-1**
+   - Set a strong database password and save it in your password manager. You
+     cannot read it back later, only reset it.
+2. Project → **Connect** (or Settings → Database → Connection string).
 
-| Provider | Where | Notes |
+### You need BOTH pooler strings. They are not interchangeable.
+
+Supabase offers two poolers on different ports, and this project uses each for
+a different job:
+
+| | Session pooler | Transaction pooler |
 |---|---|---|
-| **Vercel Postgres / Neon** (simplest) | Vercel dashboard → Storage → Create Database | Integrates with the project and sets the env var for you |
-| **Neon** direct | neon.tech | Free tier, serverless-friendly pooler |
-| **Supabase** | supabase.com | Use the **Session pooler** string, not the direct one |
+| Port | **5432** | **6543** |
+| Used by | **you**, running migrations from your machine | **Vercel**, at runtime |
+| Why | holds one session for the whole connection, which DDL and Alembic's advisory locks need | one short-lived server session per transaction, which is what a serverless function wants |
+| IPv4 | yes — works on a normal home/office connection | yes |
+| Prepared statements | supported | **not supported** — handled in code, see below |
 
-### What to copy
-
-Take the **pooled / connection-pooling** string, not the direct one. Serverless
-functions open many short connections, which is exactly what a direct
-connection is bad at. It will look roughly like:
+Both look like:
 
 ```
-postgresql://USER:PASSWORD@HOST-pooler.REGION.provider.tech/DBNAME?sslmode=require
+postgresql://postgres.<project-ref>:<PASSWORD>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres   # session
+postgresql://postgres.<project-ref>:<PASSWORD>@aws-0-eu-west-1.pooler.supabase.com:6543/postgres   # transaction
 ```
 
-You do **not** need to rewrite the prefix — `postgres://` and `postgresql://`
-are both rewritten to `postgresql+psycopg://` automatically in
-`backend/app/db/engine.py`.
+> Do **not** use the "Direct connection" string. It is IPv6-only on the free
+> tier, so it will usually fail from a home connection, and it is the wrong
+> shape for serverless.
 
-### Where to put it
+You do not need to rewrite the `postgresql://` prefix — `app/db/engine.py`
+rewrites it to `postgresql+psycopg://` for you. Append `?sslmode=require` if
+Supabase has not already.
 
-| Where | Variable | Value |
-|---|---|---|
-| Vercel **backend** project | `DATABASE_URL` | the pooled string |
-| Your machine (optional) | `backend/.env` → `DATABASE_URL` | already points at local Docker |
-
-### Then create the schema and seed it — once
-
-From your machine, with `DATABASE_URL` temporarily set to the **production**
-string:
+### Run migrations and seed — from your machine, with the SESSION string (5432)
 
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
-$env:DATABASE_URL = "postgresql://...pooled...?sslmode=require"
+$env:DATABASE_URL = "postgresql://postgres.<ref>:<PASSWORD>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
 alembic upgrade head
 python -m app.seed.load
-Remove-Item Env:\DATABASE_URL     # don't leave it in your shell
+Remove-Item Env:\DATABASE_URL     # don't leave a password in your shell
 ```
 
 `python -m app.seed.load` is idempotent — running it twice inserts nothing the
-second time, so it is safe to re-run.
+second time.
+
+> Migrations through the **transaction** pooler (6543) can fail or behave
+> oddly: Alembic takes a session-level advisory lock and issues DDL, and the
+> transaction pooler may hand each statement a different server session. Use
+> 5432 for this and 6543 only for the running app.
+
+### Prepared statements — already handled, nothing for you to do
+
+The transaction pooler does not support prepared statements. `app/db/engine.py`
+passes `prepare_threshold=None` to psycopg on every connection, which disables
+them. There is a test that opens a real connection and asks Postgres whether
+anything was prepared, with a control case proving the assertion is not
+vacuous. You do not need to add anything to the connection string.
 
 ---
 
@@ -118,13 +133,19 @@ Environment variables (Settings → Environment Variables):
 
 | Name | Value | Notes |
 |---|---|---|
-| `DATABASE_URL` | pooled Postgres string from (b) | **required** |
+| `DATABASE_URL` | the **transaction** pooler string, port **6543** | **required** — not the 5432 one |
 | `ALLOWED_ORIGINS` | `https://<frontend-project>.vercel.app` | add `,http://localhost:3000` if you want to point a local frontend at prod |
 | `DEMO_RESET_TOKEN` | a long random string you invent | omit entirely to disable `/api/demo/reset` (it 404s) |
 
 Nothing else is needed: Vercel finds the FastAPI instance named `app` at
-`backend/app/main.py` by convention, and `backend/vercel.json` only raises
-`maxDuration` to 60s.
+`backend/app/main.py` by convention. `backend/vercel.json` sets two things:
+
+- `"regions": ["dub1"]` — Dublin, Ireland (`eu-west-1`), the same region as the
+  Supabase database. Vercel Functions otherwise default to `iad1` (Washington
+  D.C.), which would put every query on a transatlantic round trip.
+  **Hobby allows a single region, so one entry is fine**; two or more would
+  fail the deployment before the build step.
+- `"maxDuration": 60` for the function.
 
 **Python version:** `backend/.python-version` pins **3.12**. Vercel supports
 3.12 / 3.13 / 3.14 only — **3.11 is not available there**, even though that is
@@ -175,7 +196,8 @@ browser console and look for a CORS error naming the frontend origin.
 
 | Secret | Local | Vercel backend | Vercel frontend | In git? |
 |---|---|---|---|---|
-| `DATABASE_URL` | `backend/.env` | ✅ | — | ❌ never |
+| `DATABASE_URL` (6543 transaction) | `backend/.env` (local Docker) | ✅ | — | ❌ never |
+| Supabase DB password | password manager | via `DATABASE_URL` | — | ❌ never |
 | `DEMO_RESET_TOKEN` | `backend/.env` | ✅ | — | ❌ never |
 | `ALLOWED_ORIGINS` | `backend/.env` | ✅ | — | not secret |
 | `NEXT_PUBLIC_API_URL` | `frontend/.env.local` | — | ✅ | not secret, **public to the browser** |
