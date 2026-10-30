@@ -2,129 +2,174 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Dark follows the system setting; Playwright emulates it for screenshots. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/*
+ * MithaqAi tokens. See docs/design/DESIGN_PLAN.md section 2.
+ * Each signal colour means one thing: seal = approved or primary action,
+ * amber = consent or escalation needed, legal = blocked.
+ */
+:root {
+  --paper: #f6f7f5;
+  --sheet: #ffffff;
+  --ink: #1b2430;
+  --ink-muted: #505b66;
+  --rule: #d6dad5;
+  --rule-strong: #7a837c;
+  --seal: #0e6b4f;
+  --seal-wash: #e3efe8;
+  --on-seal: #ffffff;
+  --amber: #8a5d0e;
+  --amber-wash: #f5ecda;
+  --legal: #a3201d;
+  --legal-wash: #f7e4e2;
+  --hatch: color-mix(in srgb, var(--ink) 38%, transparent);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1c232b;
+    --sheet: #232b34;
+    --ink: #e7eae6;
+    --ink-muted: #a8b0b8;
+    --rule: #36404b;
+    --rule-strong: #6e7a86;
+    --seal: #6cc29e;
+    --seal-wash: #1f3a31;
+    --on-seal: #0f1a15;
+    --amber: #e2b45c;
+    --amber-wash: #3a3020;
+    --legal: #f2948d;
+    --legal-wash: #422726;
+    color-scheme: dark;
+  }
+}
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
+  --font-sans: var(--font-ui), system-ui, sans-serif;
+  --font-doc: var(--font-naskh), var(--font-ui), serif;
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-seal: var(--seal);
+  --color-seal-wash: var(--seal-wash);
+  --color-on-seal: var(--on-seal);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+  --color-legal: var(--legal);
+  --color-legal-wash: var(--legal-wash);
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* shadcn names, mapped onto the palette so stock components stay in tone. */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--sheet);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--sheet);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--seal);
+  --color-primary-foreground: var(--on-seal);
+  --color-secondary: var(--paper);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--paper);
+  --color-muted-foreground: var(--ink-muted);
+  --color-accent: var(--paper);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--legal);
+  --color-border: var(--rule);
+  --color-input: var(--rule-strong);
+  --color-ring: var(--ink);
+
+  /* Type scale: 1.2 ratio from 16px, with Arabic line heights. */
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1.125rem;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.75rem;
+  --text-doc: 1.125rem;
+  --text-doc--line-height: 2.125rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.875rem;
+  --text-xl: 1.4375rem;
+  --text-xl--line-height: 2.125rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.5rem;
+
+  /* Radius by hierarchy: sections 0, controls 2px, seal and glyphs round. */
+  --radius-ctl: 2px;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
+    @apply border-rule;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper text-ink;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--seal-wash);
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  /* The double rule that opens and closes formal blocks. */
+  .rule-double {
+    border-block-end: 3px double var(--rule-strong);
+  }
+  .rule-double-top {
+    border-block-start: 3px double var(--rule-strong);
+  }
+
+  /* Margin reference column: the citation for the section beside it. */
+  .margin-ref {
+    font-size: var(--text-2xs);
+    line-height: var(--text-2xs--line-height);
+    color: var(--ink-muted);
+  }
+
+  /* Pending hatching on meters. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--hatch) 0 2px,
+      transparent 2px 6px
+    );
+  }
+
+  /* Latin references (CR ids, article refs) inside Arabic text. */
+  .ref {
+    unicode-bidi: isolate;
+    direction: ltr;
+    display: inline-block;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
