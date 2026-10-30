@@ -164,6 +164,37 @@
   }
 }
 
+/*
+ * Print: a document prints on white paper whatever the screen theme, so the
+ * light palette is restored, and the page is A4 portrait.
+ */
+@page {
+  size: A4 portrait;
+  margin: 12mm 14mm;
+}
+
+@media print {
+  :root {
+    --paper: #ffffff;
+    --sheet: #ffffff;
+    --ink: #1b2430;
+    --ink-muted: #505b66;
+    --rule: #d6dad5;
+    --rule-strong: #7a837c;
+    --seal: #0e6b4f;
+    --seal-wash: #e3efe8;
+    --amber: #8a5d0e;
+    --legal: #a3201d;
+    color-scheme: light;
+  }
+  html,
+  body {
+    background: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

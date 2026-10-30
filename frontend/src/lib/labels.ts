@@ -8,6 +8,8 @@
 import {
   ApiError,
   type ActorType,
+  type AuditAction,
+  type NotificationKind,
   type ChangeKind,
   type ContractType,
   type CRState,
@@ -217,4 +219,37 @@ export function errorMessage(error: unknown): string {
     return error.detail || `رفض الخادم الطلب (HTTP ${error.status}).`;
   }
   return "حدث خطأ غير متوقع. أعد تحميل الصفحة.";
+}
+
+export const NOTIFICATION_KIND: Record<NotificationKind, string> = {
+  // The backend also uses this kind for "chain complete", so the label stays neutral.
+  APPROVAL_PENDING: "مسار الاعتماد",
+  APPROVAL_REMINDER: "تذكير بالاعتماد",
+  DOCUMENTS_REQUIRED: "مستندات مطلوبة",
+  DOCUMENTS_REMINDER: "تذكير بالمستندات",
+  CR_REJECTED: "رُفض الطلب",
+  CR_REVISION_REQUESTED: "طُلب تعديل",
+  CR_CLOSED_IN_SCOPE: "أُغلق داخل النطاق",
+  VO_ISSUED: "صدر أمر التغيير",
+};
+
+export const AUDIT_ACTION: Record<AuditAction, string> = {
+  CR_RECEIVED: "استلام الطلب",
+  CR_ANALYSED: "تحليل الطلب",
+  CR_IN_APPROVAL: "بدء مسار الاعتماد",
+  CR_STEP_APPROVED: "اعتماد خطوة",
+  CR_APPROVED: "اكتمال الاعتماد",
+  CR_REJECTED: "رفض الطلب",
+  CR_REVISION_REQUESTED: "طلب تعديل",
+  VO_ISSUED: "إصدار أمر التغيير",
+  EXECUTION_STARTED: "بدء التنفيذ",
+  CR_CLOSED: "إغلاق الطلب",
+  DEMO_RESET: "إعادة ضبط العرض",
+};
+
+/** The audit log's actor: a role name, or CODE for the system itself. */
+export function auditActor(actor: string): string {
+  if (actor === "CODE") return "النظام";
+  if (actor === "AI") return "الوكيل";
+  return actor in ROLE_LABEL ? ROLE_LABEL[actor as Role] : actor;
 }

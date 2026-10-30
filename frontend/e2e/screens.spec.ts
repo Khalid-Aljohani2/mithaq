@@ -23,10 +23,14 @@ type Screen = {
   url: string;
   persona?: Persona;
   ready: string;
+  /** Overlays (the drawer) are captured at the viewport, not the full page. */
+  viewportOnly?: boolean;
   prepare?: (page: Page) => Promise<void>;
 };
 
 const caseUrl = (contract: string, cr: string) => `/contracts/${contract}/requests/${cr}`;
+const VO_ID = "CR-C-SUBSTITUTION-VO";
+const VO_URL = `/contracts/${PRIV}/variation-orders/${VO_ID}`;
 
 const SCREENS: Screen[] = [
   { name: "workspace-government", url: `/contracts/${GOV}`, ready: "سجل طلبات التغيير" },
@@ -74,20 +78,34 @@ const SCREENS: Screen[] = [
     },
   },
   { name: "case-closed-in-scope", url: caseUrl(PRIV, "CR-A-INSCOPE"), ready: "أُغلق كطلب داخل النطاق" },
-  { name: "case-recommended-policy", url: caseUrl(PRIV, "CR-D-POLICY"), ready: "بدء مسار الاعتماد" },
+  { name: "case-recommended", url: caseUrl(PRIV, "CR-B-PCR"), ready: "بدء مسار الاعتماد" },
   {
     name: "case-in-approval-my-step",
-    url: caseUrl(PRIV, "CR-C-SUBSTITUTION"),
-    persona: { party: "GOVERNMENT_ENTITY", role: "TECHNICAL_MANAGER" },
+    url: caseUrl(PRIV, "CR-D-POLICY"),
+    persona: { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" },
     ready: "التوقيع باسم",
   },
-  { name: "case-approved-seal", url: caseUrl(PRIV, "CR-B-PCR"), ready: "اعتُمد الطلب بجميع التواقيع" },
+  { name: "case-vo-issued", url: caseUrl(PRIV, "CR-C-SUBSTITUTION"), ready: "عرض أمر التغيير وطباعته" },
   {
     name: "case-legal-block",
     url: caseUrl(GOV, "CR-D-GOV"),
     persona: { party: "CONTRACTOR", role: "PROJECT_MANAGER" },
     ready: "محجوب نظامًا",
   },
+  { name: "vo-document", url: VO_URL, ready: "التواقيع" },
+  {
+    name: "notifications-drawer",
+    url: `/contracts/${PRIV}`,
+    persona: { party: "CONTRACTOR", role: "PROJECT_MANAGER" },
+    ready: "سجل طلبات التغيير",
+    viewportOnly: true,
+    prepare: async (page) => {
+      await page.getByRole("button", { name: /الإشعارات/ }).click();
+      await page.getByRole("dialog").getByText("صدر أمر التغيير").first().waitFor();
+    },
+  },
+  { name: "audit-private", url: `/contracts/${PRIV}/audit`, ready: "سجل إلحاقي" },
+  { name: "audit-government", url: `/contracts/${GOV}/audit`, ready: "سجل إلحاقي" },
 ];
 
 const VARIANTS = [
@@ -125,9 +143,20 @@ test.beforeAll(async () => {
   for (const cr of ["CR-A-INSCOPE", "CR-B-PCR", "CR-C-SUBSTITUTION", "CR-D-POLICY", "CR-D-GOV"]) {
     await analyse(cr);
   }
-  for (const cr of ["CR-B-PCR", "CR-C-SUBSTITUTION", "CR-D-GOV"]) await start(cr);
-  await approve("CR-B-PCR", GOV_PM, "م. نورة الشهري");
+  for (const cr of ["CR-C-SUBSTITUTION", "CR-D-POLICY", "CR-D-GOV"]) await start(cr);
+  // CR-C through its whole chain (project manager, then technical manager),
+  // then the VO is issued: the document screens need a real one.
   await approve("CR-C-SUBSTITUTION", GOV_PM, "م. نورة الشهري");
+  await approve(
+    "CR-C-SUBSTITUTION",
+    { party: "GOVERNMENT_ENTITY", role: "TECHNICAL_MANAGER" },
+    "م. خالد العتيبي",
+  );
+  if ((await state("CR-C-SUBSTITUTION")) === "APPROVED") {
+    await post("/api/change-requests/CR-C-SUBSTITUTION/variation-order");
+  }
+  // CR-D (private) waits at the finance manager after the project manager signs.
+  await approve("CR-D-POLICY", GOV_PM, "م. نورة الشهري");
   await api.dispose();
 });
 
@@ -149,7 +178,7 @@ for (const v of VARIANTS) {
         await page.waitForTimeout(300);
         await page.screenshot({
           path: path.join(OUT, `${s.name}-${v.width}-${v.scheme}.png`),
-          fullPage: true,
+          fullPage: !s.viewportOnly,
         });
       });
     }
@@ -165,11 +194,11 @@ test("approval action stamps the seal", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem(
       "mithaqai.persona",
-      JSON.stringify({ party: "GOVERNMENT_ENTITY", role: "TECHNICAL_MANAGER" }),
+      JSON.stringify({ party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" }),
     );
   });
-  await page.goto(caseUrl(PRIV, "CR-C-SUBSTITUTION"));
-  await page.getByLabel("التوقيع باسم").fill("م. خالد العتيبي");
+  await page.goto(caseUrl(PRIV, "CR-D-POLICY"));
+  await page.getByLabel("التوقيع باسم").fill("أ. ريم الحربي");
 
   await page.getByRole("button", { name: "رفض", exact: true }).click();
   await page.getByRole("button", { name: "تأكيد الرفض" }).click();
@@ -177,10 +206,42 @@ test("approval action stamps the seal", async ({ page }) => {
   await page.getByRole("button", { name: "تراجع" }).click();
 
   await page.getByRole("button", { name: "اعتماد", exact: true }).click();
-  await expect(page.getByText("اعتُمد الطلب بجميع التواقيع")).toBeVisible();
   await expect(page.getByRole("img", { name: /معتمد/ })).toHaveCount(2);
+  // The chain moves on to the CEO, whose slot this persona cannot act on.
+  await expect(page.getByText(/الخطوة التالية لـالرئيس التنفيذي/)).toBeVisible();
   if (SCRATCH) {
     await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(SCRATCH, "seal-stamped.png"), fullPage: true });
   }
+});
+
+/** A notification opens its case file. */
+test("notification links to its case file", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "mithaqai.persona",
+      JSON.stringify({ party: "CONTRACTOR", role: "PROJECT_MANAGER" }),
+    );
+  });
+  await page.goto(`/contracts/${PRIV}`);
+  await page.getByRole("button", { name: /الإشعارات/ }).click();
+  await page.getByRole("dialog").getByRole("link").filter({ hasText: "صدر أمر التغيير" }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/requests/CR-C-SUBSTITUTION$`));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+/** Print to PDF gives exactly one A4 page with no app chrome. */
+test("variation order prints on one A4 page", async ({ page }) => {
+  await page.emulateMedia({ media: "print", colorScheme: "light" });
+  await page.goto(VO_URL);
+  await page.getByText("التواقيع").first().waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.getByRole("button", { name: "طباعة" })).toBeHidden();
+  await expect(page.getByRole("banner").filter({ hasText: "تعمل بصفة" })).toBeHidden();
+  const pdf = await page.pdf({ path: path.join(OUT, "vo-document.pdf"), preferCSSPageSize: true, printBackground: true });
+  const pages = pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? [];
+  expect(pages.length).toBe(1);
+  await page.setViewportSize({ width: 794, height: 1123 });
+  await page.screenshot({ path: path.join(OUT, "vo-document-print-a4.png"), fullPage: true });
 });

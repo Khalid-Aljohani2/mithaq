@@ -171,9 +171,17 @@ function Workspace({ contract }: { contract: Contract }) {
           ) : null
         }
         action={
-          <Link href={newHref} className={buttonVariants()}>
-            طلب تغيير جديد
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/contracts/${encodeURIComponent(contract.id)}/audit`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              سجل التدقيق
+            </Link>
+            <Link href={newHref} className={buttonVariants()}>
+              طلب تغيير جديد
+            </Link>
+          </div>
         }
         className="border-b-0"
       >

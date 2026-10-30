@@ -27,8 +27,10 @@ npm run screens
 ```
 
 Restart the backend before each run. The suite moves the seeded requests into
-a spread of states through the real API (analyse, start approval, one approval
-each on CR-B and CR-C), and its last test approves CR-C through the UI.
+a spread of states through the real API: CR-C through its whole chain and its
+VO, CR-D (private) to the finance manager's step. The last tests change state:
+the finance manager signs CR-D through the UI, a notification opens its case
+file, and the VO is printed to PDF.
 
 The in-memory store is used instead of the shared Postgres database so the run
 never touches data another session depends on.
@@ -46,10 +48,18 @@ never touches data another session depends on.
 | `case-received` | A seeded request before analysis, with "تحليل الطلب" |
 | `case-analysing` | The trace while analysis runs (the analyse call is held so the moment can be captured) |
 | `case-closed-in-scope` | CR-A: closed as in scope, with the matching breakdown line as evidence |
-| `case-recommended-policy` | CR-D on the private contract: policy exception, human-entered rate, "بدء مسار الاعتماد" |
-| `case-in-approval-my-step` | CR-C viewed as the technical manager: one seal, then this role's slot with its actions |
-| `case-approved-seal` | CR-B: fully approved, seal in the slot |
+| `case-recommended` | CR-B: recommended, chain shown, "بدء مسار الاعتماد" |
+| `case-in-approval-my-step` | CR-D on the private contract viewed as the finance manager: policy exception, one seal, then this role's slot with its actions |
+| `case-vo-issued` | CR-C after its full chain (project manager, technical manager) and VO issue: two seals and the link to the VO document |
 | `case-legal-block` | CR-D on the government contract: legal block, articles cited, contractor consent slot active |
+| `vo-document` | VO-001 as a document on screen, with the print button |
+| `vo-document-print-a4.png`, `vo-document.pdf` | The same VO in print media: the A4 render and the browser's Print to PDF output, asserted to be exactly one page |
+| `notifications-drawer` | The drawer for the contractor's project manager, newest first, each item linking to its case file |
+| `audit-private`, `audit-government` | The append-only audit log for each contract |
+
+Not captured: **reminders** in the notifications drawer. They are styled
+(amber edge, clock, "تذكير" badge) but the backend only creates them after a
+configured delay in hours, which a screenshot run cannot wait for.
 
 Not captured: **awaiting documents**. The view is built, but the backend
 currently answers 500 when analysis finds missing documents

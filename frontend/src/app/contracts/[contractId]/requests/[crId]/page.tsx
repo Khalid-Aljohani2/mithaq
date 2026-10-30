@@ -14,6 +14,7 @@ import {
   contractLines,
 } from "@/components/case/decision";
 import { RequestZone } from "@/components/case/request-zone";
+import { VoBlock } from "@/components/case/vo-block";
 import { Trace, buildRows } from "@/components/case/trace";
 import { Empty, ErrorState, Field, Loading, TermsKey } from "@/components/file";
 import { Badge } from "@/components/ui/badge";
@@ -239,6 +240,7 @@ function CaseFile({
   const terms: Term[] = ["CR"];
   const abbr = request.kind ? KIND[request.kind].abbr : null;
   if (abbr === "PCR" || abbr === "NCR") terms.push(abbr);
+  if (["APPROVED", "VO_ISSUED", "IN_EXECUTION", "CLOSED"].includes(state)) terms.push("VO");
 
   return (
     <Shell>
@@ -298,6 +300,16 @@ function CaseFile({
 
         {/* Last zone (end side): decision. First on narrow screens. */}
         <div className="order-1 space-y-6 lg:order-none">
+          {settled && (
+            <VoBlock
+              contractId={contract.id}
+              request={request}
+              onIssued={(next) => {
+                setData(next);
+                reloadTrace();
+              }}
+            />
+          )}
           <DecisionZone
             contract={contract}
             request={request}

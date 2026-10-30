@@ -14,6 +14,8 @@ export type ActorType = Schemas["ActorType"];
 export type AnalysisResponse = Schemas["AnalysisResponse"];
 export type ApprovalDecision = Schemas["ApprovalDecision"];
 export type ApprovalStep = Schemas["ApprovalStep"];
+export type AuditAction = Schemas["AuditAction"];
+export type AuditEvent = Schemas["AuditEvent"];
 export type BreakdownLine = Schemas["BreakdownLine"];
 export type ChangeKind = Schemas["ChangeKind"];
 export type ChangeRequest = Schemas["ChangeRequest"];
@@ -25,6 +27,8 @@ export type CRState = Schemas["CRState"];
 export type DecisionInput = Schemas["DecisionInput"];
 export type HealthResponse = Schemas["HealthResponse"];
 export type LedgerResponse = Schemas["LedgerResponse"];
+export type Notification = Schemas["Notification"];
+export type NotificationKind = Schemas["NotificationKind"];
 export type NotificationListResponse = Schemas["NotificationListResponse"];
 export type Party = Schemas["Party"];
 export type Recommendation = Schemas["Recommendation"];
@@ -34,6 +38,7 @@ export type StageResult = Schemas["StageResult"];
 export type SubmitRequestInput = Schemas["SubmitRequestInput"];
 export type TraceResponse = Schemas["TraceResponse"];
 export type UsageSnapshot = Schemas["UsageSnapshot"];
+export type VariationOrder = Schemas["VariationOrder"];
 
 /**
  * The backend origin comes only from `NEXT_PUBLIC_API_URL`.
@@ -177,6 +182,24 @@ export const api = {
     request<ChangeRequestResponse>(
       `/api/change-requests/${enc(crId)}/decide`,
       { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  issueVariationOrder: (crId: string) =>
+    request<Schemas["VariationOrderResponse"]>(
+      `/api/change-requests/${enc(crId)}/variation-order`,
+      { method: "POST" },
+    ),
+
+  variationOrders: (contractId: string, signal?: AbortSignal) =>
+    request<Schemas["VariationOrderListResponse"]>(
+      `/api/contracts/${enc(contractId)}/variation-orders`,
+      { signal },
+    ),
+
+  audit: (contractId: string, signal?: AbortSignal) =>
+    request<Schemas["AuditLogResponse"]>(
+      `/api/contracts/${enc(contractId)}/audit`,
+      { signal },
     ),
 
   notifications: (party: Party, role: Role, signal?: AbortSignal) =>

@@ -124,6 +124,14 @@ export function countRequests(n: number): string {
   return `${plain.format(n)} طلبًا`;
 }
 
+/** As countRequests, for audit log entries (قيد). */
+export function countEntries(n: number): string {
+  if (n === 1) return "قيد واحد";
+  if (n === 2) return "قيدان";
+  if (n >= 3 && n <= 10) return `${plain.format(n)} قيود`;
+  return `${plain.format(n)} قيدًا`;
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${plain.format(ms)} ملّي ث`;
   return `${plain.format(Math.round(ms / 100) / 10)} ث`;
