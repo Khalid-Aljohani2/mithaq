@@ -716,21 +716,24 @@ def test_the_blocked_government_request_still_cannot_be_approved() -> None:
 
 
 @pytest.mark.usefixtures("backend")
-def test_approving_it_consumes_real_policy_headroom() -> None:
+def test_approving_it_consumes_real_headroom_in_both_layers() -> None:
     """The new request consumes real headroom, not notional headroom.
 
-    Asserted against the policy layer. The Article 67 layer is not checked
-    here because it does not accumulate approved change requests at all:
-    ``commit_ledger_entries`` has never been called by anything, so
-    ``usage`` stays at zero whatever is approved. That is a separate defect,
-    reported rather than quietly patched inside a test.
+    Both layers are checked now that the Article 67 ledger accumulates through
+    the workflow; the cumulative behaviour itself lives in
+    tests/test_ledger_accumulation.py.
     """
     client.post("/api/change-requests/CR-F-GOV-OK/analyse")
     approve_whole_chain("CR-F-GOV-OK")
 
-    cost = client.get(f"{GOV}/ledger").json()["policy_usage"]["cost_increase"]
+    body = client.get(f"{GOV}/ledger").json()
+    cost = body["policy_usage"]["cost_increase"]
     assert Decimal(cost["used_value"]) == Decimal("540000")
     assert Decimal(cost["headroom_value"]) == Decimal("960000") - Decimal("540000")
+
+    legal = body["usage"]["INCREASE_EXISTING"]
+    assert Decimal(legal["after_value"]) == Decimal("540000")
+    assert Decimal(legal["headroom_value"]) == Decimal("960000") - Decimal("540000")
 
 
 @pytest.mark.usefixtures("backend")

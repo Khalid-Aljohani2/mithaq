@@ -217,3 +217,7 @@ class NotificationKind(StrEnum):
     CR_REVISION_REQUESTED = "CR_REVISION_REQUESTED"
     CR_CLOSED_IN_SCOPE = "CR_CLOSED_IN_SCOPE"
     VO_ISSUED = "VO_ISSUED"
+    #: A final approval was refused because the cumulative position would
+    #: breach a legal cap. Distinct from a rejection: nobody decided against
+    #: the request, the law did, and no internal approval lifts it (NFR-16).
+    LEGAL_REVIEW_REQUIRED = "LEGAL_REVIEW_REQUIRED"

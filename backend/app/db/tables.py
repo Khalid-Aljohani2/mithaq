@@ -154,6 +154,8 @@ class ChangeRequestRow(Base):
     impact_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     matched_line_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
     cost_impact: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    added_value: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
+    removed_value: Mapped[Decimal | None] = mapped_column(Money, nullable=True)
     time_impact_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(String(32), nullable=True)
     confidence: Mapped[Decimal | None] = mapped_column(Money, nullable=True)

@@ -353,6 +353,8 @@ def run_analysis(
             else intake.impact_type,
             "matched_line_ids": scope.matched_line_ids,
             "cost_impact": impact.cost_impact,
+            "added_value": impact.added_value,
+            "removed_value": impact.removed_value,
             "time_impact_days": impact.time_impact_days,
             "recommendation": decision.recommendation,
             "confidence": decision.confidence,

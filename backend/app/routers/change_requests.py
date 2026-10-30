@@ -35,12 +35,18 @@ _STATUS_FOR: dict[type[svc.WorkflowError], int] = {
     svc.NotFoundError: status.HTTP_404_NOT_FOUND,
     svc.WrongRoleError: status.HTTP_403_FORBIDDEN,
     svc.InvalidStateError: status.HTTP_409_CONFLICT,
+    svc.LegallyBlockedError: status.HTTP_409_CONFLICT,
 }
 
 
 def _http(error: svc.WorkflowError) -> HTTPException:
     code = _STATUS_FOR.get(type(error), status.HTTP_400_BAD_REQUEST)
-    return HTTPException(status_code=code, detail={"code": error.code, "message": error.message})
+    detail: dict[str, object] = {"code": error.code, "message": error.message}
+    if error.articles:
+        # A refusal under the law names the provision it was refused under, in
+        # the response body rather than only in prose (NFR-02).
+        detail["articles"] = list(error.articles)
+    return HTTPException(status_code=code, detail=detail)
 
 
 def _require(repo: RepositoryDep, cr_id: str) -> object:

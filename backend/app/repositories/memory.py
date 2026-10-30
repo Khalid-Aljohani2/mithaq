@@ -13,7 +13,7 @@ from app.domain.change_request import (
     StageResult,
     VariationOrder,
 )
-from app.domain.enums import ApprovalDecision, Party, Role
+from app.domain.enums import ApprovalDecision, CRState, Party, Role
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
 from app.repositories.base import ContractRepository
 from app.seed.demo_contract import build_demo_contracts
@@ -123,6 +123,12 @@ class InMemoryContractRepository(ContractRepository):
                 return step
         msg = f"approval step {step.position} not found for {step.cr_id}"
         raise ValueError(msg)
+
+    def list_requests_in_state(self, state: CRState) -> list[ChangeRequest]:
+        return sorted(
+            (r for r in self._requests.values() if r.state is state),
+            key=lambda r: (r.submitted_at, r.id),
+        )
 
     def list_pending_steps(self) -> list[ApprovalStep]:
         return [

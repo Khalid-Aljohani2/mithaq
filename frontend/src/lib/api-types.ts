@@ -549,7 +549,7 @@ export interface components {
          * @description What happened.
          * @enum {string}
          */
-        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_DOCUMENTS_SUPPLIED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET";
+        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_DOCUMENTS_SUPPLIED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_LEGAL_CAP_REFUSED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET";
         /**
          * AuditEvent
          * @description One immutable entry in the audit log.
@@ -773,6 +773,10 @@ export interface components {
             matched_line_ids: string[];
             /** Cost Impact */
             cost_impact?: string | null;
+            /** Added Value */
+            added_value?: string | null;
+            /** Removed Value */
+            removed_value?: string | null;
             /** Time Impact Days */
             time_impact_days?: number | null;
             recommendation?: components["schemas"]["Recommendation"] | null;
@@ -1227,7 +1231,7 @@ export interface components {
          * @description Why someone was notified (FR-11).
          * @enum {string}
          */
-        NotificationKind: "APPROVAL_PENDING" | "APPROVAL_REMINDER" | "APPROVAL_COMPLETED" | "DOCUMENTS_REQUIRED" | "DOCUMENTS_REMINDER" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "CR_CLOSED_IN_SCOPE" | "VO_ISSUED";
+        NotificationKind: "APPROVAL_PENDING" | "APPROVAL_REMINDER" | "APPROVAL_COMPLETED" | "DOCUMENTS_REQUIRED" | "DOCUMENTS_REMINDER" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "CR_CLOSED_IN_SCOPE" | "VO_ISSUED" | "LEGAL_REVIEW_REQUIRED";
         /**
          * NotificationListResponse
          * @description Stored notifications plus freshly computed reminders (FR-11).

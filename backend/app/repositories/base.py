@@ -23,7 +23,7 @@ from app.domain.change_request import (
     StageResult,
     VariationOrder,
 )
-from app.domain.enums import Party, Role
+from app.domain.enums import CRState, Party, Role
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
 
 
@@ -97,6 +97,15 @@ class ContractRepository(ABC):
     @abstractmethod
     def replace_approval_step(self, step: ApprovalStep) -> ApprovalStep:
         """Record one approver's decision."""
+
+    @abstractmethod
+    def list_requests_in_state(self, state: CRState) -> list[ChangeRequest]:
+        """Every change request in one state, across all contracts.
+
+        Reminders are computed on request rather than by a background job, so
+        they need to find what is waiting without being told which contract to
+        look at (FR-11).
+        """
 
     @abstractmethod
     def list_pending_steps(self) -> list[ApprovalStep]:

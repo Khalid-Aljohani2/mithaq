@@ -27,6 +27,7 @@ from app.domain.change_request import (
     VariationOrder,
 )
 from app.domain.enums import (
+    PENDING_STATUSES,
     ActorType,
     ApprovalDecision,
     ChangeKind,
@@ -39,11 +40,11 @@ from app.domain.enums import (
     Stage,
     stage_number,
 )
-from app.domain.models import Contract
+from app.domain.models import ChangeOrder, Contract
 from app.domain.money import money
 from app.domain.state_machine import transition
 from app.pipeline.approvals import chain_is_complete, current_step
-from app.pipeline.limits import cited_articles
+from app.pipeline.limits import check_article_67, cited_articles, ledger_entries_for
 from app.pipeline.runner import PipelineResult, run_analysis
 from app.policy.loader import get_policy
 from app.repositories.base import ContractRepository
@@ -52,10 +53,15 @@ from app.repositories.base import ContractRepository
 class WorkflowError(Exception):
     """A workflow failure carrying a stable code."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str, articles: tuple[str, ...] = ()) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        #: Articles the refusal rests on, when it rests on the law. Carried to
+        #: the client rather than buried in prose: a party told their change
+        #: order is refused is entitled to the provision it was refused under
+        #: (NFR-02).
+        self.articles = articles
 
 
 class NotFoundError(WorkflowError):
@@ -68,6 +74,18 @@ class WrongRoleError(WorkflowError):
 
 class InvalidStateError(WorkflowError):
     """The request is not in a state where this action makes sense."""
+
+
+class LegallyBlockedError(WorkflowError):
+    """Approving this would push the contract past an Article 67 cap.
+
+    Raised at the *final* approval, not at the first, because that is the
+    moment the commitment is made and therefore the moment the cumulative
+    position has to be true. A request that was inside every cap when it
+    entered the chain can be outside them by the time the chain finishes, if
+    something else was approved in between - which is exactly the gap a
+    cumulative ledger exists to close (FR-10, NFR-02).
+    """
 
 
 @dataclass(frozen=True)
@@ -175,7 +193,10 @@ def pending_totals(repo: ContractRepository, contract_id: str) -> tuple[Decimal,
     under consideration must never silently consume headroom, which is the same
     rule the Article 67 engine follows for PENDING orders (FR-10).
     """
-    in_flight = {CRState.RECOMMENDED, CRState.IN_APPROVAL}
+    # IN_APPROVAL only, so this agrees with the Article 67 ledger: entries are
+    # written when a request enters approval, and a request that is merely
+    # recommended has none. One record, one meaning of "in flight".
+    in_flight = {CRState.IN_APPROVAL}
     cost = Decimal("0")
     days = 0
     for request in repo.list_change_requests(contract_id):
@@ -360,6 +381,81 @@ def analyse_request(
     return result
 
 
+#: Kinds that put nothing on the ledger: one is not a change, the other is not
+#: yet known to be one.
+_NO_LEDGER_KINDS = (None, ChangeKind.IN_SCOPE, ChangeKind.UNCLEAR)
+
+
+def _is_unpriced(request: ChangeRequest) -> bool:
+    """True when a request that should have ledger figures does not have them.
+
+    Decided from the request rather than by trying to build the entries:
+    ``ChangeOrder`` refuses a financial entry worth nothing, so building them
+    would raise a validation error deep in the pipeline and surface as a 500.
+    The ledger is right either way - this turns an incomprehensible failure
+    into one that says what to do about it.
+    """
+    if request.kind in _NO_LEDGER_KINDS:
+        return False
+    return request.added_value is None and request.removed_value is None
+
+
+def ledger_entries_of(
+    repo: ContractRepository, cr_id: str, contract_id: str
+) -> tuple[ChangeOrder, ...]:
+    """Every ledger entry this change request has put on the contract."""
+    return tuple(
+        order for order in repo.get_ledger(contract_id).orders if order.change_request_id == cr_id
+    )
+
+
+def _write_pending_entries(
+    repo: ContractRepository, request: ChangeRequest, now: datetime
+) -> tuple[ChangeOrder, ...]:
+    """Put the request's Article 67 entries on the ledger, pending (FR-10).
+
+    Pending means "committed if approved": reported on the ledger so both
+    parties can see what is in flight, and counted toward no cumulative total
+    until it is actually approved. Nothing here is specific to a government
+    contract - a private contract writes the same entries, so the ledger is one
+    record of every change to every contract. Article 67 is what is evaluated
+    only on government contracts, not what is recorded.
+
+    Entries are written by id, so a revised request that re-enters approval
+    replaces its old entries rather than accumulating a second set beside them.
+    """
+    entries = tuple(
+        entry.model_copy(
+            update={"status": OrderStatus.PENDING_AUTHORITY_APPROVAL, "created_at": now}
+        )
+        for entry in ledger_entries_for(request, now)
+    )
+    for entry in entries:
+        if repo.get_change_order(entry.id) is None:
+            repo.add_change_order(entry)
+        else:
+            repo.replace_change_order(entry)
+    return entries
+
+
+def _settle_entries(
+    repo: ContractRepository,
+    request: ChangeRequest,
+    status: OrderStatus,
+) -> tuple[ChangeOrder, ...]:
+    """Move a request's pending entries to a terminal status.
+
+    Only pending entries move. An entry already approved is part of the
+    contract's history and is never rewritten by a later decision.
+    """
+    settled = [
+        repo.replace_change_order(order.model_copy(update={"status": status}))
+        for order in ledger_entries_of(repo, request.id, request.contract_id)
+        if order.status in PENDING_STATUSES
+    ]
+    return tuple(settled)
+
+
 def start_approval(repo: ContractRepository, cr_id: str, now: datetime) -> ChangeRequest:
     """Move a recommended request into its approval chain (FR-10).
 
@@ -371,8 +467,23 @@ def start_approval(repo: ContractRepository, cr_id: str, now: datetime) -> Chang
     if not steps:
         raise InvalidStateError("NO_CHAIN", f"change request {cr_id} has no approval chain")
 
+    if _is_unpriced(request):
+        # A request analysed before the gross halves were persisted has a net
+        # cost_impact and nothing to split it into, so it cannot be put on the
+        # ledger. Re-analysing gives it the figures.
+        raise InvalidStateError(
+            "NOT_PRICED",
+            f"change request {cr_id} has no priced ledger figures; re-run the "
+            "analysis before starting approval",
+        )
+
     new_state = transition(request.state, CRState.IN_APPROVAL, ActorType.CODE)
     stored = repo.replace_change_request(request.model_copy(update={"state": new_state}))
+
+    # The ledger learns about the request now, as pending. Writing it here
+    # rather than at approval means both parties can see what is in flight
+    # before it lands, which is the point of a shared ledger.
+    _write_pending_entries(repo, stored, now)
 
     first = steps[0]
     _notify(
@@ -400,6 +511,76 @@ def start_approval(repo: ContractRepository, cr_id: str, now: datetime) -> Chang
 # ---------------------------------------------------------------------------
 # Stage 8: the human approval gate (FR-10)
 # ---------------------------------------------------------------------------
+
+
+def _refuse_if_over_a_legal_cap(
+    repo: ContractRepository,
+    request: ChangeRequest,
+    now: datetime,
+) -> None:
+    """Re-check Article 67 at the moment of final approval (FR-10, NFR-02).
+
+    Stage 6 already checked the caps, but it checked them when the request was
+    analysed. Between then and now other requests may have been approved
+    against the same contract, and the law counts the cumulative position, not
+    the position at the time somebody filled in a form. This is the check that
+    makes the ledger mean something: without it a contract can be taken past an
+    Article 67 cap by two requests that were each inside it on their own - the
+    salami the cap exists to prevent.
+
+    The ledger is read fresh and the request's own pending entries are
+    evaluated against it. Pending entries count toward nothing, so this request
+    is not counted against itself, and nothing else in flight is counted
+    either: only what has actually been approved.
+
+    On a breach nothing is approved. The request is flagged for legal review,
+    the reviewer is told, the refusal is audited, and the caller gets the
+    article it was refused under. No internal approval lifts a legal cap
+    (NFR-16), so there is no "approve anyway" path here by design.
+    """
+    contract = _require_contract(repo, request.contract_id)
+    if not contract.is_government:
+        return
+
+    entries = tuple(
+        order
+        for order in ledger_entries_of(repo, request.id, request.contract_id)
+        if order.status in PENDING_STATUSES
+    )
+    legal = check_article_67(contract, repo.get_ledger(request.contract_id), entries)
+    if not legal.blocked:
+        return
+
+    articles = legal.blocking_article_refs
+    stored = repo.replace_change_request(
+        request.model_copy(update={"legally_blocked": True, "needs_legal_review": True})
+    )
+    _notify(
+        repo,
+        stored,
+        Party.GOVERNMENT_ENTITY,
+        Role.LEGAL_ADVISOR,
+        NotificationKind.LEGAL_REVIEW_REQUIRED,
+        f"تعذّر اعتماد الطلب {stored.id}: تجاوز حدًا نظاميًا ({'، '.join(articles)}).",
+        f"Final approval of {stored.id} was refused: it would exceed {', '.join(articles)}.",
+        now,
+    )
+    _audit(
+        repo,
+        stored,
+        AuditAction.CR_LEGAL_CAP_REFUSED,
+        ActorType.CODE.value,
+        stored.state,
+        stored.state,
+        now,
+        reason="; ".join(legal.findings_en),
+    )
+    raise LegallyBlockedError(
+        "LEGAL_CAP_EXCEEDED",
+        "approving this now would exceed a cumulative Article 67 cap: "
+        + "; ".join(legal.findings_en),
+        articles,
+    )
 
 
 def decide_step(
@@ -437,6 +618,18 @@ def decide_step(
             "REASON_REQUIRED", "rejecting or returning a request needs a reason"
         )
 
+    # Before anything is written. A final approval that would take the
+    # contract past an Article 67 cap is refused here, so no step is recorded
+    # as approved and no entry is committed. Checking afterwards would mean
+    # undoing a decision that had already been made, and an approval that has
+    # to be taken back is not the same thing as one that never happened.
+    remaining_after = tuple(
+        other if other.position != step.position else step.model_copy(update={"decision": decision})
+        for other in steps
+    )
+    if decision is ApprovalDecision.APPROVED and chain_is_complete(remaining_after):
+        _refuse_if_over_a_legal_cap(repo, request, now)
+
     decided = step.model_copy(
         update={
             "decision": decision,
@@ -450,18 +643,29 @@ def decide_step(
 
     previous = request.state
     if decision is ApprovalDecision.REJECTED:
+        # The entries never counted toward anything; they are closed off so
+        # the ledger shows what was asked for and refused, rather than
+        # silently losing it.
+        _settle_entries(repo, request, OrderStatus.REJECTED)
         new_state = transition(previous, CRState.REJECTED, ActorType.HUMAN)
         action = AuditAction.CR_REJECTED
         kind = NotificationKind.CR_REJECTED
         message_ar = f"تم رفض الطلب {cr_id}. السبب: {reason}"
         message_en = f"Change request {cr_id} was rejected: {reason}"
     elif decision is ApprovalDecision.REVISION_REQUESTED:
+        # A revised request is a different request: its figures change, so its
+        # entries do. These are closed off now and written again, by the same
+        # ids, when the revision re-enters approval.
+        _settle_entries(repo, request, OrderStatus.REJECTED)
         new_state = transition(previous, CRState.REVISION_REQUESTED, ActorType.HUMAN)
         action = AuditAction.CR_REVISION_REQUESTED
         kind = NotificationKind.CR_REVISION_REQUESTED
         message_ar = f"طُلب تعديل الطلب {cr_id}. السبب: {reason}"
         message_en = f"Change request {cr_id} needs revision: {reason}"
     elif chain_is_complete(remaining):
+        # The commitment is made here, so this is where the ledger entries
+        # start counting toward the cumulative totals.
+        _settle_entries(repo, request, OrderStatus.APPROVED)
         new_state = transition(previous, CRState.APPROVED, ActorType.HUMAN)
         action = AuditAction.CR_APPROVED
         kind = NotificationKind.APPROVAL_COMPLETED
@@ -663,16 +867,6 @@ def update_project_records(repo: ContractRepository, contract_id: str) -> Projec
     )
 
 
-def commit_ledger_entries(
-    repo: ContractRepository, cr_id: str, entries: tuple, now: datetime
-) -> None:
-    """Write the Article 67 ledger entries for an approved request (FR-13)."""
-    for entry in entries:
-        repo.add_change_order(
-            entry.model_copy(update={"status": OrderStatus.APPROVED, "created_at": now})
-        )
-
-
 # ---------------------------------------------------------------------------
 # Stage 11: execution and follow-up (FR-14)
 # ---------------------------------------------------------------------------
@@ -772,6 +966,73 @@ def pending_approval_hours() -> int:
     return override if override is not None else get_policy().pending_approval_hours
 
 
+def awaiting_documents_hours() -> int:
+    """How long a request may wait on its documents before being reminded.
+
+    Settings win over the policy file when they say anything at all, and 0 is
+    a real value, so a demo can show the reminder path without waiting two
+    days for one to appear (FR-11).
+    """
+    override = get_settings().reminder_awaiting_documents_hours
+    return override if override is not None else get_policy().awaiting_documents_hours
+
+
+def _asked_for_documents_at(repo: ContractRepository, request: ChangeRequest) -> datetime | None:
+    """When the requester was last asked for the missing documents.
+
+    The reminder is "you were asked N hours ago", so it is counted from the
+    ask, not from submission: a request submitted on Monday and found
+    incomplete on Thursday has been waiting since Thursday. The ask is the
+    DOCUMENTS_REQUIRED notification, which is the same event the requester saw.
+    """
+    asks = [
+        notification.created_at
+        for notification in repo.list_notifications(request.requester_party, Role.PROJECT_MANAGER)
+        if notification.cr_id == request.id
+        and notification.kind is NotificationKind.DOCUMENTS_REQUIRED
+    ]
+    return max(asks) if asks else None
+
+
+def document_reminders_for(
+    repo: ContractRepository, party: Party, role: Role, now: datetime
+) -> list[Notification]:
+    """Requests still waiting on paperwork past the configured delay (FR-11)."""
+    if role is not Role.PROJECT_MANAGER:
+        # Nobody else was asked, so nobody else is reminded.
+        return []
+
+    cutoff = now - timedelta(hours=awaiting_documents_hours())
+    reminders: list[Notification] = []
+    for request in repo.list_requests_in_state(CRState.AWAITING_DOCUMENTS):
+        if request.requester_party is not party:
+            continue
+        asked_at = _asked_for_documents_at(repo, request)
+        if asked_at is None or asked_at > cutoff:
+            continue
+        waiting_hours = int((now - asked_at).total_seconds() // 3600)
+        reminders.append(
+            Notification(
+                cr_id=request.id,
+                contract_id=request.contract_id,
+                party=party,
+                role=role,
+                kind=NotificationKind.DOCUMENTS_REMINDER,
+                message_ar=(
+                    f"تذكير: الطلب {request.id} بانتظار المستندات المطلوبة "
+                    f"منذ {waiting_hours} ساعة."
+                ),
+                message_en=(
+                    f"Reminder: {request.id} has been awaiting its documents "
+                    f"for {waiting_hours} hours."
+                ),
+                created_at=now,
+                is_reminder=True,
+            )
+        )
+    return reminders
+
+
 def reminders_for(
     repo: ContractRepository, party: Party, role: Role, now: datetime | None = None
 ) -> list[Notification]:
@@ -816,7 +1077,12 @@ def notifications_for(
     repo: ContractRepository, party: Party, role: Role, now: datetime | None = None
 ) -> list[Notification]:
     """Stored notifications plus freshly computed reminders (FR-11)."""
-    return [*reminders_for(repo, party, role, now), *repo.list_notifications(party, role)]
+    at = now or datetime.now(UTC)
+    return [
+        *reminders_for(repo, party, role, at),
+        *document_reminders_for(repo, party, role, at),
+        *repo.list_notifications(party, role),
+    ]
 
 
 def recommendation_is_advisory(request: ChangeRequest) -> bool:

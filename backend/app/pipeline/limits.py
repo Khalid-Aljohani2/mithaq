@@ -129,7 +129,44 @@ def to_ledger_entries(
     matched_line_ids: tuple[str, ...],
     now: datetime,
 ) -> tuple[ChangeOrder, ...]:
-    """Map a change request onto Article 67 ledger entries.
+    """Map a freshly computed impact onto Article 67 ledger entries."""
+    return _entries(request, kind, impact.added_value, impact.removed_value, matched_line_ids, now)
+
+
+def ledger_entries_for(request: ChangeRequest, now: datetime) -> tuple[ChangeOrder, ...]:
+    """Rebuild a request's ledger entries from what was stored about it.
+
+    The entries are written when the request enters approval, long after
+    stage 5 computed the figures, so they are rebuilt from the request rather
+    than from a ``CostImpact`` nobody still holds. Same mapping, same ids: an
+    entry written for a revised request replaces the one it had before rather
+    than accumulating beside it.
+    """
+    if request.kind is None:
+        return ()
+    return _entries(
+        request,
+        request.kind,
+        request.added_value or Decimal("0"),
+        request.removed_value or Decimal("0"),
+        request.matched_line_ids,
+        now,
+    )
+
+
+def _entries(
+    request: ChangeRequest,
+    kind: ChangeKind,
+    added_value: Decimal,
+    removed_value: Decimal,
+    matched_line_ids: tuple[str, ...],
+    now: datetime,
+) -> tuple[ChangeOrder, ...]:
+    """The one mapping from a change request to Article 67 ledger entries.
+
+    Stated once, because the entries written at approval time and the entries
+    stage 6 evaluates have to be the same entries, or the request is judged
+    against something other than what lands on the ledger.
 
     =================  ====================================================
     change kind        ledger entries
@@ -164,16 +201,14 @@ def to_ledger_entries(
         category = (
             ChangeCategory.INCREASE_EXISTING if matched_line_ids else ChangeCategory.NEW_ITEMS
         )
-        return (
-            ChangeOrder(id=f"{request.id}-ADD", type=category, value=impact.added_value, **base),
-        )
+        return (ChangeOrder(id=f"{request.id}-ADD", type=category, value=added_value, **base),)
 
     if kind is ChangeKind.NCR:
         return (
             ChangeOrder(
                 id=f"{request.id}-SUB",
                 type=ChangeCategory.DECREASE_EXISTING,
-                value=impact.removed_value,
+                value=removed_value,
                 **base,
             ),
         )
@@ -183,13 +218,13 @@ def to_ledger_entries(
             ChangeOrder(
                 id=f"{request.id}-SUB",
                 type=ChangeCategory.DECREASE_EXISTING,
-                value=impact.removed_value,
+                value=removed_value,
                 **base,
             ),
             ChangeOrder(
                 id=f"{request.id}-ADD",
                 type=ChangeCategory.INCREASE_EXISTING,
-                value=impact.added_value,
+                value=added_value,
                 **base,
             ),
         )
@@ -223,6 +258,20 @@ class LegalCheck:
         refs: list[str] = []
         for result in self.results:
             refs.extend(result.article_refs)
+        return tuple(dict.fromkeys(refs))
+
+    @property
+    def blocking_article_refs(self) -> tuple[str, ...]:
+        """Only the articles actually breached.
+
+        ``article_refs`` lists every provision consulted, which is right for a
+        trace and wrong for a refusal: telling a party their change order was
+        refused under four articles when one was breached is not a citation,
+        it is noise.
+        """
+        refs: list[str] = []
+        for result in self.results:
+            refs.extend(violation.article_ref_en for violation in result.blocking_violations)
         return tuple(dict.fromkeys(refs))
 
 

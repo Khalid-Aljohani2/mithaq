@@ -134,6 +134,8 @@ def _to_request(row: ChangeRequestRow) -> ChangeRequest:
         impact_type=ImpactType(row.impact_type) if row.impact_type else None,
         matched_line_ids=tuple(row.matched_line_ids),
         cost_impact=row.cost_impact,
+        added_value=row.added_value,
+        removed_value=row.removed_value,
         time_impact_days=row.time_impact_days,
         recommendation=Recommendation(row.recommendation) if row.recommendation else None,
         confidence=row.confidence,
@@ -164,6 +166,8 @@ def _request_values(request: ChangeRequest) -> dict[str, Any]:
         "impact_type": request.impact_type.value if request.impact_type else None,
         "matched_line_ids": list(request.matched_line_ids),
         "cost_impact": request.cost_impact,
+        "added_value": request.added_value,
+        "removed_value": request.removed_value,
         "time_impact_days": request.time_impact_days,
         "recommendation": request.recommendation.value if request.recommendation else None,
         "confidence": request.confidence,
@@ -433,6 +437,15 @@ class PostgresContractRepository(ContractRepository):
             row.decided_at = step.decided_at
             row.reason = step.reason
         return step
+
+    def list_requests_in_state(self, state: CRState) -> list[ChangeRequest]:
+        with session_scope() as session:
+            rows = session.scalars(
+                select(ChangeRequestRow)
+                .where(ChangeRequestRow.state == state.value)
+                .order_by(ChangeRequestRow.submitted_at, ChangeRequestRow.id)
+            ).all()
+            return [_to_request(row) for row in rows]
 
     def list_pending_steps(self) -> list[ApprovalStep]:
         with session_scope() as session:

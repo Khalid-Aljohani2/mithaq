@@ -78,6 +78,12 @@ class ChangeRequest(BaseModel):
     impact_type: ImpactType | None = None
     matched_line_ids: tuple[str, ...] = ()
     cost_impact: Decimal | None = None
+    #: The gross halves behind ``cost_impact``. Article 67 counts movements per
+    #: category rather than a net figure, so a substitution's removal and
+    #: addition have to survive separately - the net alone cannot be split back
+    #: into them, and the ledger entries are written long after stage 5 ran.
+    added_value: Decimal | None = None
+    removed_value: Decimal | None = None
     time_impact_days: int | None = None
     recommendation: Recommendation | None = None
     confidence: Decimal | None = None

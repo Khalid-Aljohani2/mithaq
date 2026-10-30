@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     #: demo can set it to 0 and show the reminder path working, rather than
     #: waiting a day for one to appear. 0 is a real value here, not "unset".
     reminder_pending_approval_hours: int | None = None
+    #: The same, for a request still waiting on the documents it was asked for.
+    reminder_awaiting_documents_hours: int | None = None
 
     # ---- Rate limiting (NFR-08) ----
     #: Requests per window per client IP against the AI endpoints. 0 disables.
