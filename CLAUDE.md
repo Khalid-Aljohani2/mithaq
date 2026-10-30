@@ -6,12 +6,38 @@
 
 > One contract. Two parties. One record of every change.
 
-Mithaq reads a project's **Statement of Work (SOW)**, checks each incoming
-client request against it, and — when a request is **out of scope** — drafts a
-**change request with a cost quote**.
+Mithaq is an **Arabic-first change-order governance agent for Saudi government
+contracts**. It serves **both parties of the same contract**:
 
-The name is the product thesis: the SOW is the covenant, and every request is
-judged against it rather than against memory or goodwill.
+- the **government entity**, which must keep change orders within the legal limits;
+- the **contractor**, which must make sure every extra request is documented,
+  priced and formally assigned before any work starts.
+
+Both parties share **one change ledger per contract**. There is no second set of
+books: the same cumulative totals, caps and headroom are shown to each side, and
+each side sees only the actions its own role may take.
+
+The name is the product thesis: the contract is the covenant, and every request
+is judged against it rather than against memory or goodwill.
+
+## Legal basis
+
+The **Government Tenders and Procurement Law** (نظام المنافسات والمشتريات الحكومية),
+published in Umm Al-Qura on **4 September 2026** (1448-03-22), replacing the law
+issued by Royal Decree M/128 of 1440/11/13H, and effective **120 days after
+publication** (Article 101).
+
+Official source: <https://www.uqn.gov.sa/decisions-and-regulations/4001762>
+
+The verbatim Arabic text of every article the engine relies on lives in
+`backend/app/regulations/gtpl_2026.yaml`, copied programmatically from that page
+and asserted to be a substring of it. Rules:
+
+- **Never write legal text from memory.** Fetch it, copy it, verify it.
+- **All percentages live in the YAML**, never in Python.
+- Ambiguous articles carry `interpretation_note` and `needs_legal_review: true`.
+- The executive regulations (اللائحة, Article 99) are not published yet, so no
+  rule may depend on them (see WON'T in the requirements).
 
 ## Spec of record
 
@@ -40,9 +66,14 @@ ScopeGuardAi/
 ├── backend/                   FastAPI + Pydantic v2
 │   ├── app/main.py            app factory, CORS, router wiring
 │   ├── app/config.py          pydantic-settings Settings + get_settings()
-│   ├── app/routers/           one module per resource (health.py)
+│   ├── app/dependencies.py    injected repository + limits
+│   ├── app/domain/            enums, models, RuleResult types (no I/O)
+│   ├── app/regulations/       gtpl_2026.yaml + loader - the only home for percentages
+│   ├── app/repositories/      storage interface + in-memory impl (Postgres in Step 3)
+│   ├── app/routers/           one module per resource (health, contracts, change_orders)
 │   ├── app/schemas/           Pydantic request/response models
-│   ├── app/services/          business logic (SOW parsing, scope checks, quoting)
+│   ├── app/seed/              fictional demo contract
+│   ├── app/services/          rules_engine.py (pure) + change_orders.py (workflow)
 │   ├── tests/                 pytest
 │   ├── .venv/                 virtualenv (git-ignored)
 │   ├── requirements.txt       runtime deps, exact pins
@@ -116,6 +147,11 @@ curl.exe http://localhost:8000/api/health
 9. **`docs/REQUIREMENTS.md` is binding.** Every step must satisfy it. Cite the
    FR/NFR ids a step delivers when reporting it done. Requirements marked WON'T
    are out of scope — don't build them.
+10. **The model never decides money, percentages or legal limits.** Those come
+    from `rules_engine.py` reading the regulation YAML. An LLM may read, draft
+    and classify; it may not compute a cap or price an existing item (NFR-03).
+11. **Every legal assertion cites its article.** Violations, warnings and consent
+    requirements all carry `article_ref_ar` and `article_ref_en` (NFR-02).
 
 ## Conventions
 

@@ -1,0 +1,183 @@
+# Government Tenders and Procurement Law (GTPL) 2026 - machine-readable extract.
+#
+# GENERATED, NOT HAND-WRITTEN. Every Arabic legal string below was copied
+# programmatically from the official Umm Al-Qura page and asserted to be a verbatim
+# substring of it. Do not retype the Arabic by hand (NFR-02).
+#
+# All percentages live here, never in code (NFR-02). They are strings, parsed with
+# Decimal(str), so no binary float touches a legal limit (NFR-01).
+
+source:
+  url: https://www.uqn.gov.sa/decisions-and-regulations/4001762
+  publisher_ar: جريدة أم القرى
+  law_name_ar: نظام المنافسات والمشتريات الحكومية
+  law_name_en: Government Tenders and Procurement Law
+  publication_date_hijri: '1448-03-22'
+  publication_date_gregorian: 2026-09-04
+  retrieved_at: 2026-10-30
+  retrieval_method: HTTP GET of the official page; Arabic text copied programmatically, never transcribed
+    by hand
+effective_date:
+  article_ref_ar: المادة الأولى بعد المائة
+  article_ref_en: Article 101
+  text_ar: يعمل بالنظام بعد مضي (مائة وعشرين) يومًا من تاريخ نشره في الجريدة الرسمية.
+  days_after_publication: 120
+  computed_effective_date: 2027-01-02
+  computation_note: 2026-09-04 plus 120 days. The law says 'بعد مضي (مائة وعشرين) يومًا' without stating
+    whether the publication day itself counts, so the effective date may be 2027-01-02 or 2027-01-03.
+  needs_legal_review: true
+replaces:
+  article_ref_ar: المادة المائة
+  article_ref_en: Article 100
+  text_ar: يحل النظام محل نظام المنافسات والمشتريات الحكومية، الصادر بالمرسوم الملكي رقم (م/128) وتاريخ
+    1440/11/13هـ، ويُلغي ما يتعارض معه من أحكام.
+articles:
+  art_52_para_2:
+    ref_ar: المادة الثانية والخمسون - الفقرة (2)
+    ref_en: Article 52(2)
+    subject: Arabic is the authoritative language of the contract
+    text_ar: 2- تُصاغ العقود ووثائقها وملحقاتها باللغة العربية، ويجوز استخدام لغة أخرى إلى جانب العربية
+      على أن تكون العربية هي المعتمَدة في تفسير العقد وتنفيذه وتحديد مواصفاته ومخططاته والمراسلات المتعلقة
+      به.
+  art_67:
+    ref_ar: المادة السابعة والستون
+    ref_en: Article 67
+    subject: 'Change orders: new items, increases, decreases, combined cap, non-financial terms'
+    text_ar: 'المادة السابعة والستون:
+
+      1- للجهة الحكومية -في حدود احتياجاتها الفعلية- القيام بالآتي:
+
+      أ- إصدار أوامر تغيير بإضافة بنود جديدة إلى العقد أو إلى أمر الشراء الصادر بناء على اتفاقية إطارية؛
+      بما لا يتجاوز (10٪) من قيمة العقد أو أمر الشراء، وذلك بعد أخذ موافقة المتعاقد معه على ذلك.
+
+      ب- إصدار أوامر تغيير بزيادة البنود القائمة للعقد أو لأمر الشراء الصادر بناء على اتفاقية إطارية؛
+      بما لا يتجاوز (20٪) من قيمة العقد أو أمر الشراء، على أن تؤخذ موافقة المتعاقد معه على الزيادة التي
+      تتجاوز (10٪) من هذه الزيادة.
+
+      ج- إصدار أوامر تغيير بتخفيض البنود القائمة للعقد أو لأمر الشراء الصادر بناء على اتفاقية إطارية؛
+      بما لا يتجاوز (20٪) من قيمة العقد أو أمر الشراء. ويجوز تجاوز هذه النسبة على أن تؤخذ موافقة المتعاقد
+      معه.
+
+      2- يتعين عند إصدار أوامر تغيير بإضافة بنود جديدة إلى العقد أو إلى أمر الشراء الصادر بناء على اتفاقية
+      إطارية وزيادة بنوده القائمة معًا وفقًا لحكم الفقرتين الفرعيتين (أ) و(ب) من الفقرة (1) من هذه المادة؛
+      ألا تتجاوز قيمة الزيادة الكلية (20٪) من قيمة العقد أو أمر الشراء.
+
+      3- للجهة الحكومية تغيير الأحكام غير المالية في العقد بالاتفاق مع المتعاقد معه، وذلك دون إخلال بأحكام
+      النظام واللائحة ولائحة التفضيل والأحكام الإلزامية الواردة في نماذج العقود المشار إليها في الفقرة
+      (2) من المادة (الثالثة عشرة) من النظام.
+
+      وتحدد اللائحة ما يلزم من شروط وإجراءات لتنفيذ هذه المادة.'
+  art_72_para_1:
+    ref_ar: المادة الثانية والسبعون - الفقرة (1)
+    ref_en: Article 72(1)
+    subject: Time extension when the contractor is assigned additional works
+    text_ar: 1- إذا كُلف المتعاقد معه بأعمال إضافية، بشرط أن تكون المدة المضافة متناسبة مع حجم الأعمال
+      وطبيعتها وتاريخ التكليف بها.
+  art_59_para_2_item_zay:
+    ref_ar: المادة التاسعة والخمسون - الفقرة (2) البند (ز)
+    ref_en: Article 59(2)(z)
+    subject: Final guarantee not required when the contractor is assigned additional works
+    text_ar: ز- إذا كُلف المتعاقد معه بأعمال إضافية.
+
+limits:
+  currency: SAR
+  basis: original_contract_value
+  comparison_operator: lte
+  comparison_note: '''بما لا يتجاوز'' (not exceeding) is implemented as <=. A cumulative value exactly
+    at a cap is ALLOWED; only a value strictly above it is a violation.'
+  warning_threshold_ratio: '0.80'
+  warning_threshold_note: Configurable. Warn once cumulative usage reaches this fraction of a cap (default
+    80%).
+  percentages_are_strings: All percentages are YAML strings and parsed with Decimal(str) so no binary
+    float ever touches money or a legal limit (NFR-01).
+  categories:
+    NEW_ITEMS:
+      cap_pct: '10'
+      cap_is_blocking: true
+      consent_rule: always
+      consent_threshold_pct: null
+      counts_toward_combined: true
+      adds_work: true
+      article_ref_ar: المادة السابعة والستون - الفقرة (1) البند (أ)
+      article_ref_en: Article 67(1)(a)
+      source_phrase_ar: أ- إصدار أوامر تغيير بإضافة بنود جديدة إلى العقد أو إلى أمر الشراء الصادر بناء
+        على اتفاقية إطارية؛ بما لا يتجاوز (10٪) من قيمة العقد أو أمر الشراء، وذلك بعد أخذ موافقة المتعاقد
+        معه على ذلك.
+      interpretation_note: null
+      needs_legal_review: false
+    INCREASE_EXISTING:
+      cap_pct: '20'
+      cap_is_blocking: true
+      consent_rule: above_threshold
+      consent_threshold_pct: '10'
+      counts_toward_combined: true
+      adds_work: true
+      article_ref_ar: المادة السابعة والستون - الفقرة (1) البند (ب)
+      article_ref_en: Article 67(1)(b)
+      source_phrase_ar: ب- إصدار أوامر تغيير بزيادة البنود القائمة للعقد أو لأمر الشراء الصادر بناء على
+        اتفاقية إطارية؛ بما لا يتجاوز (20٪) من قيمة العقد أو أمر الشراء، على أن تؤخذ موافقة المتعاقد معه
+        على الزيادة التي تتجاوز (10٪) من هذه الزيادة.
+      interpretation_note: 'AMBIGUOUS. The Arabic reads: ''على أن تؤخذ موافقة المتعاقد معه على الزيادة
+        التي تتجاوز (10٪) من هذه الزيادة''. The phrase ''من هذه الزيادة'' (''of this increase'') has two
+        defensible readings. Reading A (implemented): consent is required for the portion of the cumulative
+        increase that exceeds 10% OF THE ORIGINAL CONTRACT VALUE, so increases up to 10% need no consent
+        and the band from 10% to 20% does. Reading B (literal): consent is required for the portion exceeding
+        10% OF THE INCREASE AMOUNT ITSELF, which would make consent necessary for essentially every increase,
+        since 90% of any increase exceeds 10% of it, and would leave the clause with no useful threshold.
+        Reading A is implemented because it gives the 10% figure operative meaning and parallels the 10%
+        cap in paragraph (1)(a). This is an interpretation, not a settled legal position, and the executive
+        regulations (اللائحة, Article 99) are not yet published.'
+      needs_legal_review: true
+    DECREASE_EXISTING:
+      cap_pct: '20'
+      cap_is_blocking: false
+      consent_rule: above_cap
+      consent_threshold_pct: '20'
+      counts_toward_combined: false
+      adds_work: false
+      article_ref_ar: المادة السابعة والستون - الفقرة (1) البند (ج)
+      article_ref_en: Article 67(1)(c)
+      source_phrase_ar: ج- إصدار أوامر تغيير بتخفيض البنود القائمة للعقد أو لأمر الشراء الصادر بناء على
+        اتفاقية إطارية؛ بما لا يتجاوز (20٪) من قيمة العقد أو أمر الشراء. ويجوز تجاوز هذه النسبة على أن
+        تؤخذ موافقة المتعاقد معه.
+      interpretation_note: 'The 20% figure is a consent trigger, not a hard ceiling: ''ويجوز تجاوز هذه
+        النسبة على أن تؤخذ موافقة المتعاقد معه'' expressly permits exceeding it with contractor consent.
+        Therefore cap_is_blocking is false.'
+      needs_legal_review: false
+    NON_FINANCIAL:
+      cap_pct: null
+      cap_is_blocking: false
+      consent_rule: always
+      consent_threshold_pct: null
+      counts_toward_combined: false
+      adds_work: false
+      article_ref_ar: المادة السابعة والستون - الفقرة (3)
+      article_ref_en: Article 67(3)
+      source_phrase_ar: 3- للجهة الحكومية تغيير الأحكام غير المالية في العقد بالاتفاق مع المتعاقد معه،
+        وذلك دون إخلال بأحكام النظام واللائحة ولائحة التفضيل والأحكام الإلزامية الواردة في نماذج العقود
+        المشار إليها في الفقرة (2) من المادة (الثالثة عشرة) من النظام.
+      interpretation_note: No percentage cap. consent_rule is 'always' because the article permits the
+        change only 'بالاتفاق مع المتعاقد معه' (by agreement with the contractor), which is treated as
+        contractor consent.
+      needs_legal_review: false
+  combined:
+    cap_pct: '20'
+    cap_is_blocking: true
+    members:
+    - NEW_ITEMS
+    - INCREASE_EXISTING
+    article_ref_ar: المادة السابعة والستون - الفقرة (2)
+    article_ref_en: Article 67(2)
+    source_phrase_ar: 2- يتعين عند إصدار أوامر تغيير بإضافة بنود جديدة إلى العقد أو إلى أمر الشراء الصادر
+      بناء على اتفاقية إطارية وزيادة بنوده القائمة معًا وفقًا لحكم الفقرتين الفرعيتين (أ) و(ب) من الفقرة
+      (1) من هذه المادة؛ ألا تتجاوز قيمة الزيادة الكلية (20٪) من قيمة العقد أو أمر الشراء.
+    needs_legal_review: false
+  time_extension:
+    flag_only: true
+    trigger: an APPROVED change order whose category adds work (NEW_ITEMS or INCREASE_EXISTING)
+    article_ref_ar: المادة الثانية والسبعون - الفقرة (1)
+    article_ref_en: Article 72(1)
+    note: 'Eligibility only. The engine never computes days: the article requires the added period to
+      be ''متناسبة مع حجم الأعمال وطبيعتها وتاريخ التكليف بها'' (proportional to the volume, nature and
+      assignment date of the works), which is a human judgement.'
+    needs_legal_review: false

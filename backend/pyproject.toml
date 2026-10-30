@@ -12,3 +12,13 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# NFR-01 demands full branch coverage of the rules module specifically.
+addopts = [
+    "--cov=app.services.rules_engine",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-fail-under=100",
+]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:"]

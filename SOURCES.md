@@ -56,6 +56,7 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | `pydantic-settings` | 2.16.2 | PyPI | https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/ |
 | `python-dotenv` | 1.2.4 | PyPI | https://saurabh-kumar.com/python-dotenv/ |
 | `httpx` | 0.28.1 | PyPI | https://www.python-httpx.org/ |
+| `pyyaml` | 6.0.3 | PyPI | https://pyyaml.org/wiki/PyYAMLDocumentation |
 
 ### Dev
 
@@ -63,13 +64,14 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | --- | --- | --- | --- |
 | `ruff` | 0.17.3 | PyPI | https://docs.astral.sh/ruff/configuration/ |
 | `pytest` | 9.2.0 | PyPI | https://fastapi.tiangolo.com/tutorial/testing/ |
+| `pytest-cov` | 7.1.0 | PyPI | https://pytest-cov.readthedocs.io/en/latest/config.html |
 
 Transitive packages pinned by pip resolution (not declared directly):
 `starlette 1.10.0`, `pydantic-core 2.50.2`, `anyio 4.15.1`, `h11 0.16.0`,
 `httpcore 1.0.9`, `httptools 0.9.0`, `websockets 17.3`, `watchfiles 1.3.0`,
 `click 8.5.0`, `pyyaml 6.0.3`, `certifi 2026.10.23`, `idna 3.20`,
 `typing-extensions 4.16.0`, `annotated-types 0.8.0`, `annotated-doc 0.0.5`,
-`typing-inspection 0.4.4`, `opentelemetry-api 1.45.2`.
+`typing-inspection 0.4.4`, `opentelemetry-api 1.45.2`, `coverage 7.17.0`.
 
 ## Setup commands and where each flag came from
 
@@ -85,6 +87,32 @@ Transitive packages pinned by pip resolution (not declared directly):
 | CORS middleware setup in `app/main.py` | https://fastapi.tiangolo.com/tutorial/cors/ |
 | `Settings(BaseSettings)` + `SettingsConfigDict(env_file=...)` in `app/config.py` | https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/ |
 | `TestClient` usage in `tests/test_health.py` | https://fastapi.tiangolo.com/tutorial/testing/ |
+
+## Legal source: the regulation file
+
+`backend/app/regulations/gtpl_2026.yaml` is **generated, never hand-written**.
+
+| Field | Value |
+| --- | --- |
+| Law | نظام المنافسات والمشتريات الحكومية (Government Tenders and Procurement Law) |
+| Official page | https://www.uqn.gov.sa/decisions-and-regulations/4001762 |
+| Publisher | جريدة أم القرى (Umm Al-Qura) |
+| Published | 1448-03-22 H / 2026-09-04 G |
+| Effective | 120 days after publication (Article 101) |
+| Replaces | the law issued by Royal Decree M/128 of 1440/11/13 H (Article 100) |
+| Retrieved | 2026-10-30, HTTP GET, 45,607 Arabic characters of body text |
+
+Articles stored verbatim: **52(2)**, **67 (entire)**, **72(1)**, **59(2)(z)**,
+plus **100** and **101** for the replacement and effective-date rules.
+
+How verbatim fidelity is guaranteed: the page was fetched once, stripped to
+text, and each article was sliced out programmatically. Every stored string is
+asserted with `assert text in page_text` both when generated and again after
+being read back from the YAML. No Arabic legal text was retyped by hand, and
+none was written from memory.
+
+Percentages are stored as YAML **strings** and parsed with `Decimal(str)`, so no
+binary float ever touches a legal limit (NFR-01). They appear nowhere in Python.
 
 ## Supply-chain verification: the `cn` package (checked 2026-10-30)
 
