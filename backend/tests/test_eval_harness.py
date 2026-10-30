@@ -7,6 +7,7 @@ directions are asserted.
 """
 
 import json
+import pathlib
 from decimal import Decimal
 from typing import Any
 
@@ -372,3 +373,114 @@ def test_the_audit_changes_the_score_it_is_supposed_to_change(stub) -> None:  # 
         report["summary"]["accuracy_pct"]["kind"]
         > (report["summary_audited"]["accuracy_pct"]["kind"])
     )
+
+
+# ---------------------------------------------------------------------------
+# Per-stage latency (docs/decisions/0003-stage-concurrency.md)
+# ---------------------------------------------------------------------------
+
+
+def test_a_run_records_how_long_each_stage_took(stub) -> None:  # noqa: ANN001
+    """So the concurrency question can be answered from data, not from reading."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", 3)
+
+    stage_ms = report["summary"]["stage_ms"]
+    assert "SCOPE_ANALYSIS" in stage_ms
+    assert "TECHNICAL_ASSESSMENT" in stage_ms
+    for stats in stage_ms.values():
+        assert stats["cases"] > 0
+        assert stats["median"] >= 0
+        assert stats["p95"] >= stats["median"]
+
+
+def test_a_stage_a_case_never_reached_is_not_counted_as_zero(stub) -> None:  # noqa: ANN001
+    """An analysis that stopped early did not run the later stages in 0 ms."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    stage_ms = report["summary"]["stage_ms"]
+    reached = {stage: stats["cases"] for stage, stats in stage_ms.items()}
+    # Stage 1 runs on every case; no stage can have run on more than that.
+    assert reached["INTAKE"] == report["summary"]["cases"]
+    assert all(count <= reached["INTAKE"] for count in reached.values())
+
+
+def test_stage_4_still_receives_only_the_lines_stage_3_matched() -> None:
+    """The dependency that keeps the two stages sequential.
+
+    If this ever stops holding, stage 4 no longer depends on stage 3 and the
+    concurrency decision in 0003 is due a revisit - which is exactly what the
+    record says. Asserting it here means the revisit is prompted rather than
+    forgotten.
+    """
+    source = (
+        pathlib.Path(__file__).resolve().parents[1] / "app" / "pipeline" / "runner.py"
+    ).read_text(encoding="utf-8")
+    assert "if view.id in scope.matched_line_ids" in source
+
+
+# ---------------------------------------------------------------------------
+# Publishing the summary (scripts/publish_eval_summary.py)
+# ---------------------------------------------------------------------------
+
+
+def test_cost_is_the_published_rate_times_the_recorded_tokens() -> None:
+    from scripts.publish_eval_summary import cost_usd
+
+    # 1M in and 1M out of Opus at $4/$20.
+    assert cost_usd("claude-opus-5-5", 1_000_000, 1_000_000) == Decimal("24.0000")
+    assert cost_usd("claude-haiku-5-5", 1_000_000, 0) == Decimal("0.1000")
+
+
+def test_an_unpriced_model_reports_no_cost_rather_than_zero() -> None:
+    from scripts.publish_eval_summary import cost_usd
+
+    assert cost_usd("some-model-we-have-no-rate-for", 1_000_000, 1_000_000) is None
+
+
+def test_a_report_with_no_commit_is_refused(stub) -> None:  # noqa: ANN001
+    """A number nobody can tie to code is not evidence."""
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", 2)
+    report["meta"]["git_commit"] = "unknown"
+
+    with pytest.raises(SystemExit):
+        build_summary(report)
+
+
+def test_the_summary_publishes_both_label_sets(stub) -> None:  # noqa: ANN001
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+    report["meta"]["git_commit"] = "abc1234"
+
+    summary = build_summary(report)
+
+    assert summary.commit == "abc1234"
+    assert summary.case_count == 15
+    assert summary.audited_case_ids == ["DEV-15"]
+    # The stub answers from the original labels, so the audited column must be
+    # the lower of the two here. That is the control: if the publisher simply
+    # copied one figure into both, this would not hold.
+    kind = next(f for f in summary.fields if f.field == "kind")
+    assert kind.accuracy_pct > kind.audited_accuracy_pct
+
+
+def test_the_summary_carries_what_makes_it_traceable(stub) -> None:  # noqa: ANN001
+    from scripts.publish_eval_summary import build_summary
+
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+    report["meta"]["git_commit"] = "abc1234"
+
+    summary = build_summary(report)
+
+    assert summary.prompt_versions == all_versions()
+    assert summary.model
+    assert summary.split == "dev"
+    assert summary.generated_at
+    assert summary.stage_latency

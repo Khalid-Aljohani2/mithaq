@@ -945,18 +945,34 @@ export interface components {
             required: string[];
         };
         /**
-         * EvalStageAccuracy
-         * @description How one AI stage scored on the evaluation set.
+         * EvalFieldAccuracy
+         * @description How one labelled field scored, under both label sets.
+         *
+         *     Per *field*, not per stage: the evaluation labels five fields
+         *     (in_scope, kind, matched_line_ids, changes_approved_product,
+         *     recommendation), and several of them come from the same stage.
          */
-        EvalStageAccuracy: {
-            /** Stage */
-            stage: string;
-            /** Correct */
-            correct: number;
-            /** Total */
-            total: number;
+        EvalFieldAccuracy: {
+            /** Field */
+            field: string;
             /** Accuracy Pct */
             accuracy_pct: string;
+            /** Audited Accuracy Pct */
+            audited_accuracy_pct: string;
+        };
+        /**
+         * EvalStageLatency
+         * @description Wall time for one pipeline stage, over the cases that reached it.
+         */
+        EvalStageLatency: {
+            /** Stage */
+            stage: string;
+            /** Median Ms */
+            median_ms: string;
+            /** P95 Ms */
+            p95_ms: string;
+            /** Cases */
+            cases: number;
         };
         /**
          * EvalSummaryResponse
@@ -964,8 +980,8 @@ export interface components {
          *
          *     Served from ``docs/eval/summary.json``, which a scored run writes and a
          *     commit publishes. The API never recomputes it: a number the UI shows must
-         *     be the number that was actually measured, traceable to the commit and the
-         *     prompt versions named here.
+         *     be the number that was actually measured, traceable to the commit, the
+         *     prompt versions and the label audit named here.
          */
         EvalSummaryResponse: {
             /** Available */
@@ -991,6 +1007,11 @@ export interface components {
              */
             split: string;
             /**
+             * Provider
+             * @default
+             */
+            provider: string;
+            /**
              * Case Count
              * @default 0
              */
@@ -1004,19 +1025,54 @@ export interface components {
             };
             /** Overall Accuracy Pct */
             overall_accuracy_pct?: string | null;
-            /**
-             * Stages
-             * @default []
-             */
-            stages: components["schemas"]["EvalStageAccuracy"][];
-            /** Latency P50 Ms */
-            latency_p50_ms?: number | null;
-            /** Latency P95 Ms */
-            latency_p95_ms?: number | null;
-            /** Total Cost Usd */
-            total_cost_usd?: string | null;
             /** Audited Accuracy Pct */
             audited_accuracy_pct?: string | null;
+            /**
+             * Audited Case Ids
+             * @default []
+             */
+            audited_case_ids: string[];
+            /**
+             * Fields
+             * @default []
+             */
+            fields: components["schemas"]["EvalFieldAccuracy"][];
+            /**
+             * Stage Latency
+             * @default []
+             */
+            stage_latency: components["schemas"]["EvalStageLatency"][];
+            /** Latency P50 Ms */
+            latency_p50_ms?: string | null;
+            /** Latency P95 Ms */
+            latency_p95_ms?: string | null;
+            /** Total Cost Usd */
+            total_cost_usd?: string | null;
+            /**
+             * Input Tokens
+             * @default 0
+             */
+            input_tokens: number;
+            /**
+             * Output Tokens
+             * @default 0
+             */
+            output_tokens: number;
+            /**
+             * Injection Passed
+             * @default 0
+             */
+            injection_passed: number;
+            /**
+             * Injection Total
+             * @default 0
+             */
+            injection_total: number;
+            /**
+             * Errors
+             * @default 0
+             */
+            errors: number;
             /**
              * Notes
              * @default

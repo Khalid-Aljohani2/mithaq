@@ -400,9 +400,18 @@ def test_eval_summary_serves_the_published_file(
                 "split": "test",
                 "case_count": 25,
                 "prompt_versions": {"INTAKE": "v3"},
-                "overall_accuracy_pct": "92.00",
-                "stages": [
-                    {"stage": "INTAKE", "correct": 24, "total": 25, "accuracy_pct": "96.00"}
+                "overall_accuracy_pct": "92.0",
+                "audited_accuracy_pct": "96.0",
+                "audited_case_ids": ["TEST-18"],
+                "fields": [
+                    {
+                        "field": "recommendation",
+                        "accuracy_pct": "92.0",
+                        "audited_accuracy_pct": "96.0",
+                    }
+                ],
+                "stage_latency": [
+                    {"stage": "INTAKE", "median_ms": "1200.0", "p95_ms": "2400.0", "cases": 25}
                 ],
                 "latency_p50_ms": 4100,
                 "latency_p95_ms": 9800,
@@ -419,8 +428,12 @@ def test_eval_summary_serves_the_published_file(
     assert body["available"] is True
     assert body["model"] == "claude-opus-5-5"
     assert body["case_count"] == 25
-    assert Decimal(body["overall_accuracy_pct"]) == Decimal("92.00")
-    assert body["stages"][0]["stage"] == "INTAKE"
+    assert Decimal(body["overall_accuracy_pct"]) == Decimal("92.0")
+    # Both label sets are published side by side, never one instead of the other.
+    assert Decimal(body["audited_accuracy_pct"]) == Decimal("96.0")
+    assert body["audited_case_ids"] == ["TEST-18"]
+    assert body["fields"][0]["field"] == "recommendation"
+    assert body["stage_latency"][0]["stage"] == "INTAKE"
     # Traceability: a published number names the commit it was produced at.
     assert body["commit"] == "abc1234"
     evaluation.reset_summary_cache()
@@ -740,3 +753,48 @@ def test_rejecting_a_step_still_works_on_the_new_request() -> None:
 
     assert response.status_code == 200, response.text
     assert response.json()["request"]["state"] == "REJECTED"
+
+
+# ---------------------------------------------------------------------------
+# The default model (docs/decisions/0002-default-model.md)
+# ---------------------------------------------------------------------------
+
+
+def test_the_default_model_is_the_one_the_decision_record_chose() -> None:
+    from app.config import DEFAULT_MODEL
+
+    assert DEFAULT_MODEL == "claude-opus-5-5"
+
+
+def test_an_unset_model_falls_back_to_the_default_not_to_empty() -> None:
+    """A blank line in an env file must not silently unset the model."""
+    from app.config import DEFAULT_MODEL, Settings
+
+    assert Settings(llm_model="").default_model == DEFAULT_MODEL
+    assert Settings(llm_model="   ").default_model == DEFAULT_MODEL
+
+
+def test_every_stage_runs_on_the_default_with_no_overrides_configured() -> None:
+    from app.config import DEFAULT_MODEL, Settings
+    from app.domain.enums import Stage
+
+    # llm_model is passed explicitly: a developer's .env may pin a model, and
+    # that correctly wins over the code default. This asserts the default, not
+    # whatever happens to be in the environment running the suite.
+    settings = Settings(llm_model="", llm_model_overrides="")
+    for stage in Stage:
+        assert settings.model_for(stage.value) == DEFAULT_MODEL
+
+
+def test_a_per_stage_override_still_wins() -> None:
+    """The choice is configuration, not a constant welded to a call site."""
+    from app.config import DEFAULT_MODEL, Settings
+
+    settings = Settings(llm_model="", llm_model_overrides="INTAKE=claude-haiku-5-5")
+    assert settings.model_for("INTAKE") == "claude-haiku-5-5"
+    assert settings.model_for("SCOPE_ANALYSIS") == DEFAULT_MODEL
+
+
+def test_minimum_confidence_was_not_tuned() -> None:
+    """Step 4D kept it at 0.70, and in particular did not tune it on the test split."""
+    assert get_policy().minimum_confidence == Decimal("0.70")

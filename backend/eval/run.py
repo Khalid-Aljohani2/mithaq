@@ -147,6 +147,10 @@ def score_case(case: dict[str, Any], result: PipelineResult) -> dict[str, Any]:
 
     return {
         "id": case["id"],
+        # Per-stage wall time, so a latency figure can be attributed rather
+        # than just reported. The runner already times every stage; this only
+        # carries the numbers out.
+        "stage_ms": {stage.stage.value: stage.duration_ms for stage in result.stages},
         "split": case["split"],
         "category": case["category"],
         "difficulty": case["difficulty"],
@@ -197,7 +201,30 @@ def failed_case(case: dict[str, Any], error: str) -> dict[str, Any]:
             "expected": case["expected_changes_approved_product"],
         },
         "recommendation": {**blank, "expected": case["expected_recommendation"]},
+        "stage_ms": {},
         "error": error,
+    }
+
+
+def stage_latencies(scored: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    """Median and p95 per stage, over the cases that reached each stage.
+
+    A stage a case never reached contributes nothing rather than a zero: an
+    analysis that stopped at stage 2 did not run stage 3 in 0 ms.
+    """
+    per_stage: dict[str, list[float]] = {}
+    for case in scored:
+        for stage, ms in case.get("stage_ms", {}).items():
+            per_stage.setdefault(stage, []).append(float(ms))
+    return {
+        stage: {
+            "median": round(statistics.median(values), 1),
+            "p95": round(
+                statistics.quantiles(values, n=20)[-1] if len(values) > 1 else values[0], 1
+            ),
+            "cases": len(values),
+        }
+        for stage, values in sorted(per_stage.items())
     }
 
 
@@ -241,6 +268,7 @@ def summarise(scored: list[dict[str, Any]], latencies: list[float]) -> dict[str,
             "min": round(min(latencies), 1) if latencies else 0.0,
             "max": round(max(latencies), 1) if latencies else 0.0,
         },
+        "stage_ms": stage_latencies(scored),
         "accuracy_by_difficulty": {
             level: percent(
                 sum(1 for s in scored if s["difficulty"] == level and s["recommendation"]["ok"]),

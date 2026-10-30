@@ -6,7 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: The model every AI stage uses unless settings or a per-stage override says
 #: otherwise. Declared here as configuration, not inline at a call site.
-DEFAULT_MODEL = "claude-sonnet-5-5"
+#:
+#: Chosen from the TEST-split comparison, not from preference: all four models
+#: tie at 88% recommendation accuracy, and Opus wins on the three things that
+#: do differ - best or joint-best on every per-stage field, a stable tail
+#: (31.6s p95 against Sonnet's 137.3s), and misses that fall on the safe side.
+#: See docs/decisions/0002-default-model.md.
+DEFAULT_MODEL = "claude-opus-5-5"
 
 
 class Settings(BaseSettings):
