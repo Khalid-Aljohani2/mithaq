@@ -82,6 +82,29 @@ already timed every stage for the trace, and this only carries the numbers into
 the report. It means the next person to ask this question can answer it from
 data rather than from a reading of the control flow.
 
+### The measured ceiling
+
+From the final TEST-split run (25 cases, `claude-opus-5-5`, commit `0f9d437`):
+
+| stage | median ms |
+|---|---|
+| 1 Intake | 3,705.0 |
+| 3 Scope analysis | 4,411.0 |
+| 4 Technical assessment | 3,980.0 |
+| 6 Risk & compliance | 6,212.0 |
+| 7 Orchestrator | 5,027.0 |
+| whole run (median) | 25,054.5 |
+
+If stages 3 and 4 ran perfectly in parallel, the pair would cost
+`max(4411, 3980) = 4,411 ms` instead of `8,391 ms`. The saving is **3,980 ms,
+about 15.9% of the median run** — and that is a ceiling, assuming zero
+scheduling overhead and no retry.
+
+That is not nothing. It is also not enough to buy with two stages answering
+overlapping questions and a re-run of every published number, which is what
+reason 1 and reason 2 above would cost. The ratio is now on the record, so the
+trade is a judgement about a measured 16% rather than about a guess.
+
 ## Revisit if
 
 - Stage 4 is ever given the full breakdown for an unrelated reason, at which
