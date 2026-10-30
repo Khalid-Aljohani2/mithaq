@@ -101,6 +101,7 @@ Transitive packages pinned by pip resolution (not declared directly):
 | Vercel function region | `"regions": ["dub1"]`; Hobby = single region | https://vercel.com/docs/functions/configuring-functions/region |
 | `dub1` = `eu-west-1` = Dublin, Ireland | region list table | https://vercel.com/docs/regions |
 | psycopg prepared statements off | `prepare_threshold=None` | https://www.psycopg.org/psycopg3/docs/advanced/prepare.html |
+| `next typegen` before `tsc` | "Generate TypeScript definitions for routes, pages, and layouts without running a full build" (`npx next --help`, next 16.4.3) | https://nextjs.org/docs/app/api-reference/cli/next |
 | Postgres image | `postgres:18.6-trixie` | https://hub.docker.com/_/postgres |
 | Postgres 18 volume path | mount at `/var/lib/postgresql`, not `/data` | https://github.com/docker-library/postgres/pull/1259 |
 | `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` (v7.0.1) | https://github.com/actions/checkout |

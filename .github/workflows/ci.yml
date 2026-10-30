@@ -113,6 +113,12 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      # Next generates route/layout types (LayoutProps, PageProps, route maps)
+      # into .next/types. A clean checkout has no .next, so tsc must not run
+      # before they exist - `next typegen` writes them without a full build.
+      - name: Generate Next route types
+        run: npx next typegen
+
       - name: TypeScript
         run: npx tsc --noEmit
 
