@@ -2,128 +2,166 @@
 
 import type { CSSProperties } from "react";
 
-import type { LedgerResponse, UsageSnapshot } from "@/lib/api";
-import { formatMoney, formatPct } from "@/lib/format";
-import { SCOPE } from "@/lib/labels";
+import { Badge } from "@/components/ui/badge";
+import type { CapLine, LedgerResponse, UsageSnapshot } from "@/lib/api";
+import { formatMoney, formatNumber, formatPct } from "@/lib/format";
+import { ROLE_LABEL, SCOPE_NAME, SOURCE_LABEL, type Tone } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-/** Order in which the scopes are listed: the categories, then the total. */
-const ORDER = ["NEW_ITEMS", "INCREASE_EXISTING", "DECREASE_EXISTING", "NON_FINANCIAL", "COMBINED"];
+/**
+ * One limit, whatever its source, in the shape the meters draw. Every value is
+ * the API's own string: nothing here is computed in JavaScript.
+ */
+export type Limit = {
+  key: string;
+  name: string;
+  source: string;
+  /** Arabic citation, e.g. the article; null for policy limits. */
+  citeAr: string | null;
+  citeEn: string | null;
+  capPct: string | null;
+  capValue: string | null;
+  usedPct: string;
+  usedValue: string;
+  pendingPct: string;
+  pendingValue: string;
+  headroomPct: string | null;
+  headroomValue: string | null;
+  unit: "SAR" | "days";
+  /** Law is blocking (red); policy past its cap needs an exception (amber). */
+  overTone: Tone;
+  exceptionRole: string | null;
+  description: string | null;
+};
 
-/** True when the API reports negative headroom, i.e. the cap is exceeded. */
-function overCap(s: UsageSnapshot): boolean {
-  return Boolean(s.headroom_pct?.trim().startsWith("-"));
+const LAW_ORDER = ["NEW_ITEMS", "INCREASE_EXISTING", "DECREASE_EXISTING", "NON_FINANCIAL", "COMBINED"];
+const POLICY_ORDER = ["cost_increase", "time_extension"];
+
+export function policyLimits(ledger: LedgerResponse): Limit[] {
+  const usage = ledger.policy_usage as Record<string, CapLine | undefined>;
+  return POLICY_ORDER.flatMap((key) => {
+    const c = usage[key];
+    if (!c) return [];
+    return [
+      {
+        key,
+        name: SCOPE_NAME[key] ?? key,
+        source: c.source,
+        citeAr: null,
+        citeEn: null,
+        capPct: c.cap_pct,
+        capValue: c.cap_value,
+        usedPct: c.used_pct,
+        usedValue: c.used_value,
+        pendingPct: c.pending_pct,
+        pendingValue: c.pending_value,
+        headroomPct: c.headroom_pct,
+        headroomValue: c.headroom_value,
+        unit: c.unit === "days" ? "days" : "SAR",
+        overTone: c.blocking ? "legal" : "amber",
+        exceptionRole: c.exception_role,
+        description: c.description_ar,
+      },
+    ];
+  });
 }
+
+export function lawLimits(ledger: LedgerResponse): Limit[] {
+  if (!ledger.legal_limits_apply) return [];
+  const usage = ledger.usage as Record<string, UsageSnapshot | undefined>;
+  return LAW_ORDER.flatMap((key) => {
+    const s = usage[key];
+    if (!s) return [];
+    return [
+      {
+        key,
+        name: SCOPE_NAME[key] ?? key,
+        source: s.source ?? "law",
+        citeAr: s.article_ref_ar ?? null,
+        citeEn: s.article_ref_en ?? null,
+        capPct: s.cap_pct,
+        capValue: s.cap_value,
+        usedPct: s.before_pct,
+        usedValue: s.before_value,
+        pendingPct: s.pending_pct,
+        pendingValue: s.pending_value,
+        headroomPct: s.headroom_pct,
+        headroomValue: s.headroom_value,
+        unit: "SAR",
+        overTone: "legal",
+        exceptionRole: null,
+        description: null,
+      },
+    ];
+  });
+}
+
+function over(limit: Limit): boolean {
+  return Boolean(limit.headroomPct?.trim().startsWith("-"));
+}
+
+function amount(limit: Limit, value: string | null): string {
+  if (value === null) return "بلا حد";
+  return limit.unit === "days" ? `${formatNumber(value)} يومًا` : formatMoney(value);
+}
+
+const OVER_BG: Record<Tone, string> = {
+  neutral: "bg-ink",
+  seal: "bg-seal",
+  amber: "bg-amber",
+  legal: "bg-legal",
+};
+const OVER_TEXT: Record<Tone, string> = {
+  neutral: "text-ink",
+  seal: "text-seal",
+  amber: "text-amber",
+  legal: "text-legal",
+};
 
 /**
- * Article 67 limits as ruled meters (government contracts only).
- *
- * The track runs to 1.5x the cap, so the cap tick always sits two thirds of
- * the way along. Widths are computed by CSS `calc()` straight from the API's
- * percentage strings: JavaScript never turns a percentage into a float.
+ * A ruled meter. The track runs to 1.5x the cap, so the cap mark always sits
+ * two thirds along. Widths come from CSS `calc()` on the API's strings.
  */
-export function LimitsSummary({ ledger }: { ledger: LedgerResponse }) {
-  const usage = ledger.usage as Record<string, UsageSnapshot | undefined>;
-  const scopes = ORDER.flatMap((key) => {
-    const s = usage[key];
-    return s ? [{ key, s }] : [];
-  });
-
-  return (
-    <div>
-      <ul className="divide-y divide-rule border-y border-rule">
-        {scopes.map(({ key, s }) => (
-          <li
-            key={key}
-            className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_10rem_1fr_15rem]"
-          >
-            <span className="margin-ref order-3 col-span-2 md:order-none md:col-span-1">
-              <span className="ref">{SCOPE[key]?.articleEn ?? key}</span>
-            </span>
-            <span
-              className={cn(
-                "text-sm font-medium",
-                key === "COMBINED" && "font-semibold",
-              )}
-            >
-              {SCOPE[key]?.name ?? key}
-            </span>
-            <span className="order-4 col-span-2 md:order-none md:col-span-1">
-              {s.cap_pct ? (
-                <Meter snapshot={s} />
-              ) : (
-                <span className="text-xs text-ink-muted">بلا حد نسبي</span>
-              )}
-            </span>
-            <span className="text-end text-sm">
-              <span className={cn("font-medium", overCap(s) && "text-legal")}>
-                {formatPct(s.before_pct)}
-              </span>
-              {s.cap_pct && (
-                <span className="text-ink-muted"> من {formatPct(s.cap_pct)}</span>
-              )}
-              <span className="block text-xs text-ink-muted">
-                {formatMoney(s.before_value)}
-                {s.cap_value && <> من {formatMoney(s.cap_value)}</>}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <MeterKey />
-    </div>
-  );
-}
-
-function Meter({ snapshot: s }: { snapshot: UsageSnapshot }) {
-  const over = overCap(s);
+export function Meter({ limit, className }: { limit: Limit; className?: string }) {
+  if (!limit.capPct) {
+    return <span className={cn("text-xs text-ink-muted", className)}>بلا حد نسبي</span>;
+  }
+  const isOver = over(limit);
   const style = {
-    "--cap": s.cap_pct ?? "0",
-    "--used": s.before_pct,
-    "--pending": s.pending_pct,
+    "--cap": limit.capPct,
+    "--used": limit.usedPct,
+    "--pending": limit.pendingPct,
   } as CSSProperties;
-  const label = `المستخدم ${formatPct(s.before_pct)}، والمعلّق ${formatPct(
-    s.pending_pct,
-  )}، والحد ${formatPct(s.cap_pct)}`;
+  const label = `المستخدم ${formatPct(limit.usedPct)}، وقيد الاعتماد ${formatPct(
+    limit.pendingPct,
+  )}، والحد ${formatPct(limit.capPct)}`;
 
   return (
     <span
       role="img"
       aria-label={label}
       style={style}
-      className="relative block h-5 [--scale:calc(var(--cap)*1.5)]"
+      className={cn("relative block h-5 [--scale:calc(var(--cap)*1.5)]", className)}
     >
-      {/* Track */}
       <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 border border-rule-strong bg-sheet" />
-      {/* Used */}
       <span
-        className={cn(
-          "absolute start-0 top-1/2 h-2 -translate-y-1/2",
-          over ? "bg-legal" : "bg-ink",
-        )}
-        style={{
-          inlineSize: "calc(min(var(--used), var(--scale)) / var(--scale) * 100%)",
-        }}
+        className={cn("absolute start-0 top-1/2 h-2 -translate-y-1/2", isOver ? OVER_BG[limit.overTone] : "bg-ink")}
+        style={{ inlineSize: "calc(min(var(--used), var(--scale)) / var(--scale) * 100%)" }}
       />
-      {/* Pending, hatched, after the used part */}
       <span
-        className="hatch absolute top-1/2 h-2 -translate-y-1/2"
+        className="hatch absolute top-1/2 h-2 -translate-y-1/2 border-y border-e border-rule-strong"
         style={{
           insetInlineStart: "calc(min(var(--used), var(--scale)) / var(--scale) * 100%)",
           inlineSize:
             "calc(min(var(--pending), max(var(--scale) - var(--used), 0)) / var(--scale) * 100%)",
         }}
       />
-      {/* Cap tick at two thirds of the track */}
-      <span
-        className="absolute inset-y-0 w-0.5 bg-ink"
-        style={{ insetInlineStart: "calc(100% / 1.5)" }}
-      />
+      <span className="absolute inset-y-0 w-0.5 bg-ink" style={{ insetInlineStart: "calc(100% / 1.5)" }} />
     </span>
   );
 }
 
-function MeterKey() {
+export function MeterKey() {
   return (
     <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-muted">
       <span className="inline-flex items-center gap-1.5">
@@ -136,8 +174,100 @@ function MeterKey() {
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="inline-block h-3 w-0.5 bg-ink" />
-        الحد النظامي
+        الحد
       </span>
     </p>
+  );
+}
+
+/** Compact rows for the workspace summary. */
+export function LimitRows({ limits }: { limits: Limit[] }) {
+  return (
+    <ul className="divide-y divide-rule border-y border-rule">
+      {limits.map((l) => (
+        <li
+          key={l.key}
+          className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_11rem_1fr_15rem]"
+        >
+          <span className="margin-ref order-3 col-span-2 md:order-none md:col-span-1">
+            {l.citeAr ?? SOURCE_LABEL[l.source] ?? l.source}
+          </span>
+          <span className={cn("text-sm font-medium", (l.key === "COMBINED") && "font-semibold")}>{l.name}</span>
+          <Meter limit={l} className="order-4 col-span-2 md:order-none md:col-span-1" />
+          <span className="text-end text-sm">
+            <span className={cn("font-medium", over(l) && OVER_TEXT[l.overTone])}>{formatPct(l.usedPct)}</span>
+            {l.capPct && <span className="text-ink-muted"> من {formatPct(l.capPct)}</span>}
+            <span className="block text-xs text-ink-muted">
+              {amount(l, l.usedValue)}
+              {l.capValue && <> من {amount(l, l.capValue)}</>}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Full rows for the limits page: cap, used, pending, headroom and source. */
+export function LimitDetail({ limits }: { limits: Limit[] }) {
+  return (
+    <ul className="divide-y divide-rule border-y border-rule-strong">
+      {limits.map((l) => {
+        const isOver = over(l);
+        return (
+          <li key={l.key} className="grid gap-x-6 gap-y-3 py-5 md:grid-cols-[7.5rem_1fr]">
+            <div className="margin-ref">
+              <Badge variant={l.source === "law" ? "neutral" : "muted"}>
+                {SOURCE_LABEL[l.source] ?? l.source}
+              </Badge>
+              {l.citeAr && <span className="mt-2 block text-ink">{l.citeAr}</span>}
+              {l.citeEn && <span className="ref mt-0.5 block">{l.citeEn}</span>}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-base font-semibold">{l.name}</h3>
+                {isOver && (
+                  <Badge variant={l.overTone === "legal" ? "legal" : "amber"}>
+                    {l.overTone === "legal" ? "تجاوز الحد النظامي" : "تجاوز حد السياسة"}
+                  </Badge>
+                )}
+              </div>
+              {l.description && <p className="mt-0.5 text-sm text-ink-muted">{l.description}</p>}
+              <Meter limit={l} className="mt-3 max-w-3xl" />
+              <dl className="mt-3 grid max-w-3xl grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+                <Figure label="الحد" pct={l.capPct} value={amount(l, l.capValue)} />
+                <Figure label="المعتمد" pct={l.usedPct} value={amount(l, l.usedValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
+                <Figure label="قيد الاعتماد" pct={l.pendingPct} value={amount(l, l.pendingValue)} />
+                <Figure label="المتبقي" pct={l.headroomPct} value={amount(l, l.headroomValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
+              </dl>
+              {l.exceptionRole && (
+                <p className="mt-3 text-xs text-ink-muted">
+                  تجاوزه يحتاج استثناءً، فيُضاف{" "}
+                  {l.exceptionRole in ROLE_LABEL
+                    ? ROLE_LABEL[l.exceptionRole as keyof typeof ROLE_LABEL]
+                    : l.exceptionRole}{" "}
+                  إلى سلسلة الاعتماد.
+                </p>
+              )}
+              {l.overTone === "legal" && l.source === "law" && l.capPct && (
+                <p className="mt-3 text-xs text-ink-muted">
+                  حد نظامي ملزم: لا يرفعه أي اعتماد داخلي.
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function Figure({ label, pct, value, tone }: { label: string; pct: string | null; value: string; tone?: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-ink-muted">{label}</dt>
+      <dd className={cn("font-medium", tone)}>{pct ? formatPct(pct) : "بلا حد"}</dd>
+      <dd className="text-xs text-ink-muted">{value}</dd>
+    </div>
   );
 }

@@ -4,10 +4,10 @@ import Link from "next/link";
 
 import { Empty, ErrorState, Loading, Section, TermsKey } from "@/components/file";
 import { Badge } from "@/components/ui/badge";
-import { api, type AuditEvent, type Contract } from "@/lib/api";
+import { api, type AuditEvent, type Contract, type ContractType } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import { countEntries, formatDateTime } from "@/lib/format";
-import { AUDIT_ACTION, RECOMMENDATION, STATE_LABEL, auditActor } from "@/lib/labels";
+import { AUDIT_ACTION, RECOMMENDATION, STATE_LABEL, auditActor, partyLabel } from "@/lib/labels";
 import { useResource } from "@/lib/use-resource";
 
 /** The append-only audit log for one contract (FR-16), oldest entry first. */
@@ -99,7 +99,7 @@ function AuditLog({ contract }: { contract: Contract }) {
                     <tr key={e.id ?? i} className="border-b border-rule align-top">
                       <td className="py-2.5 pe-4 text-ink-muted tabular-nums">{e.id ?? i + 1}</td>
                       <td className="py-2.5 pe-4 whitespace-nowrap">{formatDateTime(e.occurred_at)}</td>
-                      <td className="py-2.5 pe-4"><Actor actor={e.actor_role} /></td>
+                      <td className="py-2.5 pe-4"><Actor event={e} contractType={contract.contract_type} /></td>
                       <td className="py-2.5 pe-4 font-medium">{AUDIT_ACTION[e.action]}</td>
                       <td className="py-2.5 pe-4"><Entity event={e} href={crHref} /></td>
                       <td className="py-2.5 pe-4 text-ink-muted">{stateText(e.previous_state)}</td>
@@ -121,7 +121,7 @@ function AuditLog({ contract }: { contract: Contract }) {
                   <p className="mt-1 text-xs text-ink-muted">{formatDateTime(e.occurred_at)}</p>
                   <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
                     <dt className="text-xs text-ink-muted">المنفذ</dt>
-                    <dd><Actor actor={e.actor_role} /></dd>
+                    <dd><Actor event={e} contractType={contract.contract_type} /></dd>
                     <dt className="text-xs text-ink-muted">الكيان</dt>
                     <dd><Entity event={e} href={crHref} /></dd>
                     <dt className="text-xs text-ink-muted">الحالة</dt>
@@ -159,11 +159,24 @@ function stateText(state: AuditEvent["previous_state"]): string {
   return state ? STATE_LABEL[state] : "لا يوجد";
 }
 
-function Actor({ actor }: { actor: string }) {
-  return actor === "CODE" || actor === "AI" ? (
-    <Badge variant="muted">{auditActor(actor)}</Badge>
-  ) : (
-    <span>{auditActor(actor)}</span>
+/** Who acted: the system, or a person with their role and side. */
+function Actor({ event, contractType }: { event: AuditEvent; contractType: ContractType }) {
+  const actor = event.actor_role;
+  if (actor === "CODE" || actor === "AI") {
+    return <Badge variant="muted">{auditActor(actor)}</Badge>;
+  }
+  const party =
+    event.actor_party === "GOVERNMENT_ENTITY" || event.actor_party === "CONTRACTOR"
+      ? partyLabel(event.actor_party, contractType)
+      : null;
+  return (
+    <span className="block">
+      {event.actor_name && <span className="block font-doc font-medium">{event.actor_name}</span>}
+      <span className={event.actor_name ? "block text-xs text-ink-muted" : "block"}>
+        {auditActor(actor)}
+        {party && <>، {party}</>}
+      </span>
+    </span>
   );
 }
 

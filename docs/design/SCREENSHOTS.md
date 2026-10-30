@@ -13,6 +13,7 @@ replay recorded outputs, so every run produces the same screens.
 # The variables apply to this process only; no .env file changes.
 cd ..\ScopeGuardAi\backend
 $env:DATABASE_URL = ""; $env:LLM_PROVIDER = "scripted"; $env:ALLOWED_ORIGINS = "http://localhost:3010"
+$env:REMINDER_PENDING_APPROVAL_HOURS = "0"   # reminders show at once, for the drawer screen
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8010
 
 # Terminal 2: this worktree's frontend, built against that backend.
@@ -54,14 +55,14 @@ never touches data another session depends on.
 | `case-legal-block` | CR-D on the government contract: legal block, articles cited, contractor consent slot active |
 | `vo-document` | VO-001 as a document on screen, with the print button |
 | `vo-document-print-a4.png`, `vo-document.pdf` | The same VO in print media: the A4 render and the browser's Print to PDF output, asserted to be exactly one page |
-| `notifications-drawer` | The drawer for the contractor's project manager, newest first, each item linking to its case file |
+| `vo-document-government` (+ `-print-a4.png`, `.pdf`) | VO-001 on the government contract from CR-F-GOV-OK after its four-signature chain: cites Article 67 by its Arabic reference, one A4 page |
+| `notifications-drawer` | The drawer for the client's finance manager: a reminder (amber, labelled) above the stored notifications, newest first |
+| `case-awaiting-documents` | CR-B's seeded text resubmitted without its cost quote: the required checklist for its impact type, the missing one marked, and the resubmit form |
+| `limits-government`, `limits-private` | Policy caps (cost and time) and, on the government contract, each Article 67 category with its Arabic reference; the VOs that make up the totals |
+| `evaluation` | The published evaluation: headline first, then both label sets, latency and cost, the model comparison link, and the method |
 | `audit-private`, `audit-government` | The append-only audit log for each contract |
 
-Not captured: **reminders** in the notifications drawer. They are styled
-(amber edge, clock, "تذكير" badge) but the backend only creates them after a
-configured delay in hours, which a screenshot run cannot wait for.
-
-Not captured: **awaiting documents**. The view is built, but the backend
-currently answers 500 when analysis finds missing documents
-(`IllegalTransitionError: IN_ANALYSIS -> AWAITING_DOCUMENTS`), so there is no
-real state to photograph.
+The run's last tests change state: the finance manager signs CR-D through the
+UI, a notification opens its case file, the awaiting request is resubmitted
+with its missing document and re-analysed, and both VOs are printed to PDF and
+asserted to be exactly one page each.

@@ -20,7 +20,8 @@ const GOV_PM: Persona = { party: "GOVERNMENT_ENTITY", role: "PROJECT_MANAGER" };
 
 type Screen = {
   name: string;
-  url: string;
+  /** A function when the URL depends on an id created in setup. */
+  url: string | (() => string);
   persona?: Persona;
   ready: string;
   /** Overlays (the drawer) are captured at the viewport, not the full page. */
@@ -31,6 +32,10 @@ type Screen = {
 const caseUrl = (contract: string, cr: string) => `/contracts/${contract}/requests/${cr}`;
 const VO_ID = "CR-C-SUBSTITUTION-VO";
 const VO_URL = `/contracts/${PRIV}/variation-orders/${VO_ID}`;
+const GOV_VO_URL = `/contracts/${GOV}/variation-orders/CR-F-GOV-OK-VO`;
+
+/** Set in setup: CR-B's seeded text resubmitted without its cost quote. */
+let awaitingId = "";
 
 const SCREENS: Screen[] = [
   { name: "workspace-government", url: `/contracts/${GOV}`, ready: "سجل طلبات التغيير" },
@@ -93,17 +98,29 @@ const SCREENS: Screen[] = [
     ready: "محجوب نظامًا",
   },
   { name: "vo-document", url: VO_URL, ready: "التواقيع" },
+  { name: "vo-document-government", url: GOV_VO_URL, ready: "التواقيع" },
   {
     name: "notifications-drawer",
     url: `/contracts/${PRIV}`,
-    persona: { party: "CONTRACTOR", role: "PROJECT_MANAGER" },
+    // The finance manager has CR-D waiting; the run's backend sets the
+    // reminder delay to zero, so the reminder shows beside the request.
+    persona: { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" },
     ready: "سجل طلبات التغيير",
     viewportOnly: true,
     prepare: async (page) => {
       await page.getByRole("button", { name: /الإشعارات/ }).click();
-      await page.getByRole("dialog").getByText("صدر أمر التغيير").first().waitFor();
+      await page.getByRole("dialog").getByText("تذكير", { exact: true }).first().waitFor();
     },
   },
+  {
+    name: "case-awaiting-documents",
+    url: () => caseUrl(PRIV, awaitingId),
+    persona: { party: "CONTRACTOR", role: "PROJECT_MANAGER" },
+    ready: "إرسال المستندات وإعادة التحليل",
+  },
+  { name: "limits-government", url: `/contracts/${GOV}/limits`, ready: "أوامر التغيير المعتمدة" },
+  { name: "limits-private", url: `/contracts/${PRIV}/limits`, ready: "أوامر التغيير المعتمدة" },
+  { name: "evaluation", url: "/evaluation", ready: "كيف بُنيت مجموعة التقييم" },
   { name: "audit-private", url: `/contracts/${PRIV}/audit`, ready: "سجل إلحاقي" },
   { name: "audit-government", url: `/contracts/${GOV}/audit`, ready: "سجل إلحاقي" },
 ];
@@ -130,8 +147,16 @@ test.beforeAll(async () => {
   const start = async (cr: string) => {
     if ((await state(cr)) === "RECOMMENDED") await post(`/api/change-requests/${cr}/start-approval`);
   };
+  // Idempotent: setup runs again if Playwright restarts the worker after a
+  // failure, so only sign when this persona's slot is the one pending.
   const approve = async (cr: string, persona: Persona, name: string) => {
-    if ((await state(cr)) !== "IN_APPROVAL") return;
+    const detail = await (await api.get(`/api/change-requests/${cr}`)).json();
+    if (detail.request.state !== "IN_APPROVAL") return;
+    type Step = { party: string; role: string; decision: string; position: number };
+    const next = (detail.chain as Step[])
+      .sort((a, b) => a.position - b.position)
+      .find((st) => st.decision === "PENDING");
+    if (!next || next.party !== persona.party || next.role !== persona.role) return;
     await post(`/api/change-requests/${cr}/decide`, {
       ...persona,
       decided_by: name,
@@ -157,6 +182,42 @@ test.beforeAll(async () => {
   }
   // CR-D (private) waits at the finance manager after the project manager signs.
   await approve("CR-D-POLICY", GOV_PM, "م. نورة الشهري");
+
+  // CR-F on the government contract stays within Article 67: its whole chain,
+  // contractor consent first, then a VO that cites the article.
+  await analyse("CR-F-GOV-OK");
+  await start("CR-F-GOV-OK");
+  await approve("CR-F-GOV-OK", { party: "CONTRACTOR", role: "PROJECT_MANAGER" }, "م. فهد القحطاني");
+  await approve("CR-F-GOV-OK", GOV_PM, "م. نورة الشهري");
+  await approve("CR-F-GOV-OK", { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" }, "أ. ريم الحربي");
+  await approve("CR-F-GOV-OK", { party: "GOVERNMENT_ENTITY", role: "LEGAL_ADVISOR" }, "أ. سلمان العمري");
+  if ((await state("CR-F-GOV-OK")) === "APPROVED") {
+    await post("/api/change-requests/CR-F-GOV-OK/variation-order");
+  }
+
+  // Awaiting documents: CR-B's seeded text again, without its cost quote.
+  const list = await (await api.get(`/api/contracts/${PRIV}/change-requests`)).json();
+  type Row = { id: string; body_ar: string; requester_name: string; state: string; attachments: string[] };
+  const rows: Row[] = list.requests;
+  const existing = rows.find((r) => r.state === "AWAITING_DOCUMENTS");
+  if (existing) {
+    awaitingId = existing.id;
+  } else {
+    const seed = rows.find((r) => r.id === "CR-B-PCR");
+    expect(seed).toBeTruthy();
+    const created = await api.post(`/api/contracts/${PRIV}/change-requests`, {
+      data: {
+        requester_name: seed?.requester_name,
+        requester_party: "CONTRACTOR",
+        body_ar: seed?.body_ar,
+        attachments: ["طلب تغيير رسمي"],
+      },
+    });
+    expect(created.ok()).toBeTruthy();
+    awaitingId = (await created.json()).request.id;
+    await post(`/api/change-requests/${awaitingId}/analyse`);
+  }
+  expect(await state(awaitingId)).toBe("AWAITING_DOCUMENTS");
   await api.dispose();
 });
 
@@ -170,7 +231,7 @@ for (const v of VARIANTS) {
         await page.addInitScript((p) => {
           window.localStorage.setItem("mithaqai.persona", JSON.stringify(p));
         }, persona);
-        await page.goto(s.url);
+        await page.goto(typeof s.url === "function" ? s.url() : s.url);
         await page.getByText(s.ready).first().waitFor({ timeout: 20_000 });
         await page.waitForLoadState("networkidle");
         await page.evaluate(() => document.fonts.ready);
@@ -226,22 +287,49 @@ test("notification links to its case file", async ({ page }) => {
   });
   await page.goto(`/contracts/${PRIV}`);
   await page.getByRole("button", { name: /الإشعارات/ }).click();
-  await page.getByRole("dialog").getByRole("link").filter({ hasText: "صدر أمر التغيير" }).first().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("link")
+    .filter({ hasText: "صدر أمر التغيير" })
+    .filter({ hasText: "CR-C-SUBSTITUTION" })
+    .first()
+    .click();
   await expect(page).toHaveURL(new RegExp(`/requests/CR-C-SUBSTITUTION$`));
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+/** Resubmitting the missing document sends the list and re-runs the analysis. */
+test("awaiting documents: resubmit and re-analyse", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "mithaqai.persona",
+      JSON.stringify({ party: "CONTRACTOR", role: "PROJECT_MANAGER" }),
+    );
+  });
+  await page.goto(caseUrl(PRIV, awaitingId));
+  await page.getByRole("checkbox", { name: "عرض سعر أو تحليل تكلفة" }).check();
+  await page.getByLabel("مقدَّم من").fill("م. فهد القحطاني");
+  await page.getByRole("button", { name: "إرسال المستندات وإعادة التحليل" }).click();
+  await expect(page.getByText("بدء مسار الاعتماد")).toBeVisible({ timeout: 20_000 });
+});
+
 /** Print to PDF gives exactly one A4 page with no app chrome. */
-test("variation order prints on one A4 page", async ({ page }) => {
+for (const [label, url, file] of [
+  ["private", VO_URL, "vo-document"],
+  ["government", GOV_VO_URL, "vo-document-government"],
+] as const) {
+test(`variation order prints on one A4 page (${label})`, async ({ page }) => {
   await page.emulateMedia({ media: "print", colorScheme: "light" });
-  await page.goto(VO_URL);
+  await page.goto(url);
   await page.getByText("التواقيع").first().waitFor();
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole("button", { name: "طباعة" })).toBeHidden();
   await expect(page.getByRole("banner").filter({ hasText: "تعمل بصفة" })).toBeHidden();
-  const pdf = await page.pdf({ path: path.join(OUT, "vo-document.pdf"), preferCSSPageSize: true, printBackground: true });
+  const pdf = await page.pdf({ path: path.join(OUT, `${file}.pdf`), preferCSSPageSize: true, printBackground: true });
   const pages = pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? [];
   expect(pages.length).toBe(1);
   await page.setViewportSize({ width: 794, height: 1123 });
-  await page.screenshot({ path: path.join(OUT, "vo-document-print-a4.png"), fullPage: true });
+  await page.screenshot({ path: path.join(OUT, `${file}-print-a4.png`), fullPage: true });
 });
+}

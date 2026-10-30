@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown, Check } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useId, useState } from "react";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notifications";
 
 export function Letterhead() {
+  const pathname = usePathname();
   return (
     <header className="rule-double bg-sheet">
       <div className="mx-auto grid max-w-[90rem] grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-4 py-3 md:grid-cols-[auto_1fr_auto] md:px-8">
@@ -30,7 +32,14 @@ export function Letterhead() {
           <ContractSwitcher />
           <RoleSwitcher />
         </div>
-        <div className="col-start-2 row-start-1 md:col-start-3">
+        <div className="col-start-2 row-start-1 flex items-center gap-2 md:col-start-3">
+          <Link
+            href="/evaluation"
+            className="inline-flex min-h-11 items-center rounded-[var(--radius-ctl)] px-3 text-sm font-medium underline-offset-4 hover:underline aria-[current=page]:underline"
+            aria-current={pathname === "/evaluation" ? "page" : undefined}
+          >
+            نتائج التقييم
+          </Link>
           <NotificationBell />
         </div>
       </div>

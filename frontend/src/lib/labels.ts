@@ -68,7 +68,7 @@ export function kindShort(kind: ChangeKind | null | undefined): string {
 
 /** Full label for a kind: "PCR (طلب تغيير موجب)" or the name alone. */
 export function kindFull(kind: ChangeKind | null | undefined): string {
-  if (!kind) return "لم يُحلَّل بعد";
+  if (!kind) return "لم يُصنَّف بعد";
   const { abbr, name } = KIND[kind];
   return abbr ? `${abbr} (${name})` : name;
 }
@@ -179,13 +179,22 @@ export const REASON_CODE: Record<string, string> = {
   STAGE_CONFLICT: "تعارض بين نتائج المراحل.",
 };
 
-/** Ledger scopes and the English article ref the API returns for each (gap 3). */
-export const SCOPE: Record<string, { name: string; articleEn: string }> = {
-  NEW_ITEMS: { name: "بنود جديدة", articleEn: "Article 67(1)(a)" },
-  INCREASE_EXISTING: { name: "زيادة كميات قائمة", articleEn: "Article 67(1)(b)" },
-  DECREASE_EXISTING: { name: "تخفيض كميات قائمة", articleEn: "Article 67(1)(c)" },
-  NON_FINANCIAL: { name: "تغييرات غير مالية", articleEn: "Article 67(3)" },
-  COMBINED: { name: "إجمالي التغييرات", articleEn: "Article 67(2)" },
+/** Display names for limit scopes. Citations come from the API, not from here. */
+export const SCOPE_NAME: Record<string, string> = {
+  NEW_ITEMS: "بنود جديدة",
+  INCREASE_EXISTING: "زيادة كميات قائمة",
+  DECREASE_EXISTING: "تخفيض كميات قائمة",
+  NON_FINANCIAL: "تغييرات غير مالية",
+  COMBINED: "إجمالي التغييرات",
+  cost_increase: "الزيادة الإجمالية في التكلفة",
+  time_extension: "التمديد الإجمالي للمدة",
+};
+
+/** Where a threshold comes from (NFR-16). */
+export const SOURCE_LABEL: Record<string, string> = {
+  law: "النظام",
+  organization_policy: "سياسة الجهة",
+  default: "قيمة افتراضية",
 };
 
 /** What went wrong, and what to do about it. */

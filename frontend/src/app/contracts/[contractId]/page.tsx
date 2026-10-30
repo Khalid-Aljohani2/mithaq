@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Empty, ErrorState, Field, Loading, Section, TermsKey } from "@/components/file";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { LimitsSummary } from "@/components/workspace/limits";
+import { LimitRows, MeterKey, lawLimits, policyLimits } from "@/components/workspace/limits";
 import { api, type ApprovalStep, type ChangeRequest, type Contract } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import { countRequests, formatDate, formatImpact, formatMoney } from "@/lib/format";
@@ -126,6 +126,14 @@ function Workspace({ contract }: { contract: Contract }) {
       <Section
         id="limits"
         title="حدود التغيير التراكمية"
+        action={
+          <Link
+            href={`/contracts/${encodeURIComponent(contract.id)}/limits`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            تفاصيل الحدود
+          </Link>
+        }
         margin={
           ledger.status === "ready" ? (
             <>
@@ -142,22 +150,19 @@ function Workspace({ contract }: { contract: Contract }) {
           ) : null
         }
       >
-        {!isGov ? (
-          <p className="max-w-prose text-sm text-ink-muted">
-            حدود المادة السابعة والستين تنطبق على العقود الحكومية. يعرض ملف كل
-            طلب نتيجة فحص حدود السياسة الداخلية الخاصة به.
-          </p>
-        ) : ledger.status === "loading" ? (
+        {ledger.status === "loading" ? (
           <Loading label="جارٍ تحميل الحدود" rows={5} />
         ) : ledger.status === "error" ? (
           <ErrorState error={ledger.error} what="الحدود" onRetry={ledger.reload} />
         ) : (
           <>
             <p className="mb-4 max-w-prose text-sm text-ink-muted">
-              المستخدم من كل حد في المادة السابعة والستين، محسوبًا من قيمة العقد
-              الأصلية. حدود السياسة الداخلية تظهر في ملف كل طلب.
+              {isGov
+                ? "المستخدم من حدود السياسة الداخلية ومن كل حد في المادة السابعة والستين، محسوبًا من قيمة العقد ومدته الأصليتين."
+                : "المستخدم من حدود السياسة الداخلية، محسوبًا من قيمة العقد ومدته الأصليتين. حدود المادة السابعة والستين تنطبق على العقود الحكومية."}
             </p>
-            <LimitsSummary ledger={ledger.data} />
+            <LimitRows limits={[...policyLimits(ledger.data), ...lawLimits(ledger.data)]} />
+            <MeterKey />
           </>
         )}
       </Section>

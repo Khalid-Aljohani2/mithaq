@@ -13,6 +13,7 @@ import {
   RecommendationBlock,
   contractLines,
 } from "@/components/case/decision";
+import { AwaitingDocuments } from "@/components/case/documents";
 import { RequestZone } from "@/components/case/request-zone";
 import { VoBlock } from "@/components/case/vo-block";
 import { Trace, buildRows } from "@/components/case/trace";
@@ -304,6 +305,7 @@ function CaseFile({
             <VoBlock
               contractId={contract.id}
               request={request}
+              voId={data.variation_order_id ?? null}
               onIssued={(next) => {
                 setData(next);
                 reloadTrace();
@@ -325,6 +327,7 @@ function CaseFile({
             persona={persona}
             justSigned={justSigned}
             onAnalyse={analyse}
+            onSupplied={setData}
             onStartApproval={startApproval}
             onDecide={decide}
           />
@@ -349,6 +352,7 @@ function DecisionZone({
   persona,
   justSigned,
   onAnalyse,
+  onSupplied,
   onStartApproval,
   onDecide,
 }: {
@@ -365,7 +369,8 @@ function DecisionZone({
   recorded: boolean;
   persona: ReturnType<typeof useSession>["persona"];
   justSigned: number | null;
-  onAnalyse: () => void;
+  onAnalyse: () => Promise<void> | void;
+  onSupplied: (data: ChangeRequestResponse) => void;
   onStartApproval: () => void;
   onDecide: Decide;
 }) {
@@ -407,31 +412,13 @@ function DecisionZone({
 
   if (state === "AWAITING_DOCUMENTS") {
     return (
-      <section className="border-t-2 border-amber pt-4">
-        <h2 className="font-doc text-xl font-semibold text-amber">المستندات غير مكتملة</h2>
-        <p className="mt-2 text-sm">
-          أُرسلت إلى مقدم الطلب قائمة بالنواقص، والطلب ينتظر إعادة تقديمه.
-        </p>
-        {documents && documents.missing.length > 0 && (
-          <>
-            <h3 className="mt-4 text-xs font-medium text-ink-muted">المستندات الناقصة</h3>
-            <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
-              {documents.missing.map((d) => (
-                <li key={d} className="py-1.5">{d}</li>
-              ))}
-            </ul>
-          </>
-        )}
-        {documents?.gapList && (
-          <p className="mt-3 font-doc text-sm whitespace-pre-line">{documents.gapList}</p>
-        )}
-        <Button className="mt-4" onClick={onAnalyse}>
-          إعادة التقديم للتحليل
-        </Button>
-        <p className="mt-2 text-xs text-ink-muted">
-          يُعاد فحص المستندات المسجلة على الطلب كما هي.
-        </p>
-      </section>
+      <AwaitingDocuments
+        request={request}
+        documents={documents}
+        persona={persona}
+        onSupplied={onSupplied}
+        onAnalyse={onAnalyse}
+      />
     );
   }
 

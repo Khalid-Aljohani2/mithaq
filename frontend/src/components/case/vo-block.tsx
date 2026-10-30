@@ -18,10 +18,13 @@ const HAS_VO = new Set(["VO_ISSUED", "IN_EXECUTION", "CLOSED"]);
 export function VoBlock({
   contractId,
   request,
+  voId,
   onIssued,
 }: {
   contractId: string;
   request: ChangeRequest;
+  /** From GET /api/change-requests/{id}: the VO issued for this request, if any. */
+  voId: string | null;
   onIssued: (data: ChangeRequestResponse) => void;
 }) {
   const state = request.state ?? "RECEIVED";
@@ -30,12 +33,11 @@ export function VoBlock({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // No endpoint returns the VO for a CR, so the contract's list is searched.
-  const list = useResource(
-    hasVo && !issued ? (s) => api.variationOrders(contractId, s) : null,
-    [contractId, hasVo, issued],
+  const single = useResource(
+    voId && !issued ? (s) => api.variationOrder(voId, s) : null,
+    [voId, issued],
   );
-  const vo = issued ?? list.data?.variation_orders.find((v) => v.cr_id === request.id) ?? null;
+  const vo = issued ?? single.data?.variation_order ?? null;
 
   if (state !== "APPROVED" && !hasVo) return null;
 
@@ -94,8 +96,8 @@ export function VoBlock({
             </Link>
           )}
         </>
-      ) : list.status === "error" ? (
-        <p className="mt-1 text-sm">تعذر تحميل أمر التغيير. {errorMessage(list.error)}</p>
+      ) : single.status === "error" ? (
+        <p className="mt-1 text-sm">تعذر تحميل أمر التغيير. {errorMessage(single.error)}</p>
       ) : (
         <p className="mt-1 text-sm text-ink-muted" role="status">جارٍ تحميل أمر التغيير</p>
       )}

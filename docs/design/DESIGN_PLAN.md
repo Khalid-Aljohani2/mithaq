@@ -371,3 +371,34 @@ a fixed dark tint. The drawer is captured at the viewport, not the full page.
 Analysis reasons appeared as raw codes ("APPROVE") in the audit log. The
 notification kind `APPROVAL_PENDING` is also sent when a chain completes, so
 it is labelled "مسار الاعتماد" rather than "اعتماد مطلوب".
+
+## 10. Step 5B, part 2
+
+- **Limits page** (`/contracts/[id]/limits`). The policy caps (gross cost
+  increase and time extension) and, on a government contract, each Article 67
+  category. Each row shows cap, approved, pending and headroom, plus the source
+  tag the API sends (النظام or سياسة الجهة). The Arabic article reference
+  comes from the API, and the frontend's own scope-to-article map is gone.
+  Policy over its cap is amber because an exception can pass it; law over its
+  cap is red because nothing can. The VOs that make up the totals are listed
+  below. The workspace summary uses the same rows.
+- **Evaluation page** (`/evaluation`). Written for someone with ten seconds.
+  One sentence comes first: recommendation accuracy on held-out cases. Every
+  section ends with its source (commit, date, model, split). Cost per request
+  is the run's cost divided by its case count, done in exact decimal
+  arithmetic. The four-model comparison is not served by the API, so the page
+  links to the comparison document at the run's commit rather than copying
+  its numbers.
+- **Awaiting documents.** The checklist for the request's impact type comes
+  from the API and marks what is missing. The resubmit form sends the full
+  attachment list, then re-runs the analysis.
+- Missing documents hold a request; they do not block it. The trace marker
+  for that stage is amber, keeping red for the law.
+
+Fixed after reviewing the screenshots:
+- The government VO printed on two pages, which the PDF check caught. Print
+  spacing is tightened, and both VOs are asserted to fit one page.
+- The evaluation headline wrapped a single word onto a second line.
+- USD showed as "$US".
+- A request held at stage 2 was called "not analysed"; it now reads "not yet
+  classified".
