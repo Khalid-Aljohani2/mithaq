@@ -13,6 +13,15 @@ client request against it, and — when a request is **out of scope** — drafts
 The name is the product thesis: the SOW is the covenant, and every request is
 judged against it rather than against memory or goodwill.
 
+## Spec of record
+
+**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** governs this build: FR-01 to FR-19
+and NFR-01 to NFR-14, prioritised MUST / SHOULD / WON'T. Read it before starting any
+step. Every later step must satisfy it, and work is judged against it — not against
+what seems reasonable at the time. When a step is reported done, name the requirement
+IDs it satisfies. If a requirement looks wrong or unachievable, say so and wait;
+do not quietly reinterpret or drop it.
+
 24-hour hackathon MVP. Optimise for a working demo, not for completeness.
 
 ## Architecture
@@ -40,6 +49,9 @@ ScopeGuardAi/
 │   ├── requirements-dev.txt   dev deps, exact pins
 │   ├── pyproject.toml         ruff + pytest config
 │   └── .env.example           LLM_PROVIDER, LLM_API_KEY, LLM_MODEL
+├── docs/
+│   ├── REQUIREMENTS.md        spec of record - FR-01..19, NFR-01..14
+│   └── decisions/             short decision records (NFR-11)
 ├── CLAUDE.md
 ├── README.md
 ├── SOURCES.md
@@ -101,6 +113,9 @@ curl.exe http://localhost:8000/api/health
    `response_model=`; no bare dicts crossing the HTTP boundary.
 8. **Run lint, type check and tests before reporting a step done.** Show the
    real output. Never summarise a check you didn't run.
+9. **`docs/REQUIREMENTS.md` is binding.** Every step must satisfy it. Cite the
+   FR/NFR ids a step delivers when reporting it done. Requirements marked WON'T
+   are out of scope — don't build them.
 
 ## Conventions
 

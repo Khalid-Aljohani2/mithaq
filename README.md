@@ -10,12 +10,19 @@ change request with a cost quote.
 
 Hackathon MVP. Next.js front end, FastAPI back end, talking only over HTTP JSON.
 
+## Requirements
+
+**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** is the spec of record: 19 functional
+requirements (FR-01 to FR-19) and 14 non-functional ones (NFR-01 to NFR-14), split
+into MUST / SHOULD / WON'T. Every later step must satisfy it.
+
 ## Layout
 
 ```
 ScopeGuardAi/
 ├── frontend/   Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui, Motion)
 ├── backend/    FastAPI + Pydantic v2
+├── docs/       REQUIREMENTS.md (spec of record), decisions/ (decision records)
 ├── CLAUDE.md   Working rules for this repo
 ├── SOURCES.md  Every dependency, its pinned version, and the doc it came from
 └── README.md
