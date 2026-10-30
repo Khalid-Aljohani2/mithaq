@@ -1,0 +1,66 @@
+# Approval matrix (FR-02). Seeded defaults, editable.
+#
+# Each party declares which role approves which kind of change, in what order,
+# and what escalates. `position` orders the whole chain across both parties:
+# the contractor's consent sits before the client's internal approvals.
+#
+# `when` names a condition evaluated in code (app/pipeline/approvals.py).
+# Adding a condition here without implementing it is a configuration error and
+# is rejected at load time rather than silently never firing.
+#
+# Note on naming: Party.GOVERNMENT_ENTITY is the contracting authority, i.e.
+# the client side. On a PRIVATE contract that is the private client, not a
+# government body. The enum keeps the name of the primary use case.
+
+parties:
+  CONTRACTOR:
+    default_role: PROJECT_MANAGER
+    rules:
+      - role: PROJECT_MANAGER
+        position: 10
+        when: contractor_consent_required
+        reason_code: CONTRACTOR_CONSENT
+        description_en: >-
+          Article 67 requires the contractor's consent for new items, for the
+          part of an increase above 10%, and for a decrease beyond 20%.
+
+  GOVERNMENT_ENTITY:
+    default_role: PROJECT_MANAGER
+    rules:
+      - role: PROJECT_MANAGER
+        position: 20
+        when: always
+        reason_code: DEFAULT_APPROVER
+        description_en: The default approver for every change request.
+
+      - role: TECHNICAL_MANAGER
+        position: 30
+        when: changes_approved_product
+        reason_code: TECHNICAL_APPROVAL_REQUIRED
+        description_en: >-
+          A change to an approved product or specification adds a technical
+          approval step (FR-06).
+
+      - role: FINANCE_MANAGER
+        position: 40
+        when: cost_impact_above_finance_threshold
+        reason_code: FINANCE_THRESHOLD
+        description_en: >-
+          A cost impact above the configured value needs finance sign-off.
+
+      - role: LEGAL_ADVISOR
+        position: 50
+        when: needs_legal_review
+        reason_code: LEGAL_REVIEW_REQUIRED
+        description_en: >-
+          A legal cap is implicated. Added whether or not the cap is breached,
+          because the reading of Article 67(1)(b) is itself ambiguous.
+
+      - role: CEO
+        position: 60
+        when: policy_exception_effective
+        reason_code: POLICY_EXCEPTION
+        description_en: >-
+          A policy cap is exceeded and may be escalated past. Deliberately NOT
+          added when a legal cap is breached: CEO approval cannot lift a legal
+          limit, and offering the step would imply it could.

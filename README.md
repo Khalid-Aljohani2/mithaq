@@ -12,9 +12,17 @@ Hackathon MVP. Next.js front end, FastAPI back end, talking only over HTTP JSON.
 
 ## Requirements
 
-**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** is the spec of record: 19 functional
-requirements (FR-01 to FR-19) and 14 non-functional ones (NFR-01 to NFR-14), split
-into MUST / SHOULD / WON'T. Every later step must satisfy it.
+**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** is the spec of record — **v2**,
+built around an 11-step change-order workflow reviewed with a senior project
+manager. 22 functional requirements (FR-01 to FR-22) and 16 non-functional ones
+(NFR-01 to NFR-16), split into MUST / SHOULD / WON'T.
+
+Its control principle governs the whole system: **AI analyses, validates,
+recommends and drafts; authorised people approve every contractual or financial
+commitment.** The agent never decides.
+
+[docs/REQUIREMENTS_v1.md](docs/REQUIREMENTS_v1.md) is kept for history. Where the
+two disagree, v2 wins.
 
 ## Layout
 
@@ -22,7 +30,7 @@ into MUST / SHOULD / WON'T. Every later step must satisfy it.
 ScopeGuardAi/
 ├── frontend/   Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui, Motion)
 ├── backend/    FastAPI + Pydantic v2
-├── docs/       REQUIREMENTS.md (spec of record), decisions/ (decision records)
+├── docs/       REQUIREMENTS.md (spec of record, v2), decisions/, MANUAL_STEPS.md
 ├── CLAUDE.md   Working rules for this repo
 ├── SOURCES.md  Every dependency, its pinned version, and the doc it came from
 └── README.md

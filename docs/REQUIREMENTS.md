@@ -1,49 +1,52 @@
-# Mithaq: Requirements
+# Mithaq: Requirements v2
 
-Deadline: deployed and publicly reachable within 20 hours. Code on GitHub. Hosting on Vercel (frontend and FastAPI backend).
-Priority: MUST is required for submission. SHOULD only if time remains. WON'T is explicitly out of scope.
+Process source: an 11-step change order workflow reviewed with a senior project manager from a large company.
+Control principle: AI agents analyze, validate, recommend and prepare documents. Authorized people approve every contractual or financial commitment. The agent never decides; it recommends, explains why, and states the next actions.
 
-## Functional requirements
+## Glossary
+CR (Change Request): any request to change the contract work.
+PCR (Positive Change Request): adds work, quantity, cost or time.
+NCR (Negative Change Request): removes work or reduces quantity or cost.
+Substitution: replaces an approved product, specification or method. Counted as an NCR for what is removed plus a PCR for what is added.
+VO (Variation Order): the formal instruction issued only after the full approval chain approves a CR.
+In-scope request: covered by an existing line in the contract breakdown. It is not a change and counts toward no limit.
+The UI shows each abbreviation with its full name on first appearance on every screen, because NCR commonly means Non-Conformance Report in construction quality.
 
-### MUST
-FR-01 Contract workspace: show the seeded contract (parties, value, dates, items with Arabic descriptions) in an RTL Arabic layout.
-FR-02 Two roles: switch between Government Entity and Contractor views. Both read the same ledger; each sees only the actions its role may take. Acceptance: an action from the wrong role is rejected by the backend, not only hidden in the UI.
-FR-03 Request intake: an inbox where a user pastes an Arabic request (sender, date, body). Stored with timestamp.
-FR-04 AI analysis: the agent maps the request to contract items and classifies it as IN_SCOPE, NEW_ITEM, INCREASE_EXISTING, DECREASE_EXISTING, NON_FINANCIAL, or UNCLEAR. Output is schema-validated JSON with confidence, matched item ids, extracted quantities, and the exact phrase from the request that supports the decision.
-FR-05 Clarification: when confidence is below a configurable threshold or the class is UNCLEAR, the agent drafts a clarification question to the requester instead of guessing.
-FR-06 Pricing: increases and decreases of existing items are priced by code from contract unit prices. New items are priced by a human on the contractor side; any AI price is labeled "suggestion" and must be confirmed by a human.
-FR-07 Rules evaluation: the deterministic engine (Step 2) checks every proposed order against Article 67 using the cumulative ledger and shows before and after percentages, warnings, blocking violations, consent requirements, and article references.
-FR-08 Change order draft: a formal Arabic change order document with affected items, values, cited articles, and required signatures. Printable to PDF from the browser.
-FR-09 Approval workflow: contractor consent step and authority approval step, approve or reject with a reason. Nothing is ever auto-approved.
-FR-10 Ledger dashboard: cumulative usage per category against each cap, list of orders with status, and the remaining headroom in SAR.
-FR-11 Time extension flag: approved orders that add work show eligibility for a proportional extension (Article 72 paragraph 1).
-FR-12 Agent trace: for every analyzed request, show the steps the agent took, the tools it called, and a summary of each result.
-FR-13 Audit log: every state change records actor role, timestamp, previous state, and new state. Append only.
-FR-14 Evaluation: a labeled set of 30 to 50 synthetic Arabic requests with expected class and items. A command and a page that run it and report accuracy and a confusion matrix.
-FR-15 Demo reset: one action restores the seed state.
-FR-16 Fallback mode: if the AI provider is unreachable, the app serves recorded agent responses for the demo requests and labels them clearly as recorded.
+## Functional requirements (MUST)
+FR-01 Contract baseline: a breakdown (BOQ/WBS) of line items, each with deliverable description, unit, quantity, contract unit rate, approved product or specification, and restrictions. Plus contract value, start date, end date, and contract type (government or private).
+FR-02 Organization setup: each party (government entity, contractor) defines its roles and approval matrix: which role approves which kind of change, in what order, and the thresholds that escalate approval. Default approver: Project Manager. Defaults are seeded and editable.
+FR-03 Step 1 Intake: receive a CR (pasted Arabic text plus a list of attachments), create a unique CR ID, identify the requester, extract the requested change and its impact type (cost, time, or both).
+FR-04 Step 2 Document validation: check the CR against a required-documents checklist for its type. If incomplete, the agent sends the requester a structured gap list and the CR waits for resubmission. This is a non-commitment action the agent may take on its own.
+FR-05 Step 3 Contract and scope analysis: compare the CR with the contract breakdown and deliverables. Explicit yes or no: already in scope? If yes, recommend closing it as in scope, citing the matching breakdown lines. If no, classify it as PCR, NCR or substitution and continue.
+FR-06 Step 4 Technical assessment: does the CR change an approved product or specification? Check it against the initial requirements and restrictions. A change to an approved product adds a technical approval step to the chain. A conflict with a restriction is flagged.
+FR-07 Step 5 Cost and schedule impact: every CR states its impact on cost, time, or both. Cost is computed by code from quantities and contract unit rates. A proposed unit rate deviating from the contract rate by more than 20% (configurable) is flagged. Time impact is recorded in days.
+Company policy: a cumulative cost increase above 20% of the original contract value, or a cumulative time extension above 20% of the original duration, is not allowed by default. It can pass only as an exception with CEO approval added to the chain. Exactly 20% is allowed without the exception.
+Law: for government contracts, the existing Article 67 rules engine applies on top and its caps stay blocking. CEO approval cannot lift a legal cap. The recommendation states this and flags the CR for legal review.
+FR-08 Step 6 Risk and compliance: delivery, operational, commercial and compliance risks, including the legal and policy check results.
+FR-09 Step 7 Orchestrator: consolidate all step results, flag conflicts between them, apply decision rules, and produce a recommendation (approve, reject, or request revision) with reasons, confidence and next actions. Build this CR's approval chain from the approval matrix.
+FR-10 Step 8 Human approval gate: approvers act in chain order. Each can approve, reject, or request revision with a reason. Only humans move a CR through this gate. Rejection or revision notifies the requester.
+FR-11 Notifications and reminders: every role affected by a CR is notified according to the approval matrix. Pending approvals generate reminders after a configurable delay. In-app only.
+FR-12 Step 9 Issue VO: after the final approval, generate the VO in Arabic with scope, value, duration, cited breakdown lines and articles, and approval signatures. Printable to PDF.
+FR-13 Step 10 Update project records: contract value, budget, schedule baseline and the cumulative ledger.
+FR-14 Step 11 Execution and follow-up: actual completion, actual cost, dates and deviations per VO. Close-out records verification against acceptance criteria.
+FR-15 Agent trace: every step's inputs, outputs, decision, actor type (code or AI) and duration, per CR.
+FR-16 Audit log: append only, every state change (existing).
+FR-17 Evaluation: a labeled set of 30 to 50 synthetic Arabic CRs with expected scope decision, change type and recommendation. Report accuracy per step and a confusion matrix. Target: at least 80% recommendation accuracy, measured, not assumed.
+FR-18 Cycle time metrics: record the time each CR spends in every step.
+FR-19 Demo reset and fallback mode (existing).
 
-### SHOULD
-FR-17 Contract upload: upload a PDF or DOCX contract and extract items with AI, followed by mandatory human review before use.
-FR-18 English toggle for UI labels. Contract content stays Arabic.
-FR-19 Notification feed per role (pending consents, pending approvals, approaching caps).
+## SHOULD
+FR-20 Lessons learned note at close-out.
+FR-21 Contract upload with AI extraction of the breakdown, followed by mandatory human review.
+FR-22 English toggle for UI labels.
 
-### WON'T (out of scope for the MVP)
-Real authentication or national identity login, integration with the government procurement portal, real email ingestion, legal advice, multi-contract portfolio analytics, rules from the executive regulations of the new law until they are published.
+## WON'T
+Real authentication or national identity login, procurement portal integration, real email, legal advice, executive-regulation rules until published.
 
 ## Non-functional requirements
+NFR-01 to NFR-14 from v1 stay unchanged. Additions:
+NFR-15 Decision boundary: no code path lets an AI step change a CR's approval status, issue a VO, or change contract values. Enforced in the backend and covered by tests.
+NFR-16 Configurability: every threshold (unit rate deviation, policy escalation, reminder delays, legal limits) lives in configuration, each tagged with its source: law, organization policy, or default.
 
-NFR-01 Correctness: all money uses Decimal. The rules module has boundary tests at, below, and above every cap, and full branch coverage of the rules module.
-NFR-02 Traceability: every legal rule references its article and the verbatim source file with the official URL. Ambiguous rules carry needs_legal_review.
-NFR-03 AI boundaries: the model never computes money, percentages, or legal limits. Model output is validated against Pydantic schemas, retried once on failure, then marked failed. Prompts are versioned files in the repo.
-NFR-04 Prompt injection: request text is treated as data inside clear delimiters. Nothing in a request can change state; state changes only happen through role-checked endpoints and human approval.
-NFR-05 Measured quality: report the measured classification accuracy from FR-14. The first run sets the baseline; improvements are reported against it.
-NFR-06 Performance targets: rules evaluation under 200 ms. Agent analysis under 15 s at p95, with visible progress in the UI while it runs.
-NFR-07 Persistence: a managed Postgres database. No state depends on server memory, because Vercel Functions do not keep memory between requests.
-NFR-08 Security: secrets live only in Vercel and local env files, never in git. CORS allows only the production frontend domain and localhost. Request body size limits. Simple rate limit on AI endpoints to protect API credits. Synthetic data only, no real people or real entities.
-NFR-09 Deployment: frontend and backend deployed on Vercel from GitHub. Every push to main deploys automatically. A health endpoint for the backend. A warm-up call before the demo.
-NFR-10 CI: GitHub Actions on every push and pull request runs ruff, pytest, eslint, tsc, and next build. Main must stay green.
-NFR-11 Maintainability: TypeScript strict, Pydantic everywhere on the backend, layered backend (routers, services, repositories, domain). Short decision records in docs/decisions/ for each significant choice.
-NFR-12 Observability: structured logs with a request id. For each AI call, log model, latency, token usage, and validation result.
-NFR-13 Accessibility and language: correct RTL layout, an Arabic web font with a real fallback stack, WCAG AA contrast, keyboard navigable main flows.
-NFR-14 Documentation: README with architecture overview, local setup, environment variables, deployment steps, a demo script, and a legal disclaimer that Mithaq assists and does not give legal advice.
+## Open question
+Q1 Base of the unit rate comparison when a PCR adds a new item with no matching contract line: compare with the closest similar line, or require a human-entered market rate? Default until answered: human-entered rate, flagged.

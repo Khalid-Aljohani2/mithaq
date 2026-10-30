@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import change_orders, contracts, demo, health
+from app.routers import change_requests, contracts, demo, health, notifications
 
 settings = get_settings()
 
@@ -23,6 +23,8 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(contracts.router)
-app.include_router(change_orders.contracts_router)
-app.include_router(change_orders.orders_router)
+app.include_router(change_requests.contracts_router)
+app.include_router(change_requests.requests_router)
+app.include_router(change_requests.vo_router)
+app.include_router(notifications.router)
 app.include_router(demo.router)

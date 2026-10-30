@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
-from app.domain.enums import OrderStatus
+from app.domain.enums import CRState
 
 #: Actor recorded for events no party performed, such as the demo reset.
 SYSTEM_ACTOR = "SYSTEM"
@@ -20,10 +20,17 @@ SYSTEM_ACTOR = "SYSTEM"
 class AuditAction(StrEnum):
     """What happened."""
 
-    ORDER_CREATED = "ORDER_CREATED"
-    CONTRACTOR_CONSENTED = "CONTRACTOR_CONSENTED"
-    ORDER_APPROVED = "ORDER_APPROVED"
-    ORDER_REJECTED = "ORDER_REJECTED"
+    # v2 change-request workflow
+    CR_RECEIVED = "CR_RECEIVED"
+    CR_ANALYSED = "CR_ANALYSED"
+    CR_IN_APPROVAL = "CR_IN_APPROVAL"
+    CR_STEP_APPROVED = "CR_STEP_APPROVED"
+    CR_APPROVED = "CR_APPROVED"
+    CR_REJECTED = "CR_REJECTED"
+    CR_REVISION_REQUESTED = "CR_REVISION_REQUESTED"
+    VO_ISSUED = "VO_ISSUED"
+    EXECUTION_STARTED = "EXECUTION_STARTED"
+    CR_CLOSED = "CR_CLOSED"
     DEMO_RESET = "DEMO_RESET"
 
 
@@ -41,6 +48,6 @@ class AuditEvent(BaseModel):
     entity_type: str
     entity_id: str
     contract_id: str
-    previous_state: OrderStatus | None = None
-    new_state: OrderStatus | None = None
+    previous_state: CRState | None = None
+    new_state: CRState | None = None
     reason: str | None = None

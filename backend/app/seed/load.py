@@ -2,33 +2,32 @@
 
     python -m app.seed.load
 
-Inserts the demo contract if it is not already there. Running it twice is safe
-and changes nothing the second time, so it can sit in a deploy step.
+Inserts the demo contracts and change requests if they are not already there.
+Running it twice is safe and changes nothing the second time, so it can sit in
+a deploy step.
 """
 
 import sys
 
 from app.config import get_settings
-from app.repositories.postgres import seed_contract
-from app.seed.demo_contract import build_demo_contract
+from app.repositories.postgres import seed_all
 
 
 def main() -> int:
-    """Load the demo contract. Returns a process exit code."""
+    """Load the demo data. Returns a process exit code."""
     settings = get_settings()
     if not settings.uses_database:
         sys.stderr.write("DATABASE_URL is not set; nothing to seed.\n")
         return 1
 
-    contract = build_demo_contract()
-    inserted = seed_contract(contract)
-    if inserted:
+    inserted = seed_all()
+    if any(inserted.values()):
         sys.stdout.write(
-            f"seeded contract {contract.id} "
-            f"({contract.original_value} SAR, {len(contract.items)} items)\n"
+            f"seeded {inserted['contracts']} contract(s) and "
+            f"{inserted['change_requests']} change request(s)\n"
         )
     else:
-        sys.stdout.write(f"contract {contract.id} already present; nothing to do\n")
+        sys.stdout.write("demo data already present; nothing to do\n")
     return 0
 
 

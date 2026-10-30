@@ -1,0 +1,103 @@
+# Organisation policy and operational defaults (NFR-16).
+#
+# Every threshold in the system lives in configuration tagged with its source:
+#
+#   law                 - imposed by the Government Tenders and Procurement Law.
+#                         Lives in app/regulations/gtpl_2026.yaml, NOT here.
+#                         Blocking. No internal approval can lift it.
+#   organization_policy - this organisation's own rule. Stricter than the law or
+#                         covering ground the law does not. Can be escalated past
+#                         by the role named in `exception_role`.
+#   default             - an operational default with no legal or policy weight.
+#
+# Percentages and money are strings, parsed with Decimal(str), so no binary
+# float touches a threshold (NFR-01).
+
+thresholds:
+  cost_increase:
+    source: organization_policy
+    cap_pct: "20"
+    comparison_operator: lte
+    comparison_note: >-
+      "above 20%" means strictly greater than. A cumulative increase of exactly
+      20% is allowed with no exception.
+    basis: original_contract_value
+    blocking: false
+    exception_role: CEO
+    description_en: >-
+      Cumulative cost increase across approved change requests, as a percentage
+      of the original contract value.
+    description_ar: الزيادة التراكمية في التكلفة كنسبة من قيمة العقد الأصلية.
+
+  time_extension:
+    source: organization_policy
+    cap_pct: "20"
+    comparison_operator: lte
+    basis: original_duration_days
+    blocking: false
+    exception_role: CEO
+    description_en: >-
+      Cumulative time extension across approved change requests, as a percentage
+      of the original contract duration in days.
+    description_ar: التمديد التراكمي للمدة كنسبة من مدة العقد الأصلية.
+
+  unit_rate_deviation:
+    source: organization_policy
+    cap_pct: "20"
+    comparison_operator: lte
+    basis: contract_unit_rate
+    blocking: false
+    exception_role: null
+    description_en: >-
+      A proposed unit rate is flagged when it deviates from the contract unit
+      rate by more than this percentage, in either direction.
+    description_ar: يُعلَّم سعر الوحدة المقترح عند انحرافه عن سعر العقد بأكثر من هذه النسبة.
+
+  finance_approval_value:
+    source: organization_policy
+    cap_value: "200000"
+    currency: SAR
+    blocking: false
+    description_en: >-
+      A cost impact above this value adds the Finance Manager to the approval
+      chain.
+    description_ar: يضيف الأثر المالي الذي يتجاوز هذه القيمة مدير المالية إلى سلسلة الاعتماد.
+
+  minimum_confidence:
+    source: default
+    cap_pct: "70"
+    comparison_operator: gte
+    blocking: false
+    description_en: >-
+      Below this confidence the orchestrator recommends asking the requester
+      rather than acting on an uncertain reading. Expressed as a percentage of
+      the 0-1 confidence an AI stage reports.
+    description_ar: دون هذه الدرجة من الثقة يوصى بالعودة إلى مقدم الطلب بدل البت.
+
+reminders:
+  pending_approval_hours:
+    source: default
+    value: 24
+    description_en: >-
+      An approval step pending longer than this generates a reminder. Computed
+      on request; there is no background job.
+    description_ar: ينشأ تذكير عند تجاوز خطوة الاعتماد هذه المدة دون بت.
+
+  awaiting_documents_hours:
+    source: default
+    value: 48
+    description_en: A change request waiting on documents this long is reminded.
+    description_ar: يُذكَّر الطلب المنتظر للمستندات بعد هذه المدة.
+
+# Q1 in the requirements is open: what a new item's unit rate is compared
+# against when no contract line matches. Until it is answered the system
+# requires a human-entered rate and flags it, which is the documented default.
+new_item_rate_basis:
+  source: default
+  value: human_entered_rate
+  needs_decision: true
+  open_question: Q1
+  description_en: >-
+    For a PCR adding an item with no matching breakdown line, a human must enter
+    the rate and the change request is flagged. The alternative under
+    consideration is comparison against the closest similar line.

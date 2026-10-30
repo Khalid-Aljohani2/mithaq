@@ -18,7 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 from app.dependencies import RepositoryDep, SettingsDep
 from app.domain.audit import SYSTEM_ACTOR, AuditAction, AuditEvent
 from app.schemas.demo import DemoResetResponse
-from app.seed.demo_contract import DEMO_CONTRACT_ID
+from app.seed.demo_contract import DEMO_CONTRACT_ID, build_demo_contracts
 
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
@@ -46,17 +46,19 @@ async def reset_demo(
 
     repo.reset()
     now = datetime.now(UTC)
-    repo.append_audit(
-        AuditEvent(
-            occurred_at=now,
-            actor_role=SYSTEM_ACTOR,
-            action=AuditAction.DEMO_RESET,
-            entity_type="contract",
-            entity_id=DEMO_CONTRACT_ID,
-            contract_id=DEMO_CONTRACT_ID,
-            reason="demo reset",
+    # One event per contract: both baselines were restored.
+    for contract in build_demo_contracts():
+        repo.append_audit(
+            AuditEvent(
+                occurred_at=now,
+                actor_role=SYSTEM_ACTOR,
+                action=AuditAction.DEMO_RESET,
+                entity_type="contract",
+                entity_id=contract.id,
+                contract_id=contract.id,
+                reason="demo reset",
+            )
         )
-    )
     return DemoResetResponse(
         contract_id=DEMO_CONTRACT_ID,
         reset_at=now,

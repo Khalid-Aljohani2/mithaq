@@ -56,7 +56,16 @@ def _ensure_test_database() -> bool:
     except Exception:
         return False
 
+    # The whole schema is dropped, not just the tables SQLAlchemy knows about:
+    # create_all only adds missing tables, and metadata.drop_all cannot remove a
+    # table that has since left the models but still holds a foreign key. Either
+    # would leave the test database on an old shape and fail in a way that looks
+    # like an application bug. This is a dedicated test database, so starting
+    # from empty every session is the honest thing to do.
     engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.execute(text("drop schema public cascade"))
+        connection.execute(text("create schema public"))
     Base.metadata.create_all(engine)
     engine.dispose()
     return True

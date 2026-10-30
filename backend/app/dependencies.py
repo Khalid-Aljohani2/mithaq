@@ -15,6 +15,8 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from app.analysis.provider import AnalysisProvider
+from app.analysis.scripted import ScriptedProvider
 from app.config import Settings, get_settings
 from app.regulations.loader import Limits, get_limits
 from app.repositories.base import ContractRepository
@@ -44,6 +46,22 @@ def reset_repository_cache() -> None:
     _repository_singleton.cache_clear()
 
 
+@lru_cache(maxsize=1)
+def _provider_singleton() -> AnalysisProvider:
+    """The analysis provider.
+
+    Step 4A ships only the scripted one, which replays recorded outputs and
+    doubles as the fallback mode (FR-19). Step 4B adds a live provider behind
+    the same interface; nothing above this function changes.
+    """
+    return ScriptedProvider()
+
+
+def get_provider() -> AnalysisProvider:
+    """Return the process-wide analysis provider."""
+    return _provider_singleton()
+
+
 def get_rule_limits() -> Limits:
     """Return the cached, validated limits from the regulation file."""
     return get_limits()
@@ -51,4 +69,5 @@ def get_rule_limits() -> Limits:
 
 RepositoryDep = Annotated[ContractRepository, Depends(get_repository)]
 LimitsDep = Annotated[Limits, Depends(get_rule_limits)]
+ProviderDep = Annotated[AnalysisProvider, Depends(get_provider)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]

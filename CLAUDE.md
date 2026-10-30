@@ -41,12 +41,26 @@ and asserted to be a substring of it. Rules:
 
 ## Spec of record
 
-**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** governs this build: FR-01 to FR-19
-and NFR-01 to NFR-14, prioritised MUST / SHOULD / WON'T. Read it before starting any
-step. Every later step must satisfy it, and work is judged against it — not against
-what seems reasonable at the time. When a step is reported done, name the requirement
-IDs it satisfies. If a requirement looks wrong or unachievable, say so and wait;
-do not quietly reinterpret or drop it.
+**[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** — now **v2** — governs this build:
+FR-01 to FR-22 and NFR-01 to NFR-16, prioritised MUST / SHOULD / WON'T. Read it
+before starting any step. Every later step must satisfy it, and work is judged
+against it — not against what seems reasonable at the time. When a step is reported
+done, name the requirement IDs it satisfies. If a requirement looks wrong or
+unachievable, say so and wait; do not quietly reinterpret or drop it.
+
+[docs/REQUIREMENTS_v1.md](docs/REQUIREMENTS_v1.md) is superseded and kept only for
+history. **Where v1 and v2 disagree, v2 wins** — v2 renumbered the FRs, so never
+cite an FR id without checking which document it came from.
+
+### The control principle
+
+> AI agents analyse, validate, recommend and prepare documents. Authorised people
+> approve every contractual or financial commitment. The agent never decides; it
+> recommends, explains why, and states the next actions.
+
+This is not advice, it is NFR-15: no code path may let an AI stage change a CR's
+approval status, issue a VO, or alter contract values. It is enforced in the
+backend and covered by tests.
 
 24-hour hackathon MVP. Optimise for a working demo, not for completeness.
 
@@ -85,7 +99,8 @@ ScopeGuardAi/
 │   ├── pyproject.toml         ruff + pytest config
 │   └── .env.example           LLM_PROVIDER, LLM_API_KEY, LLM_MODEL
 ├── docs/
-│   ├── REQUIREMENTS.md        spec of record - FR-01..19, NFR-01..14
+│   ├── REQUIREMENTS.md        spec of record (v2) - FR-01..22, NFR-01..16
+│   ├── REQUIREMENTS_v1.md     superseded, kept for history
 │   ├── MANUAL_STEPS.md        what the human must do by hand (GitHub, DB, Vercel)
 │   └── decisions/             short decision records (NFR-11)
 ├── docker-compose.yml         local Postgres for dev and tests

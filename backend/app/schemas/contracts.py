@@ -37,7 +37,7 @@ class ContractSummary(BaseModel):
             currency=currency,
             start_date=contract.start_date,
             end_date=contract.end_date,
-            item_count=len(contract.items),
+            item_count=len(contract.breakdown),
         )
 
 
