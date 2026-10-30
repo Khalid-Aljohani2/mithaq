@@ -81,6 +81,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly detail: string,
+    /** Articles a refusal rests on, when the backend refused under the law. */
+    readonly articles: string[] = [],
   ) {
     super(detail || code || `HTTP ${status}`);
     this.name = "ApiError";
@@ -88,27 +90,40 @@ export class ApiError extends Error {
 }
 
 /** Read FastAPI's `detail`: a string, a `{code, message}` object, or a list. */
-function readDetail(body: unknown): { code: string; detail: string } {
+function readDetail(body: unknown): {
+  code: string;
+  detail: string;
+  articles: string[];
+} {
+  const none = { code: "", detail: "", articles: [] };
   if (typeof body !== "object" || body === null || !("detail" in body)) {
-    return { code: "", detail: "" };
+    return none;
   }
   const detail = body.detail;
-  if (typeof detail === "string") return { code: "", detail };
+  if (typeof detail === "string") return { ...none, detail };
   if (Array.isArray(detail)) {
     const messages = detail.map((item: unknown) =>
       typeof item === "object" && item !== null && "msg" in item
         ? String(item.msg)
         : "",
     );
-    return { code: "VALIDATION", detail: messages.filter(Boolean).join("; ") };
+    return {
+      code: "VALIDATION",
+      detail: messages.filter(Boolean).join("; "),
+      articles: [],
+    };
   }
   if (typeof detail === "object" && detail !== null) {
     return {
       code: "code" in detail ? String(detail.code) : "",
       detail: "message" in detail ? String(detail.message) : "",
+      articles:
+        "articles" in detail && Array.isArray(detail.articles)
+          ? detail.articles.map(String)
+          : [],
     };
   }
-  return { code: "", detail: "" };
+  return none;
 }
 
 async function request<T>(
@@ -135,8 +150,8 @@ async function request<T>(
 
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);
-    const { code, detail } = readDetail(body);
-    throw new ApiError(response.status, code, detail);
+    const { code, detail, articles } = readDetail(body);
+    throw new ApiError(response.status, code, detail, articles);
   }
   return (await response.json()) as T;
 }

@@ -31,6 +31,7 @@ from app.schemas.policy import (
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SUMMARY_PATH = REPO_ROOT / "docs" / "eval" / "summary.json"
+CASES_PATH = pathlib.Path(__file__).resolve().parents[1] / "eval" / "cases.jsonl"
 
 #: USD per million tokens, verified 2026-10-30 against the official pricing
 #: page and recorded in SOURCES.md. Haiku is published as *from* these rates,
@@ -65,6 +66,20 @@ def cost_usd(model: str, input_tokens: int, output_tokens: int) -> Decimal | Non
     return total.quantize(_CENTS4, rounding=ROUND_HALF_UP)
 
 
+def split_size(split: str, cases_path: pathlib.Path = CASES_PATH) -> int:
+    """How many cases a split holds, counted from the case file.
+
+    Read from the file rather than from a run, so the dev count can be
+    published without re-running anything against the dev split - and so it
+    stays right if a run was limited with ``--limit``.
+    """
+    return sum(
+        1
+        for line in cases_path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and json.loads(line)["split"] == split
+    )
+
+
 def _pct(value: float) -> Decimal:
     return Decimal(str(value)).quantize(_PCT, rounding=ROUND_HALF_UP)
 
@@ -92,6 +107,7 @@ def build_summary(report: dict[str, Any]) -> EvalSummaryResponse:
         split=meta["split"],
         provider=meta["provider"],
         case_count=summary["cases"],
+        dev_case_count=split_size("dev"),
         prompt_versions=meta["prompt_versions"],
         overall_accuracy_pct=_pct(accuracy["recommendation"]),
         audited_accuracy_pct=_pct(audited_accuracy["recommendation"]),

@@ -333,3 +333,74 @@ test(`variation order prints on one A4 page (${label})`, async ({ page }) => {
   await page.screenshot({ path: path.join(OUT, `${file}-print-a4.png`), fullPage: true });
 });
 }
+
+/**
+ * The salami preset, captured last because it resets the backend.
+ *
+ * Everything above runs against the plain seed. These two screens need the
+ * government contract pushed to 945,000 of its 960,000 Article 67 ceiling,
+ * which `POST /api/demo/reset?preset=salami` builds by driving the real
+ * service functions. Keep this block at the end of the file: with
+ * `workers: 1` and `fullyParallel: false` Playwright runs tests in
+ * declaration order, so anything added after it would see a reset backend.
+ */
+test.describe.serial("salami preset", () => {
+  const TOKEN = process.env.SCREENS_DEMO_TOKEN ?? "screens-demo-token";
+  let awaitingFinal = "";
+  let finalStep: Persona = GOV_PM;
+
+  test.beforeAll(async () => {
+    const api = await apiRequest.newContext({ baseURL: API });
+    const res = await api.post("/api/demo/reset?preset=salami", {
+      headers: { "X-Demo-Token": TOKEN },
+    });
+    expect(res.ok(), `preset reset: ${await res.text()}`).toBeTruthy();
+    const detail = (await res.json()).preset_detail;
+    awaitingFinal = String(detail.awaiting_final_signature_id);
+
+    const body = await (await api.get(`/api/change-requests/${awaitingFinal}`)).json();
+    type Step = { party: string; role: string; decision: string };
+    const pending = (body.chain as Step[]).find((s) => s.decision === "PENDING");
+    expect(pending, "the preset must leave one signature outstanding").toBeTruthy();
+    finalStep = { party: pending!.party as Persona["party"], role: pending!.role };
+    await api.dispose();
+  });
+
+  test("limits page near the Article 67 ceiling", async ({ page }) => {
+    for (const { width, scheme } of VARIANTS) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/contracts/${GOV}/limits`);
+      await page.getByText("أوامر التغيير المعتمدة").first().waitFor();
+      // The meter has to actually read 945,000, or the screen proves nothing.
+      await expect(page.getByText("945,000").first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({
+        path: path.join(OUT, `limits-near-cap-${width}-${scheme}.png`),
+        fullPage: true,
+      });
+    }
+  });
+
+  test("case file after the final signature is refused", async ({ page }) => {
+    for (const { width, scheme } of VARIANTS) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript((persona) => {
+        window.localStorage.setItem("mithaqai.persona", JSON.stringify(persona));
+      }, finalStep);
+      await page.goto(caseUrl(GOV, awaitingFinal));
+      await page.getByText("التوقيع باسم").first().waitFor();
+      await page.getByLabel("التوقيع باسم").fill("أ. سلمان العمري");
+      await page.getByRole("button", { name: "اعتماد", exact: true }).click();
+      // Refused, in Arabic, naming the article it was refused under.
+      await expect(page.getByText(/حدًا نظاميًا تراكميًا/)).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText(/Article 67/).first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({
+        path: path.join(OUT, `case-refused-at-final-${width}-${scheme}.png`),
+        fullPage: true,
+      });
+    }
+  });
+});

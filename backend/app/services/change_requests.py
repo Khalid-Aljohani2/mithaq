@@ -26,6 +26,7 @@ from app.domain.change_request import (
     StageResult,
     VariationOrder,
 )
+from app.domain.durations import waited_phrase
 from app.domain.enums import (
     PENDING_STATUSES,
     ActorType,
@@ -1010,7 +1011,7 @@ def document_reminders_for(
         asked_at = _asked_for_documents_at(repo, request)
         if asked_at is None or asked_at > cutoff:
             continue
-        waiting_hours = int((now - asked_at).total_seconds() // 3600)
+        waited_ar, waited_en = waited_phrase(int((now - asked_at).total_seconds() // 3600))
         reminders.append(
             Notification(
                 cr_id=request.id,
@@ -1019,12 +1020,10 @@ def document_reminders_for(
                 role=role,
                 kind=NotificationKind.DOCUMENTS_REMINDER,
                 message_ar=(
-                    f"تذكير: الطلب {request.id} بانتظار المستندات المطلوبة "
-                    f"منذ {waiting_hours} ساعة."
+                    f"تذكير: الطلب {request.id} بانتظار المستندات المطلوبة منذ {waited_ar}."
                 ),
                 message_en=(
-                    f"Reminder: {request.id} has been awaiting its documents "
-                    f"for {waiting_hours} hours."
+                    f"Reminder: {request.id} has been awaiting its documents for {waited_en}."
                 ),
                 created_at=now,
                 is_reminder=True,
@@ -1053,7 +1052,7 @@ def reminders_for(
             continue
         if current_step(tuple(repo.list_approval_steps(step.cr_id))) != step:
             continue
-        waiting_hours = int((now - step.created_at).total_seconds() // 3600)
+        waited_ar, waited_en = waited_phrase(int((now - step.created_at).total_seconds() // 3600))
         reminders.append(
             Notification(
                 cr_id=step.cr_id,
@@ -1061,10 +1060,9 @@ def reminders_for(
                 party=party,
                 role=role,
                 kind=NotificationKind.APPROVAL_REMINDER,
-                message_ar=f"تذكير: الطلب {step.cr_id} بانتظار اعتمادكم منذ {waiting_hours} ساعة.",
+                message_ar=(f"تذكير: الطلب {step.cr_id} بانتظار اعتمادكم منذ {waited_ar}."),
                 message_en=(
-                    f"Reminder: {step.cr_id} has been awaiting your approval "
-                    f"for {waiting_hours} hours."
+                    f"Reminder: {step.cr_id} has been awaiting your approval for {waited_en}."
                 ),
                 created_at=now,
                 is_reminder=True,
@@ -1073,15 +1071,64 @@ def reminders_for(
     return reminders
 
 
+#: Notification kinds that ask the reader to do something, with the question
+#: that decides whether it is still outstanding.
+_ASKS: dict[NotificationKind, str] = {
+    NotificationKind.APPROVAL_PENDING: "approval",
+    NotificationKind.DOCUMENTS_REQUIRED: "documents",
+}
+
+
+def _still_outstanding(
+    repo: ContractRepository, notification: Notification, party: Party, role: Role
+) -> bool:
+    """Whether the thing a notification asked for is still being waited on.
+
+    An inbox is a worklist, not a transcript. A notice saying "your approval is
+    required" that stays in the list after the step has been decided makes the
+    reader's queue permanently wrong - every request they have ever approved
+    still counting as something to do. What was asked and when is kept in the
+    audit log, which is the place for history.
+
+    Computed rather than stored: there is no "mark as read" to go stale, and
+    the answer is always the current state of the request.
+    """
+    ask = _ASKS.get(notification.kind)
+    if ask is None:
+        return True
+
+    request = repo.get_change_request(notification.cr_id)
+    if request is None:
+        return True
+
+    if ask == "documents":
+        return request.state is CRState.AWAITING_DOCUMENTS
+
+    # An approval is outstanding only while this party and role still have a
+    # pending step on this request.
+    if request.state is not CRState.IN_APPROVAL:
+        return False
+    step = current_step(tuple(repo.list_approval_steps(notification.cr_id)))
+    return step is not None and step.party is party and step.role is role
+
+
 def notifications_for(
     repo: ContractRepository, party: Party, role: Role, now: datetime | None = None
 ) -> list[Notification]:
-    """Stored notifications plus freshly computed reminders (FR-11)."""
+    """Stored notifications plus freshly computed reminders (FR-11).
+
+    Notices whose ask has been answered are left out: see
+    :func:`_still_outstanding`.
+    """
     at = now or datetime.now(UTC)
     return [
         *reminders_for(repo, party, role, at),
         *document_reminders_for(repo, party, role, at),
-        *repo.list_notifications(party, role),
+        *[
+            notification
+            for notification in repo.list_notifications(party, role)
+            if _still_outstanding(repo, notification, party, role)
+        ],
     ]
 
 

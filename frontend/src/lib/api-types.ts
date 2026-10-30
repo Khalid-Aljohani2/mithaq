@@ -1021,6 +1021,11 @@ export interface components {
              */
             case_count: number;
             /**
+             * Dev Case Count
+             * @default 0
+             */
+            dev_case_count: number;
+            /**
              * Prompt Versions
              * @default {}
              */

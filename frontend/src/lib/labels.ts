@@ -213,6 +213,23 @@ export function errorMessage(error: unknown): string {
         return "الطلب ليس في مسار الاعتماد الآن. أعد تحميل الصفحة لرؤية حالته.";
       case "NO_CHAIN":
         return "لا توجد سلسلة اعتماد لهذا الطلب. حلّل الطلب أولًا.";
+      case "LEGAL_CAP_EXCEEDED": {
+        // The one refusal no internal approval can lift, so it says which
+        // provision it rests on rather than only that it was refused.
+        const refs = error.articles.length
+          ? ` (${error.articles.join("، ")})`
+          : "";
+        return (
+          "تعذّر إتمام الاعتماد: الاعتماد الآن يتجاوز حدًا نظاميًا تراكميًا" +
+          `${refs}. لا يرفع هذا الحد أي اعتماد داخلي، وقد أُحيل الطلب للمراجعة النظامية.`
+        );
+      }
+      case "WRONG_PARTY":
+        return "هذا الإجراء يخص الطرف الذي قدّم الطلب. بدّل الجهة من أعلى الصفحة.";
+      case "NOT_AWAITING_DOCUMENTS":
+        return "الطلب ليس بانتظار مستندات الآن. أعد تحميل الصفحة لرؤية حالته.";
+      case "NOT_PRICED":
+        return "لم تُحتسب قيم الطلب بعد. أعد تحليل الطلب قبل بدء الاعتماد.";
       case "CHAIN_COMPLETE":
         return "اكتملت سلسلة الاعتماد بالفعل.";
       case "CR_NOT_FOUND":

@@ -5,6 +5,7 @@
   "split": "test",
   "provider": "anthropic+scripted",
   "case_count": 25,
+  "dev_case_count": 15,
   "prompt_versions": {
     "INTAKE": "v3",
     "SCOPE_ANALYSIS": "v2",

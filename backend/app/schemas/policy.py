@@ -90,6 +90,10 @@ class EvalSummaryResponse(BaseModel):
     split: str = ""
     provider: str = ""
     case_count: int = 0
+    #: How many cases the dev split holds. Published beside the test count so a
+    #: reader can see the split discipline the numbers rest on: prompts were
+    #: tuned on these and the test split was not opened until they were final.
+    dev_case_count: int = 0
     prompt_versions: dict[str, str] = {}
     #: Recommendation accuracy under the original labels - the headline figure.
     overall_accuracy_pct: Decimal | None = None

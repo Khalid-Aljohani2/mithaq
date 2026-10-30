@@ -56,6 +56,7 @@ export default function EvaluationPage() {
 
 function Report({ s }: { s: EvalSummaryResponse }) {
   const n = s.case_count ?? 0;
+  const dev = s.dev_case_count ?? 0;
   const fields = [...(s.fields ?? [])].sort(
     (a, b) => (FIELD[a.field]?.stage ?? 99) - (FIELD[b.field]?.stage ?? 99),
   );
@@ -213,8 +214,9 @@ function Report({ s }: { s: EvalSummaryResponse }) {
           </li>
           <li>
             <span className="font-semibold">فصل الضبط عن الاختبار. </span>
-            ضُبطت التعليمات على مجموعة التطوير وحدها، ولم تُفتح مجموعة الاختبار (
-            {formatNumber(n)} طلبًا) إلا بعد آخر تعديل.
+            ضُبطت التعليمات على مجموعة التطوير ({formatNumber(dev)} طلبًا) وحدها، ولم
+            تُفتح مجموعة الاختبار ({formatNumber(n)} طلبًا) إلا بعد آخر تعديل، ولم
+            يُغيَّر شيء بعد تشغيلها.
           </li>
           <li>
             <span className="font-semibold">نسخة التعليمات المقيسة. </span>

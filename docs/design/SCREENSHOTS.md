@@ -14,6 +14,7 @@ replay recorded outputs, so every run produces the same screens.
 cd ..\ScopeGuardAi\backend
 $env:DATABASE_URL = ""; $env:LLM_PROVIDER = "scripted"; $env:ALLOWED_ORIGINS = "http://localhost:3010"
 $env:REMINDER_PENDING_APPROVAL_HOURS = "0"   # reminders show at once, for the drawer screen
+$env:DEMO_RESET_TOKEN = "screens-demo-token" # the salami preset screens need the reset endpoint
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8010
 
 # Terminal 2: this worktree's frontend, built against that backend.
@@ -26,6 +27,10 @@ cd frontend
 npx playwright install chromium   # once
 npm run screens
 ```
+
+The last block in the suite applies the `salami` demo preset, which resets the
+backend and rebuilds the government contract at 945,000 of its 960,000 ceiling.
+It is deliberately last; anything added after it would see a reset backend.
 
 Restart the backend before each run. The suite moves the seeded requests into
 a spread of states through the real API: CR-C through its whole chain and its
