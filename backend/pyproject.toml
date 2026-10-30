@@ -13,6 +13,9 @@ select = ["E", "F", "I", "B", "UP", "N", "ANN"]
 # The docstring holds an ASCII reference table of the contract breakdown;
 # wrapping it would make it unreadable, which is the opposite of the point.
 "eval/build_cases.py" = ["E501"]
+# Prompt generators embed markdown tables as string literals; wrapping them
+# would corrupt the table the model actually reads.
+"scripts/write_prompts*.py" = ["E501"]
 # Test helpers legitimately take **kwargs of mixed type.
 "tests/*.py" = ["ANN401"]
 

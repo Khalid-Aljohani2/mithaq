@@ -13,7 +13,11 @@ import anthropic
 import pytest
 from pydantic import BaseModel
 
-from app.analysis.anthropic_provider import AnthropicProvider, ProviderCallFailedError
+from app.analysis.anthropic_provider import (
+    AnthropicProvider,
+    ProviderCallFailedError,
+    payload_schema,
+)
 from app.analysis.fallback import FallbackProvider, NoProviderAvailableError, build_provider
 from app.analysis.schemas import (
     BreakdownLineView,
@@ -25,7 +29,13 @@ from app.analysis.schemas import (
 from app.analysis.scripted import ScriptedProvider
 from app.config import Settings
 from app.domain.enums import ChangeKind, ImpactType
-from app.prompts import REQUEST_BEGIN, REQUEST_END, load_prompt, wrap_request
+from app.prompts import (
+    REQUEST_BEGIN,
+    REQUEST_END,
+    load_prompt,
+    prompt_version,
+    wrap_request,
+)
 from app.seed.demo_requests import TEXT_PCR_SMALL
 
 
@@ -136,7 +146,29 @@ def test_schema_is_passed_as_output_format() -> None:
     """NFR-03: structured output, not prose the caller has to parse."""
     provider, client = make([FakeResponse(intake_payload())])
     provider.intake(IntakeInput(cr_id="CR-1", body_ar=TEXT_PCR_SMALL))
-    assert client.messages.calls[0]["output_format"] is IntakeOutput
+    schema = client.messages.calls[0]["output_format"]
+    assert schema is payload_schema(IntakeOutput)
+    # Every semantic field survives...
+    assert "impact_type" in schema.model_fields
+    assert "confidence" in schema.model_fields
+
+
+def test_the_model_is_not_asked_for_envelope_fields() -> None:
+    """``provider`` and ``recorded`` are the system's, not the model's.
+
+    Leaving them in the schema wasted output tokens and produced nonsense -
+    one early run returned ``"provider": "scope_analysis"``.
+    """
+    for output_type in (IntakeOutput, ScopeOutput):
+        fields = payload_schema(output_type).model_fields
+        assert "provider" not in fields
+        assert "recorded" not in fields
+
+
+def test_payload_schema_tracks_the_real_schema() -> None:
+    """Derived, not hand-written, so a new field cannot be forgotten."""
+    expected = set(ScopeOutput.model_fields) - {"provider", "recorded"}
+    assert set(payload_schema(ScopeOutput).model_fields) == expected
 
 
 def test_effort_is_only_sent_when_configured() -> None:
@@ -226,6 +258,25 @@ def test_a_transient_api_error_is_retried() -> None:
     assert len(client.messages.calls) == 2
 
 
+def test_a_truncated_response_is_retried_not_raised() -> None:
+    """The SDK validates inside parse(), so truncation raises there.
+
+    Before this was caught, the likeliest real failure bypassed the retry
+    path entirely and surfaced as an unhandled ValidationError.
+    """
+    from pydantic import ValidationError
+
+    try:
+        IntakeOutput.model_validate_json('{"truncated": ')
+    except ValidationError as truncation:
+        boom = truncation
+
+    provider, client = make([boom, FakeResponse(intake_payload())])
+    result = provider.intake(IntakeInput(cr_id="CR-1", body_ar=TEXT_PCR_SMALL))
+    assert result.confidence == Decimal("0.9")
+    assert len(client.messages.calls) == 2
+
+
 def test_a_bad_request_is_not_retried() -> None:
     """A 400 fails identically on a retry; spending a second call is waste."""
     bad = anthropic.BadRequestError("bad", response=_FakeHttpResponse(400), body=None)
@@ -260,7 +311,7 @@ def test_each_call_logs_stage_model_latency_tokens_and_validation(
     assert record.input_tokens == 1200
     assert record.output_tokens == 140
     assert record.validation == "valid"
-    assert record.prompt_version == "v1"
+    assert record.prompt_version == prompt_version("INTAKE")
 
 
 def test_logs_never_contain_the_key_or_the_request_body(
@@ -350,7 +401,7 @@ def test_scope_output_round_trips_through_the_schema() -> None:
         )
     )
     assert result.kind is ChangeKind.PCR
-    assert client.messages.calls[0]["output_format"] is ScopeOutput
+    assert client.messages.calls[0]["output_format"] is payload_schema(ScopeOutput)
 
 
 # ---------------------------------------------------------------------------

@@ -18,6 +18,12 @@ TEST_DATABASE_URL = os.environ.setdefault(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["DEMO_RESET_TOKEN"] = "test-demo-token"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
+# Tests must never reach the network, whatever the developer's .env says. With
+# LLM_PROVIDER=anthropic set for a live eval run, build_provider would hand the
+# suite the real provider: slow, non-deterministic, and billed. Forcing it empty
+# pins every test to the scripted provider. The live test opts back in via
+# MITHAQ_LIVE_AI and constructs its own client.
+os.environ["LLM_PROVIDER"] = ""
 
 from collections.abc import Iterator  # noqa: E402
 

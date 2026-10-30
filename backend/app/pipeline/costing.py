@@ -188,7 +188,7 @@ def compute_impact(
         )
 
     if scope.kind is ChangeKind.SUBSTITUTION:
-        if not scope.matched_line_ids or scope.quantity_delta is None:
+        if not scope.matched_line_ids:
             raise CostingError(
                 "LINE_REQUIRED", "a substitution must name the breakdown line it replaces"
             )
@@ -199,7 +199,17 @@ def compute_impact(
             )
         line_id = scope.matched_line_ids[0]
         contract_rate = _require_line(contract, line_id)
+        # A substitution usually replaces the whole line ("same number, different
+        # product") and the request states no figure. The analysis is never shown
+        # contract quantities, so it cannot supply one either - code reads the
+        # contracted quantity instead of demanding a number nobody has.
         quantity = scope.quantity_delta
+        if quantity is None:
+            line = contract.line(line_id)
+            quantity = line.quantity if line else Decimal("0")
+            notes.append(
+                f"No quantity stated; substituting the full contracted quantity of {line_id}."
+            )
         removed = quantity * contract_rate
         added = quantity * request.human_entered_unit_rate
         rate_checks.append(check_unit_rate(line_id, contract_rate, request.human_entered_unit_rate))

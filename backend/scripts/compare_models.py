@@ -25,6 +25,22 @@ MODELS = [
     "claude-fable-5-1",
 ]
 
+#: USD per million tokens, (input, output). Taken from the models overview page
+#: on 2026-10-30 and recorded in SOURCES.md. Haiku is listed as "from" these
+#: rates, so its figure is a floor rather than an exact charge.
+PRICES: dict[str, tuple[float, float]] = {
+    "claude-haiku-5-5": (0.10, 0.50),
+    "claude-sonnet-5-5": (2.00, 10.00),
+    "claude-opus-5-5": (4.00, 20.00),
+    "claude-fable-5-1": (10.00, 50.00),
+}
+
+
+def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
+    """What this run actually cost, from the verified prices."""
+    rate_in, rate_out = PRICES.get(model, (0.0, 0.0))
+    return input_tokens / 1_000_000 * rate_in + output_tokens / 1_000_000 * rate_out
+
 
 def run_one(model: str) -> pathlib.Path:
     """Run the test split on one model and return its result file."""
@@ -43,17 +59,18 @@ def comparison_table(reports: list[dict]) -> str:
     """The table the comparison is for."""
     header = (
         "| model | recommendation | scope | kind | matched lines | technical | "
-        "injection | median ms | p95 ms | in tok | out tok |\n"
-        "|---|---|---|---|---|---|---|---|---|---|---|"
+        "injection | median ms | p95 ms | in tok | out tok | cost USD |\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|---|"
     )
     rows = []
     for report in reports:
+        model = report["meta"]["model"]
         accuracy = report["summary"]["accuracy_pct"]
         injection = report["summary"]["injection"]
         latency = report["summary"]["latency_ms"]
         tokens = report["tokens"]
         rows.append(
-            f"| `{report['meta']['model']}` "
+            f"| `{model}` "
             f"| {accuracy['recommendation']}% "
             f"| {accuracy['in_scope']}% "
             f"| {accuracy['kind']}% "
@@ -63,7 +80,8 @@ def comparison_table(reports: list[dict]) -> str:
             f"| {latency['median']} "
             f"| {latency['p95']} "
             f"| {tokens['input_tokens']} "
-            f"| {tokens['output_tokens']} |"
+            f"| {tokens['output_tokens']} "
+            f"| ${cost_usd(model, tokens['input_tokens'], tokens['output_tokens']):.4f} |"
         )
     return header + "\n" + "\n".join(rows)
 
@@ -115,6 +133,10 @@ def main() -> int:
         f"prompts {reports[0]['meta']['prompt_versions']}.",
         "",
         "25 test cases. Prompts were not tuned on this split.",
+        "",
+        "Cost is computed from the token counts below at the per-model rates "
+        "verified on 2026-10-30 and recorded in SOURCES.md "
+        "(Haiku 5.5 is listed as *from* $0.10/$0.50, so its figure is a floor).",
         "",
         comparison_table(reports),
         "",

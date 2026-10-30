@@ -238,7 +238,12 @@ def run(split: str | None, model: str, limit: int | None) -> dict[str, Any]:
     provider = build_provider(settings)
 
     collector = TokenCollector()
-    logging.getLogger("mithaq.ai").addHandler(collector)
+    ai_logger = logging.getLogger("mithaq.ai")
+    ai_logger.addHandler(collector)
+    # Without this the logger inherits WARNING from root and the ai_call records
+    # never reach the collector, so every run reported zero tokens.
+    previous_level = ai_logger.level
+    ai_logger.setLevel(logging.INFO)
 
     contracts = {c.id: c for c in (build_private_contract(), build_government_contract())}
 
@@ -267,7 +272,8 @@ def run(split: str | None, model: str, limit: int | None) -> dict[str, Any]:
             mark = "ERR "
         sys.stderr.write(f"  [{index:>2}/{len(cases)}] {mark} {case['id']}\n")
 
-    logging.getLogger("mithaq.ai").removeHandler(collector)
+    ai_logger.removeHandler(collector)
+    ai_logger.setLevel(previous_level)
 
     return {
         "meta": {

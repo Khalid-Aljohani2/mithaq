@@ -28,6 +28,7 @@ from app.analysis.schemas import (
     VODraftOutput,
 )
 from app.domain.enums import ChangeKind, ImpactType
+from app.prompts import all_versions
 from eval.run import CASES_PATH, load_cases, run, summarise
 
 CASES = load_cases(None)
@@ -226,7 +227,10 @@ def test_report_records_model_split_commit_and_prompt_versions(stub) -> None:  #
     assert meta["model"] == "claude-opus-5-5"
     assert meta["split"] == "dev"
     assert meta["git_commit"]
-    assert meta["prompt_versions"]["INTAKE"] == "v1"
+    # Pinned to the registry, not a literal: a prompt bump is a normal event
+    # and must not fail a harness test.
+    assert meta["prompt_versions"] == all_versions()
+    assert meta["prompt_versions"]["INTAKE"].startswith("v")
     assert meta["run_at"]
 
 

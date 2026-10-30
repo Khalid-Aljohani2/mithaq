@@ -51,7 +51,10 @@ class Settings(BaseSettings):
     #: SDK-level retries for connection errors, 429 and 5xx. The one retry on a
     #: schema-invalid response is separate and lives in the provider (NFR-03).
     llm_max_retries: int = 2
-    llm_max_tokens: int = 4096
+    #: Shared by thinking and output on an adaptive-thinking model, so it has
+    #: to be generous: at 4096 the reasoning consumed the budget and the JSON
+    #: truncated mid-string.
+    llm_max_tokens: int = 16000
 
     # ---- Rate limiting (NFR-08) ----
     #: Requests per window per client IP against the AI endpoints. 0 disables.
