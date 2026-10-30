@@ -13,6 +13,7 @@ from app.dependencies import ProviderDep, RepositoryDep
 from app.domain.models import CURRENCY
 from app.schemas.change_requests import (
     AnalysisResponse,
+    AttachmentsInput,
     ChangeRequestListResponse,
     ChangeRequestResponse,
     DecisionInput,
@@ -98,14 +99,43 @@ async def list_change_requests(contract_id: str, repo: RepositoryDep) -> ChangeR
 
 @requests_router.get("/{cr_id}", response_model=ChangeRequestResponse)
 async def get_change_request(cr_id: str, repo: RepositoryDep) -> ChangeRequestResponse:
-    """One change request with its approval chain."""
+    """One change request with its approval chain and its VO, if it has one."""
     request = _require(repo, cr_id)
-    return ChangeRequestResponse(request=request, chain=repo.list_approval_steps(cr_id))  # type: ignore[arg-type]
+    vo = repo.get_variation_order_for_request(cr_id)
+    return ChangeRequestResponse(
+        request=request,  # type: ignore[arg-type]
+        chain=repo.list_approval_steps(cr_id),
+        variation_order_id=vo.id if vo else None,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Stages 1-7 (FR-04 to FR-09)
 # ---------------------------------------------------------------------------
+
+
+@requests_router.post("/{cr_id}/attachments", response_model=ChangeRequestResponse)
+async def replace_attachments(
+    cr_id: str, payload: AttachmentsInput, repo: RepositoryDep
+) -> ChangeRequestResponse:
+    """Answer a gap list with the documents now on file (FR-04).
+
+    A human action by the side that raised the request. It analyses nothing:
+    the caller re-runs ``/analyse`` when the file is ready.
+    """
+    try:
+        request = svc.replace_attachments(
+            repo,
+            cr_id,
+            payload.party,
+            payload.role,
+            payload.submitted_by,
+            tuple(payload.attachments),
+            datetime.now(UTC),
+        )
+    except svc.WorkflowError as error:
+        raise _http(error) from error
+    return ChangeRequestResponse(request=request, chain=repo.list_approval_steps(cr_id))
 
 
 @requests_router.post("/{cr_id}/analyse", response_model=AnalysisResponse)
@@ -203,6 +233,18 @@ async def issue_variation_order(
         raise _http(error) from error
     request = repo.get_change_request(cr_id)
     return VariationOrderResponse(variation_order=vo, request=request)  # type: ignore[arg-type]
+
+
+@vo_router.get("/{vo_id}", response_model=VariationOrderResponse)
+async def get_variation_order(vo_id: str, repo: RepositoryDep) -> VariationOrderResponse:
+    """One variation order with the change request it was issued for."""
+    vo = repo.get_variation_order(vo_id)
+    if vo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "VO_NOT_FOUND", "message": f"variation order {vo_id} not found"},
+        )
+    return VariationOrderResponse(variation_order=vo, request=repo.get_change_request(vo.cr_id))  # type: ignore[arg-type]
 
 
 @contracts_router.get("/{contract_id}/variation-orders", response_model=VariationOrderListResponse)

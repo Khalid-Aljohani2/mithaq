@@ -23,6 +23,7 @@ class AuditAction(StrEnum):
     # v2 change-request workflow
     CR_RECEIVED = "CR_RECEIVED"
     CR_ANALYSED = "CR_ANALYSED"
+    CR_DOCUMENTS_SUPPLIED = "CR_DOCUMENTS_SUPPLIED"
     CR_IN_APPROVAL = "CR_IN_APPROVAL"
     CR_STEP_APPROVED = "CR_STEP_APPROVED"
     CR_APPROVED = "CR_APPROVED"
@@ -42,8 +43,16 @@ class AuditEvent(BaseModel):
     #: Assigned by the store on insert; None before it is written.
     id: int | None = None
     occurred_at: datetime
-    #: A ``Party`` value, or ``SYSTEM`` for events no party performed.
+    #: What the actor was acting *as*: a ``Role``, an ``ActorType`` for the
+    #: agent's own moves, or ``SYSTEM``.
     actor_role: str
+    #: Which side of the contract acted, when a side did. ``None`` for the
+    #: agent's own moves and for system events - a role alone does not say
+    #: whether the entity or the contractor took the action, and on a shared
+    #: ledger that is the first thing a reader needs (FR-13).
+    actor_party: str | None = None
+    #: The person named at the time. ``None`` where no person was involved.
+    actor_name: str | None = None
     action: AuditAction
     entity_type: str
     entity_id: str

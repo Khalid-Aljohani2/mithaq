@@ -177,11 +177,34 @@ export interface paths {
         };
         /**
          * Get Change Request
-         * @description One change request with its approval chain.
+         * @description One change request with its approval chain and its VO, if it has one.
          */
         get: operations["get_change_request_api_change_requests__cr_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/change-requests/{cr_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace Attachments
+         * @description Answer a gap list with the documents now on file (FR-04).
+         *
+         *     A human action by the side that raised the request. It analyses nothing:
+         *     the caller re-runs ``/analyse`` when the file is ready.
+         */
+        post: operations["replace_attachments_api_change_requests__cr_id__attachments_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -290,6 +313,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/variation-orders/{vo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Variation Order
+         * @description One variation order with the change request it was issued for.
+         */
+        get: operations["get_variation_order_api_variation_orders__vo_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/variation-orders/{vo_id}/execution": {
         parameters: {
             query?: never;
@@ -326,6 +369,70 @@ export interface paths {
          *     it to appear.
          */
         get: operations["list_notifications_api_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/policy/required-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Required Documents
+         * @description The stage 2 checklist, keyed by impact type (FR-04).
+         *
+         *     The UI uses this to show a requester what a cost-bearing request will need
+         *     *before* they submit it, rather than after stage 2 sends it back. It is the
+         *     same table stage 2 compares against, read from the same place.
+         */
+        get: operations["required_documents_api_policy_required_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/policy/thresholds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thresholds
+         * @description Every configured threshold with the source that justifies it (NFR-16).
+         */
+        get: operations["thresholds_api_policy_thresholds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eval Summary
+         * @description How the pipeline scored on the held-out test split, as published.
+         */
+        get: operations["eval_summary_api_eval_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -422,11 +529,27 @@ export interface components {
             created_at: string;
         };
         /**
+         * AttachmentsInput
+         * @description The documents a requester supplies against a gap list (FR-04).
+         *
+         *     The list replaces what is on file, so an empty list is a meaningful (if
+         *     unhelpful) answer rather than a no-op, and is accepted: stage 2 will simply
+         *     find the same gaps again.
+         */
+        AttachmentsInput: {
+            party: components["schemas"]["Party"];
+            role: components["schemas"]["Role"];
+            /** Submitted By */
+            submitted_by: string;
+            /** Attachments */
+            attachments?: string[];
+        };
+        /**
          * AuditAction
          * @description What happened.
          * @enum {string}
          */
-        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET";
+        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_DOCUMENTS_SUPPLIED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET";
         /**
          * AuditEvent
          * @description One immutable entry in the audit log.
@@ -441,6 +564,10 @@ export interface components {
             occurred_at: string;
             /** Actor Role */
             actor_role: string;
+            /** Actor Party */
+            actor_party?: string | null;
+            /** Actor Name */
+            actor_name?: string | null;
             action: components["schemas"]["AuditAction"];
             /** Entity Type */
             entity_type: string;
@@ -497,6 +624,50 @@ export interface components {
          * @enum {string}
          */
         CRState: "RECEIVED" | "AWAITING_DOCUMENTS" | "IN_ANALYSIS" | "RECOMMENDED" | "IN_APPROVAL" | "REVISION_REQUESTED" | "REJECTED" | "CLOSED_IN_SCOPE" | "APPROVED" | "VO_ISSUED" | "IN_EXECUTION" | "CLOSED";
+        /**
+         * CapLine
+         * @description One limit as the ledger reports it: the cap, what is used, what is left.
+         *
+         *     This is the policy layer's answer to :class:`UsageSnapshot`, which covers
+         *     the legal layer. They are kept apart on purpose: a reader has to be able to
+         *     tell at a glance whether a number can be escalated past, and ``source`` is
+         *     what says so (NFR-16).
+         */
+        CapLine: {
+            /** Scope */
+            scope: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "law" | "organization_policy" | "default";
+            /** Blocking */
+            blocking: boolean;
+            /** Exception Role */
+            exception_role: string | null;
+            /** Unit */
+            unit: string;
+            /** Cap Pct */
+            cap_pct: string;
+            /** Cap Value */
+            cap_value: string;
+            /** Used Value */
+            used_value: string;
+            /** Used Pct */
+            used_pct: string;
+            /** Pending Value */
+            pending_value: string;
+            /** Pending Pct */
+            pending_pct: string;
+            /** Headroom Value */
+            headroom_value: string;
+            /** Headroom Pct */
+            headroom_pct: string;
+            /** Description Ar */
+            description_ar: string;
+            /** Description En */
+            description_en: string;
+        };
         /**
          * ChangeCategory
          * @description The kinds of change an order can make to a contract (Article 67).
@@ -660,6 +831,8 @@ export interface components {
             request: components["schemas"]["ChangeRequest"];
             /** Chain */
             chain: components["schemas"]["ApprovalStep"][];
+            /** Variation Order Id */
+            variation_order_id?: string | null;
         };
         /**
          * Contract
@@ -761,6 +934,94 @@ export interface components {
             reset_at: string;
             /** Audit Events Preserved */
             audit_events_preserved: number;
+        };
+        /**
+         * DocumentChecklist
+         * @description What one impact type requires before analysis can proceed (FR-04).
+         */
+        DocumentChecklist: {
+            impact_type: components["schemas"]["ImpactType"];
+            /** Required */
+            required: string[];
+        };
+        /**
+         * EvalStageAccuracy
+         * @description How one AI stage scored on the evaluation set.
+         */
+        EvalStageAccuracy: {
+            /** Stage */
+            stage: string;
+            /** Correct */
+            correct: number;
+            /** Total */
+            total: number;
+            /** Accuracy Pct */
+            accuracy_pct: string;
+        };
+        /**
+         * EvalSummaryResponse
+         * @description The published evaluation result (FR-20).
+         *
+         *     Served from ``docs/eval/summary.json``, which a scored run writes and a
+         *     commit publishes. The API never recomputes it: a number the UI shows must
+         *     be the number that was actually measured, traceable to the commit and the
+         *     prompt versions named here.
+         */
+        EvalSummaryResponse: {
+            /** Available */
+            available: boolean;
+            /**
+             * Generated At
+             * @default
+             */
+            generated_at: string;
+            /**
+             * Commit
+             * @default
+             */
+            commit: string;
+            /**
+             * Model
+             * @default
+             */
+            model: string;
+            /**
+             * Split
+             * @default
+             */
+            split: string;
+            /**
+             * Case Count
+             * @default 0
+             */
+            case_count: number;
+            /**
+             * Prompt Versions
+             * @default {}
+             */
+            prompt_versions: {
+                [key: string]: string;
+            };
+            /** Overall Accuracy Pct */
+            overall_accuracy_pct?: string | null;
+            /**
+             * Stages
+             * @default []
+             */
+            stages: components["schemas"]["EvalStageAccuracy"][];
+            /** Latency P50 Ms */
+            latency_p50_ms?: number | null;
+            /** Latency P95 Ms */
+            latency_p95_ms?: number | null;
+            /** Total Cost Usd */
+            total_cost_usd?: string | null;
+            /** Audited Accuracy Pct */
+            audited_accuracy_pct?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
         };
         /**
          * ExecutionInputBody
@@ -866,6 +1127,12 @@ export interface components {
             usage: {
                 [key: string]: components["schemas"]["UsageSnapshot"];
             };
+            /** Policy Usage */
+            policy_usage: {
+                [key: string]: components["schemas"]["CapLine"];
+            };
+            /** Legal Limits Apply */
+            legal_limits_apply: boolean;
             /** Orders */
             orders: components["schemas"]["ChangeOrder"][];
             regulation: components["schemas"]["RegulationRef"];
@@ -904,7 +1171,7 @@ export interface components {
          * @description Why someone was notified (FR-11).
          * @enum {string}
          */
-        NotificationKind: "APPROVAL_PENDING" | "APPROVAL_REMINDER" | "DOCUMENTS_REQUIRED" | "DOCUMENTS_REMINDER" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "CR_CLOSED_IN_SCOPE" | "VO_ISSUED";
+        NotificationKind: "APPROVAL_PENDING" | "APPROVAL_REMINDER" | "APPROVAL_COMPLETED" | "DOCUMENTS_REQUIRED" | "DOCUMENTS_REMINDER" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "CR_CLOSED_IN_SCOPE" | "VO_ISSUED";
         /**
          * NotificationListResponse
          * @description Stored notifications plus freshly computed reminders (FR-11).
@@ -929,6 +1196,33 @@ export interface components {
          * @enum {string}
          */
         Party: "GOVERNMENT_ENTITY" | "CONTRACTOR";
+        /**
+         * PolicyThresholdOut
+         * @description One configured limit, with the source that says how it can be treated.
+         */
+        PolicyThresholdOut: {
+            /** Key */
+            key: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "law" | "organization_policy" | "default";
+            /** Cap Pct */
+            cap_pct: string | null;
+            /** Cap Value */
+            cap_value: string | null;
+            /** Basis */
+            basis: string | null;
+            /** Blocking */
+            blocking: boolean;
+            /** Exception Role */
+            exception_role: string | null;
+            /** Description Ar */
+            description_ar: string;
+            /** Description En */
+            description_en: string;
+        };
         /**
          * ProjectRecordsResponse
          * @description The contract's position after approved changes (FR-13).
@@ -979,6 +1273,14 @@ export interface components {
             publication_date_gregorian: string;
             /** Article Refs */
             article_refs: string[];
+        };
+        /**
+         * RequiredDocumentsResponse
+         * @description Every checklist, so a requester can see the rule before submitting.
+         */
+        RequiredDocumentsResponse: {
+            /** Checklists */
+            checklists: components["schemas"]["DocumentChecklist"][];
         };
         /**
          * Role
@@ -1117,6 +1419,22 @@ export interface components {
             headroom_value: string | null;
             /** Headroom Pct */
             headroom_pct: string | null;
+            /**
+             * Source
+             * @default law
+             * @enum {string}
+             */
+            source: "law" | "organization_policy" | "default";
+            /**
+             * Article Ref Ar
+             * @default
+             */
+            article_ref_ar: string;
+            /**
+             * Article Ref En
+             * @default
+             */
+            article_ref_en: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1480,6 +1798,41 @@ export interface operations {
             };
         };
     };
+    replace_attachments_api_change_requests__cr_id__attachments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cr_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachmentsInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     analyse_change_request_api_change_requests__cr_id__analyse_post: {
         parameters: {
             query?: never;
@@ -1639,6 +1992,37 @@ export interface operations {
             };
         };
     };
+    get_variation_order_api_variation_orders__vo_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationOrderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     record_execution_api_variation_orders__vo_id__execution_post: {
         parameters: {
             query?: never;
@@ -1704,6 +2088,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    required_documents_api_policy_required_documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequiredDocumentsResponse"];
+                };
+            };
+        };
+    };
+    thresholds_api_policy_thresholds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyThresholdOut"][];
+                };
+            };
+        };
+    };
+    eval_summary_api_eval_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalSummaryResponse"];
                 };
             };
         };

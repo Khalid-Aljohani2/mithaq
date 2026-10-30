@@ -109,6 +109,9 @@ class AuditLogRow(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     actor_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: Nullable: the agent's own moves and system events have no party or name.
+    actor_party: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    actor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     action: Mapped[str] = mapped_column(String(48), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
     entity_id: Mapped[str] = mapped_column(String(64), nullable=False)

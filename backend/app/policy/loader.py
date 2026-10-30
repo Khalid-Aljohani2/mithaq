@@ -8,15 +8,13 @@ escalated past by the role named in ``exception_role`` (NFR-16).
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict
 
-POLICY_PATH = Path(__file__).with_name("policy.yaml")
+from app.domain.enums import ThresholdSource
 
-#: Where a number came from. Drives how it may be escalated past.
-ThresholdSource = Literal["law", "organization_policy", "default"]
+POLICY_PATH = Path(__file__).with_name("policy.yaml")
 
 
 class PolicyThreshold(BaseModel):

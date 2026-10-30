@@ -14,7 +14,9 @@ export type ActorType = Schemas["ActorType"];
 export type AnalysisResponse = Schemas["AnalysisResponse"];
 export type ApprovalDecision = Schemas["ApprovalDecision"];
 export type ApprovalStep = Schemas["ApprovalStep"];
+export type AttachmentsInput = Schemas["AttachmentsInput"];
 export type BreakdownLine = Schemas["BreakdownLine"];
+export type CapLine = Schemas["CapLine"];
 export type ChangeKind = Schemas["ChangeKind"];
 export type ChangeRequest = Schemas["ChangeRequest"];
 export type ChangeRequestResponse = Schemas["ChangeRequestResponse"];
@@ -23,17 +25,23 @@ export type ContractSummary = Schemas["ContractSummary"];
 export type ContractType = Schemas["ContractType"];
 export type CRState = Schemas["CRState"];
 export type DecisionInput = Schemas["DecisionInput"];
+export type DocumentChecklist = Schemas["DocumentChecklist"];
+export type EvalSummaryResponse = Schemas["EvalSummaryResponse"];
 export type HealthResponse = Schemas["HealthResponse"];
 export type LedgerResponse = Schemas["LedgerResponse"];
 export type NotificationListResponse = Schemas["NotificationListResponse"];
 export type Party = Schemas["Party"];
+export type PolicyThresholdOut = Schemas["PolicyThresholdOut"];
 export type Recommendation = Schemas["Recommendation"];
+export type RequiredDocumentsResponse = Schemas["RequiredDocumentsResponse"];
 export type Role = Schemas["Role"];
 export type Stage = Schemas["Stage"];
 export type StageResult = Schemas["StageResult"];
 export type SubmitRequestInput = Schemas["SubmitRequestInput"];
 export type TraceResponse = Schemas["TraceResponse"];
 export type UsageSnapshot = Schemas["UsageSnapshot"];
+export type VariationOrder = Schemas["VariationOrder"];
+export type VariationOrderResponse = Schemas["VariationOrderResponse"];
 
 /**
  * The backend origin comes only from `NEXT_PUBLIC_API_URL`.
@@ -162,6 +170,13 @@ export const api = {
       signal,
     }),
 
+  /** Answer a gap list with the documents now on file. Human action. */
+  supplyAttachments: (crId: string, body: AttachmentsInput) =>
+    request<ChangeRequestResponse>(
+      `/api/change-requests/${enc(crId)}/attachments`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
   analyse: (crId: string) =>
     request<AnalysisResponse>(`/api/change-requests/${enc(crId)}/analyse`, {
       method: "POST",
@@ -178,6 +193,30 @@ export const api = {
       `/api/change-requests/${enc(crId)}/decide`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+
+  variationOrder: (voId: string, signal?: AbortSignal) =>
+    request<VariationOrderResponse>(`/api/variation-orders/${enc(voId)}`, {
+      signal,
+    }),
+
+  variationOrders: (contractId: string, signal?: AbortSignal) =>
+    request<Schemas["VariationOrderListResponse"]>(
+      `/api/contracts/${enc(contractId)}/variation-orders`,
+      { signal },
+    ),
+
+  /** The stage 2 checklist, so a requester sees it before stage 2 does. */
+  requiredDocuments: (signal?: AbortSignal) =>
+    request<RequiredDocumentsResponse>("/api/policy/required-documents", {
+      signal,
+    }),
+
+  policyThresholds: (signal?: AbortSignal) =>
+    request<PolicyThresholdOut[]>("/api/policy/thresholds", { signal }),
+
+  /** The published evaluation result. `available: false` means not measured. */
+  evalSummary: (signal?: AbortSignal) =>
+    request<EvalSummaryResponse>("/api/eval/summary", { signal }),
 
   notifications: (party: Party, role: Role, signal?: AbortSignal) =>
     request<NotificationListResponse>(

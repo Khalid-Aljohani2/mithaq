@@ -6,7 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.logging_config import configure_logging
 from app.rate_limit import AIRateLimitMiddleware
-from app.routers import change_requests, contracts, demo, health, notifications
+from app.routers import (
+    change_requests,
+    contracts,
+    demo,
+    evaluation,
+    health,
+    notifications,
+    policy,
+)
 
 settings = get_settings()
 configure_logging()
@@ -33,4 +41,6 @@ app.include_router(change_requests.contracts_router)
 app.include_router(change_requests.requests_router)
 app.include_router(change_requests.vo_router)
 app.include_router(notifications.router)
+app.include_router(policy.router)
+app.include_router(evaluation.router)
 app.include_router(demo.router)

@@ -7,6 +7,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.domain.enums import ThresholdSource
+
 COMBINED_SCOPE = "COMBINED"
 
 
@@ -27,6 +29,41 @@ class UsageSnapshot(BaseModel):
     pending_pct: Decimal
     headroom_value: Decimal | None
     headroom_pct: Decimal | None
+    #: Which rule this line answers to, and so whether it can be escalated past.
+    source: ThresholdSource = "law"
+    #: The article this cap comes from, in both languages (NFR-02). Carried per
+    #: line rather than once per response, because a ledger mixes articles and a
+    #: reader needs to know which number rests on which one.
+    article_ref_ar: str = ""
+    article_ref_en: str = ""
+
+
+class CapLine(BaseModel):
+    """One limit as the ledger reports it: the cap, what is used, what is left.
+
+    This is the policy layer's answer to :class:`UsageSnapshot`, which covers
+    the legal layer. They are kept apart on purpose: a reader has to be able to
+    tell at a glance whether a number can be escalated past, and ``source`` is
+    what says so (NFR-16).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    scope: str
+    source: ThresholdSource
+    blocking: bool
+    exception_role: str | None
+    unit: str
+    cap_pct: Decimal
+    cap_value: Decimal
+    used_value: Decimal
+    used_pct: Decimal
+    pending_value: Decimal
+    pending_pct: Decimal
+    headroom_value: Decimal
+    headroom_pct: Decimal
+    description_ar: str
+    description_en: str
 
 
 class Violation(BaseModel):

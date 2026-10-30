@@ -169,6 +169,9 @@ class InMemoryContractRepository(ContractRepository):
     def get_variation_order(self, vo_id: str) -> VariationOrder | None:
         return self._vos.get(vo_id)
 
+    def get_variation_order_for_request(self, cr_id: str) -> VariationOrder | None:
+        return next((v for v in self._vos.values() if v.cr_id == cr_id), None)
+
     def list_variation_orders(self, contract_id: str) -> list[VariationOrder]:
         return sorted(
             (v for v in self._vos.values() if v.contract_id == contract_id),

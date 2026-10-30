@@ -1,6 +1,16 @@
 """Enumerations shared across the Mithaq domain."""
 
 from enum import StrEnum
+from typing import Literal
+
+#: Where a number came from, and therefore what can be done about it.
+#:
+#: ``law`` is blocking: no internal approval lifts it. ``organization_policy``
+#: can be escalated past by the role the policy names. ``default`` is an
+#: operational convenience with neither legal nor policy weight. Every cap the
+#: API reports carries one of these, so the UI never has to guess whether a
+#: limit is negotiable (NFR-16).
+ThresholdSource = Literal["law", "organization_policy", "default"]
 
 
 class ChangeCategory(StrEnum):
@@ -196,6 +206,11 @@ class NotificationKind(StrEnum):
 
     APPROVAL_PENDING = "APPROVAL_PENDING"
     APPROVAL_REMINDER = "APPROVAL_REMINDER"
+    #: The whole chain has signed off. Distinct from APPROVAL_PENDING because
+    #: it asks the reader for nothing - it tells them the waiting is over - and
+    #: a UI that cannot tell the two apart shows a finished request as an
+    #: outstanding task (FR-11).
+    APPROVAL_COMPLETED = "APPROVAL_COMPLETED"
     DOCUMENTS_REQUIRED = "DOCUMENTS_REQUIRED"
     DOCUMENTS_REMINDER = "DOCUMENTS_REMINDER"
     CR_REJECTED = "CR_REJECTED"

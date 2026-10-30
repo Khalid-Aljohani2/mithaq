@@ -280,6 +280,8 @@ def _to_audit(row: AuditLogRow) -> AuditEvent:
         id=row.id,
         occurred_at=row.occurred_at,
         actor_role=row.actor_role,
+        actor_party=row.actor_party,
+        actor_name=row.actor_name,
         action=row.action,
         entity_type=row.entity_type,
         entity_id=row.entity_id,
@@ -539,6 +541,15 @@ class PostgresContractRepository(ContractRepository):
             row = session.get(VariationOrderRow, vo_id)
             return None if row is None else _to_vo(row)
 
+    def get_variation_order_for_request(self, cr_id: str) -> VariationOrder | None:
+        with session_scope() as session:
+            row = session.scalars(
+                select(VariationOrderRow)
+                .where(VariationOrderRow.cr_id == cr_id)
+                .order_by(VariationOrderRow.issued_at, VariationOrderRow.id)
+            ).first()
+            return None if row is None else _to_vo(row)
+
     def list_variation_orders(self, contract_id: str) -> list[VariationOrder]:
         with session_scope() as session:
             rows = session.scalars(
@@ -585,6 +596,8 @@ class PostgresContractRepository(ContractRepository):
             row = AuditLogRow(
                 occurred_at=event.occurred_at,
                 actor_role=event.actor_role,
+                actor_party=event.actor_party,
+                actor_name=event.actor_name,
                 action=event.action.value,
                 entity_type=event.entity_type,
                 entity_id=event.entity_id,

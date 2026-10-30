@@ -80,6 +80,32 @@ TEXT_NCR = (
 )
 
 
+# ---------------------------------------------------------------------------
+# (f) PCR on the GOVERNMENT contract, comfortably inside Article 67.
+#     12 extra servers on ITM-05 at the contract rate of 45,000 = 540,000 SAR,
+#     which is 11.25% of 4,800,000:
+#
+#       Article 67(1)(b) increase cap   20%  =  960,000   ->  inside
+#       Article 67(2) combined cap      20%  =  960,000   ->  inside
+#       organisation policy cost cap    20%  =  960,000   ->  inside
+#       finance approval gate                =  200,000   ->  above, so the
+#                                                             Finance Manager
+#                                                             joins the chain
+#
+#     The demo needs this: every other government request is blocked, and a
+#     blocked request never reaches a variation order, so without it there is
+#     no way to show a VO that cites Article 67 as authority rather than as a
+#     refusal. The same approved product is supplied, so stage 4 finds no
+#     product change and the citation stays an increase of an existing line.
+# ---------------------------------------------------------------------------
+TEXT_GOV_WITHIN_LIMITS = (
+    "نظرًا لارتفاع أعداد المستفيدين المتوقعة عن التقديرات الواردة في كراسة الشروط، "
+    "نرجو زيادة عدد خوادم بيئة التشغيل باثني عشر خادمًا إضافيًا من نفس الطراز "
+    "المعتمد في العقد A-2400 وبسعر الوحدة المتعاقد عليه.\n"
+    "لا يترتب على الطلب تمديد لمدة العقد."
+)
+
+
 class DemoRequest:
     """A seeded change request plus the facts tests assert against."""
 
@@ -169,6 +195,14 @@ DEMO_REQUESTS: tuple[DemoRequest, ...] = (
         "NCR reducing a quantity",
         TEXT_NCR,
         "م. سارة العتيبي",
+        _COST_DOCS,
+    ),
+    DemoRequest(
+        "CR-F-GOV-OK",
+        GOVERNMENT_CONTRACT_ID,
+        "government PCR inside every Article 67 cap",
+        TEXT_GOV_WITHIN_LIMITS,
+        "م. فهد القحطاني",
         _COST_DOCS,
     ),
     DemoRequest(

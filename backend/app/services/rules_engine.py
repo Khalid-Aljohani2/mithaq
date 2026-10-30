@@ -85,8 +85,15 @@ def _snapshot(
     delta: Decimal,
     pending: Decimal,
     original_value: Decimal,
+    article_ref_ar: str,
+    article_ref_en: str,
 ) -> UsageSnapshot:
-    """Build the before/after picture for one scope."""
+    """Build the before/after picture for one scope.
+
+    The article refs are passed in rather than looked up: this function has no
+    business knowing the regulation's shape, and the caller already holds the
+    rule the numbers came from.
+    """
     after = before + delta
     cap_value = _cap_value(cap_pct, original_value)
     headroom_value = None if cap_value is None else cap_value - after
@@ -102,6 +109,9 @@ def _snapshot(
         pending_pct=_pct(pending, original_value),
         headroom_value=headroom_value,
         headroom_pct=None if headroom_value is None else _pct(headroom_value, original_value),
+        source="law",
+        article_ref_ar=article_ref_ar,
+        article_ref_en=article_ref_en,
     )
 
 
@@ -249,6 +259,8 @@ def summarise(contract: Contract, ledger: ChangeLedger, limits: Limits) -> dict[
             delta=Decimal("0"),
             pending=_sum_for(ledger, cat, PENDING_STATUSES),
             original_value=original_value,
+            article_ref_ar=cat_rule.article_ref_ar,
+            article_ref_en=cat_rule.article_ref_en,
         )
 
     usage[COMBINED_SCOPE] = _snapshot(
@@ -258,6 +270,8 @@ def summarise(contract: Contract, ledger: ChangeLedger, limits: Limits) -> dict[
         delta=Decimal("0"),
         pending=_combined_sum(ledger, limits, PENDING_STATUSES),
         original_value=original_value,
+        article_ref_ar=limits.combined.article_ref_ar,
+        article_ref_en=limits.combined.article_ref_en,
     )
     return usage
 
@@ -301,6 +315,8 @@ def evaluate(
             delta=delta if cat is category else Decimal("0"),
             pending=_sum_for(base_ledger, cat, PENDING_STATUSES),
             original_value=original_value,
+            article_ref_ar=cat_rule.article_ref_ar,
+            article_ref_en=cat_rule.article_ref_en,
         )
 
     # ---- the proposed order's own category ----
@@ -336,6 +352,8 @@ def evaluate(
         delta=delta if rule.counts_toward_combined else Decimal("0"),
         pending=_combined_sum(base_ledger, limits, PENDING_STATUSES),
         original_value=original_value,
+        article_ref_ar=combined.article_ref_ar,
+        article_ref_en=combined.article_ref_en,
     )
     usage[COMBINED_SCOPE] = combined_snapshot
 

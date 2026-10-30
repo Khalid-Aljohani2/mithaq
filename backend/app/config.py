@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     #: truncated mid-string.
     llm_max_tokens: int = 16000
 
+    # ---- Reminders (FR-11) ----
+    #: Hours an approval step may sit before it is reminded about. ``None``
+    #: means "use the policy file", which is the normal case: the delay is an
+    #: organisation setting, not a deployment one. The override exists so a
+    #: demo can set it to 0 and show the reminder path working, rather than
+    #: waiting a day for one to appear. 0 is a real value here, not "unset".
+    reminder_pending_approval_hours: int | None = None
+
     # ---- Rate limiting (NFR-08) ----
     #: Requests per window per client IP against the AI endpoints. 0 disables.
     ai_rate_limit_requests: int = 20
