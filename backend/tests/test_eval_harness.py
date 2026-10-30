@@ -29,7 +29,7 @@ from app.analysis.schemas import (
 )
 from app.domain.enums import ChangeKind, ImpactType
 from app.prompts import all_versions
-from eval.run import CASES_PATH, load_cases, run, summarise
+from eval.run import CASES_PATH, audited, load_cases, run, summarise
 
 CASES = load_cases(None)
 BY_ID = {c["id"]: c for c in CASES}
@@ -283,3 +283,92 @@ def test_summarise_handles_an_empty_run() -> None:
     summary = summarise([], [])
     assert summary["cases"] == 0
     assert summary["accuracy_pct"]["recommendation"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# The label audit (docs/eval_label_audit.md)
+# ---------------------------------------------------------------------------
+
+
+AUDITED_IDS = {"DEV-15", "TEST-18", "TEST-24"}
+
+
+def test_the_audited_cases_are_the_ones_the_audit_documents() -> None:
+    assert {c["id"] for c in CASES if c.get("audit")} == AUDITED_IDS
+
+
+def test_every_audit_carries_its_reasoning() -> None:
+    """An override with no stated reason is a silent label change."""
+    for case in CASES:
+        if case.get("audit"):
+            assert case["audit"]["reason"].strip(), case["id"]
+
+
+def test_the_original_labels_are_still_there() -> None:
+    """The audit adds; it never overwrites. Both label sets must survive."""
+    by_id = {c["id"]: c for c in CASES}
+    assert by_id["DEV-15"]["expected_kind"] == "PCR"
+    assert by_id["TEST-18"]["expected_kind"] == "PCR"
+    assert by_id["TEST-24"]["expected_matched_line_ids"] == []
+
+
+def test_the_audit_applies_the_corrections() -> None:
+    by_id = {c["id"]: c for c in CASES}
+    assert audited(by_id["DEV-15"])["expected_kind"] == "SUBSTITUTION"
+    assert audited(by_id["TEST-18"])["expected_kind"] == "SUBSTITUTION"
+    assert audited(by_id["TEST-24"])["expected_matched_line_ids"] == ["ITM-05", "ITM-06"]
+    # TEST-24 stays unclear: only the identifiable lines were corrected.
+    assert audited(by_id["TEST-24"])["expected_kind"] == "UNCLEAR"
+
+
+def test_an_unaudited_case_is_unchanged_by_the_audit() -> None:
+    by_id = {c["id"]: c for c in CASES}
+    assert audited(by_id["TEST-11"]) == by_id["TEST-11"]
+
+
+def test_an_audit_cannot_override_a_field_that_is_not_a_label() -> None:
+    """A typo in an audit key must not silently rewrite the case."""
+    case = {**BY_ID["TEST-11"], "audit": {"text": "rewritten", "reason": "nope"}}
+    assert audited(case)["text"] == BY_ID["TEST-11"]["text"]
+
+
+def test_audited_line_ids_exist_in_the_contract() -> None:
+    from app.seed.demo_contract import build_private_contract
+
+    known = {line.id for line in build_private_contract().breakdown}
+    for case in CASES:
+        for line_id in audited(case)["expected_matched_line_ids"]:
+            assert line_id in known, (case["id"], line_id)
+
+
+def test_a_run_reports_both_label_sets(stub) -> None:  # noqa: ANN001
+    """One run, two scores. The numbers must be comparable, not two runs."""
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    assert "summary" in report
+    assert "summary_audited" in report
+    assert report["summary"]["cases"] == report["summary_audited"]["cases"]
+    assert report["audited_case_ids"] == ["DEV-15"]
+    assert len(report["cases"]) == len(report["cases_audited"])
+
+
+def test_the_audit_changes_the_score_it_is_supposed_to_change(stub) -> None:  # noqa: ANN001
+    """The stub answers from the original labels, so DEV-15 must now miss.
+
+    This is the control on the dual scoring: if both columns were identical
+    whatever the labels said, the comparison in the summary would be theatre.
+    """
+    stub(True)
+    report = run("dev", "claude-sonnet-5-5", None)
+
+    original = next(c for c in report["cases"] if c["id"] == "DEV-15")
+    audited_case = next(c for c in report["cases_audited"] if c["id"] == "DEV-15")
+
+    assert original["kind"]["ok"] is True
+    assert audited_case["kind"]["ok"] is False
+    assert audited_case["kind"]["expected"] == "SUBSTITUTION"
+    assert (
+        report["summary"]["accuracy_pct"]["kind"]
+        > (report["summary_audited"]["accuracy_pct"]["kind"])
+    )
