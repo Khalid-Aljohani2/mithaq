@@ -6,12 +6,16 @@ does the workflow, the rules engine does the law, the repository does storage
 
 Nothing here ever auto-approves (FR-09): an order only becomes APPROVED when a
 human on the authority side acts, and the rules are re-checked at that moment.
+
+Every state change appends exactly one audit row (FR-13). The audit log is
+append-only: this module calls ``append_audit`` and nothing else.
 """
 
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from app.domain.audit import AuditAction, AuditEvent
 from app.domain.enums import ChangeCategory, OrderStatus, Party
 from app.domain.models import ChangeOrder, Contract
 from app.domain.rules import RuleResult
@@ -64,6 +68,33 @@ class Proposal:
     related_item_ids: tuple[str, ...]
     description_ar: str
     has_written_assignment: bool
+
+
+def _record(
+    repo: ContractRepository,
+    *,
+    order: ChangeOrder,
+    actor_role: str,
+    action: AuditAction,
+    previous_state: OrderStatus | None,
+    new_state: OrderStatus | None,
+    occurred_at: datetime,
+    reason: str | None = None,
+) -> None:
+    """Append one audit row for a state change (FR-13)."""
+    repo.append_audit(
+        AuditEvent(
+            occurred_at=occurred_at,
+            actor_role=actor_role,
+            action=action,
+            entity_type="change_order",
+            entity_id=order.id,
+            contract_id=order.contract_id,
+            previous_state=previous_state,
+            new_state=new_state,
+            reason=reason,
+        )
+    )
 
 
 def _require_contract(repo: ContractRepository, contract_id: str) -> Contract:
@@ -166,6 +197,15 @@ def create_change_order(
     draft = _as_order(contract_id, order_id, proposal, OrderStatus.DRAFT, now)
     result = evaluate(contract, ledger, draft, limits)
     stored = repo.add_change_order(draft.model_copy(update={"status": initial_status(result)}))
+    _record(
+        repo,
+        order=stored,
+        actor_role=Party.GOVERNMENT_ENTITY.value,
+        action=AuditAction.ORDER_CREATED,
+        previous_state=None,
+        new_state=stored.status,
+        occurred_at=now,
+    )
     return stored, result
 
 
@@ -189,6 +229,7 @@ def approve_change_order(
     order_id: str,
     actor_role: Party,
     limits: Limits,
+    now: datetime,
 ) -> tuple[ChangeOrder, RuleResult]:
     """Advance one approval stage, re-checking the rules first.
 
@@ -217,12 +258,24 @@ def approve_change_order(
                 "decided_by": actor_role,
             }
         )
+        action = AuditAction.CONTRACTOR_CONSENTED
     else:
         updated = order.model_copy(
             update={"status": OrderStatus.APPROVED, "decided_by": actor_role}
         )
+        action = AuditAction.ORDER_APPROVED
 
-    return repo.replace_change_order(updated), result
+    stored = repo.replace_change_order(updated)
+    _record(
+        repo,
+        order=stored,
+        actor_role=actor_role.value,
+        action=action,
+        previous_state=order.status,
+        new_state=stored.status,
+        occurred_at=now,
+    )
+    return stored, result
 
 
 def reject_change_order(
@@ -230,6 +283,7 @@ def reject_change_order(
     order_id: str,
     actor_role: Party,
     reason: str,
+    now: datetime,
 ) -> ChangeOrder:
     """Reject an order at its current stage, recording who and why."""
     order = _require_order(repo, order_id)
@@ -241,4 +295,15 @@ def reject_change_order(
             "decision_reason": reason,
         }
     )
-    return repo.replace_change_order(updated)
+    stored = repo.replace_change_order(updated)
+    _record(
+        repo,
+        order=stored,
+        actor_role=actor_role.value,
+        action=AuditAction.ORDER_REJECTED,
+        previous_state=order.status,
+        new_state=stored.status,
+        occurred_at=now,
+        reason=reason,
+    )
+    return stored

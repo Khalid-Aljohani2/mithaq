@@ -112,7 +112,9 @@ async def approve_order(
 ) -> ChangeOrderResponse:
     """Advance one approval stage after re-checking the rules."""
     try:
-        order, result = approve_change_order(repo, order_id, payload.actor_role, limits)
+        order, result = approve_change_order(
+            repo, order_id, payload.actor_role, limits, datetime.now(UTC)
+        )
     except ChangeOrderError as error:
         raise _http(error) from error
     return ChangeOrderResponse(order=order, result=result)
@@ -127,7 +129,9 @@ async def reject_order(
 ) -> ChangeOrderResponse:
     """Reject an order at its current stage, recording who and why."""
     try:
-        order = reject_change_order(repo, order_id, payload.actor_role, payload.reason)
+        order = reject_change_order(
+            repo, order_id, payload.actor_role, payload.reason, datetime.now(UTC)
+        )
     except ChangeOrderError as error:
         raise _http(error) from error
 

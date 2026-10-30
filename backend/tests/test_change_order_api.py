@@ -1,33 +1,30 @@
 """End-to-end tests for the contract and change-order endpoints.
 
-These assert the behaviour FR-02 demands: a wrong-role action is refused by the
-backend, not merely hidden by a UI.
+Every test in this module runs TWICE: once against the in-memory repository and
+once against Postgres. That is the point of the repository interface - the API
+must behave identically whichever store is behind it (NFR-07, NFR-11).
+
+These also assert the behaviour FR-02 demands: a wrong-role action is refused by
+the backend, not merely hidden by a UI.
 """
 
-from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_repository
 from app.main import app
 from app.seed.demo_contract import DEMO_CONTRACT_ID
 
 client = TestClient(app)
 
+# Opt this whole module into the dual-backend fixture.
+pytestmark = pytest.mark.usefixtures("backend")
+
 CONTRACT = f"/api/contracts/{DEMO_CONTRACT_ID}"
 GOV = "GOVERNMENT_ENTITY"
 CONTRACTOR = "CONTRACTOR"
-
-
-@pytest.fixture(autouse=True)
-def _fresh_state() -> Iterator[None]:
-    """Each test starts from the seed state."""
-    get_repository().reset()
-    yield
-    get_repository().reset()
 
 
 def new_items(value: str) -> dict[str, Any]:

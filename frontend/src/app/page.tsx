@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { API_BASE_URL, fetchHealth } from "@/lib/api";
+import { apiBaseUrl, fetchHealth } from "@/lib/api";
 
 type HealthState =
   | { kind: "loading" }
@@ -20,6 +20,17 @@ type HealthState =
 
 export default function Home() {
   const [health, setHealth] = useState<HealthState>({ kind: "loading" });
+
+  // Derived, not stored: apiBaseUrl() throws when NEXT_PUBLIC_API_URL is
+  // missing in production, so the throw is contained here rather than taking
+  // the render down.
+  const endpoint = useMemo(() => {
+    try {
+      return `${apiBaseUrl()}/api/health`;
+    } catch {
+      return "NEXT_PUBLIC_API_URL is not set";
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,7 +78,7 @@ export default function Home() {
             </div>
 
             <p className="text-muted-foreground font-mono text-xs break-all">
-              {API_BASE_URL}/api/health
+              {endpoint}
             </p>
 
             {health.kind === "offline" && (

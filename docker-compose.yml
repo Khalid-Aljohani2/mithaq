@@ -1,0 +1,25 @@
+# Local Postgres for development and tests.
+# Production uses a managed Postgres (NFR-07); this is only for the dev loop.
+services:
+  db:
+    image: postgres:18.6-trixie
+    container_name: mithaq-postgres
+    environment:
+      POSTGRES_USER: mithaq
+      POSTGRES_PASSWORD: mithaq_local_dev
+      POSTGRES_DB: mithaq
+    ports:
+      - "5433:5432"
+    volumes:
+      # Postgres 18+ stores data in a major-version subdirectory, so the mount
+      # goes at /var/lib/postgresql, not /var/lib/postgresql/data.
+      # https://github.com/docker-library/postgres/pull/1259
+      - mithaq_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mithaq -d mithaq"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mithaq_pgdata:

@@ -287,6 +287,41 @@ def test_blocked_order_is_not_time_extension_eligible(contract: Contract, limits
     result = evaluate(contract, ledger_of(), make_order(NEW, "480001"), limits)
     assert result.allowed is False
     assert result.eligible_for_time_extension is False
+    assert result.exempt_from_final_guarantee is False
+
+
+@pytest.mark.parametrize(
+    ("category", "value", "expected"),
+    [(NEW, "1000", True), (INC, "1000", True), (DEC, "1000", False), (NON, "0", False)],
+)
+def test_final_guarantee_exemption_flag(
+    category: ChangeCategory, value: str, expected: bool, contract: Contract, limits: Limits
+) -> None:
+    """Article 59(2)(z): assigning additional works exempts the final guarantee.
+
+    Flag only - the engine never computes or releases a guarantee amount.
+    """
+    result = evaluate(contract, ledger_of(), make_order(category, value), limits)
+    assert result.exempt_from_final_guarantee is expected
+    if expected:
+        assert "Article 59(2)(z)" in result.article_refs
+    else:
+        assert "Article 59(2)(z)" not in result.article_refs
+
+
+def test_both_additional_work_flags_move_together(contract: Contract, limits: Limits) -> None:
+    """The two flags share one trigger, so they never disagree."""
+    for category, value in [(NEW, "1000"), (INC, "1000"), (DEC, "1000"), (NON, "0")]:
+        result = evaluate(contract, ledger_of(), make_order(category, value), limits)
+        assert result.exempt_from_final_guarantee is result.eligible_for_time_extension
+
+
+def test_final_guarantee_rule_quotes_the_article_verbatim(limits: Limits) -> None:
+    """NFR-02: the flag is backed by the exact phrase from Article 59(2)."""
+    rule = limits.final_guarantee_exemption
+    assert rule.flag_only is True
+    assert rule.article_ref_en == "Article 59(2)(z)"
+    assert "إذا كُلف المتعاقد معه بأعمال إضافية" in rule.note
 
 
 def test_increase_rule_is_flagged_for_legal_review(contract: Contract, limits: Limits) -> None:

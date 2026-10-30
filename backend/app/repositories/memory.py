@@ -5,6 +5,7 @@ where functions keep no memory between requests (NFR-07) - Step 3 replaces it
 with Postgres behind the same interface.
 """
 
+from app.domain.audit import AuditEvent
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
 from app.repositories.base import ContractRepository
 from app.seed.demo_contract import build_demo_contract
@@ -20,6 +21,7 @@ class InMemoryContractRepository(ContractRepository):
     def __init__(self) -> None:
         self._contracts: dict[str, Contract] = {}
         self._orders: dict[str, ChangeOrder] = {}
+        self._audit: list[AuditEvent] = []
         self.reset()
 
     def list_contracts(self) -> list[Contract]:
@@ -56,7 +58,16 @@ class InMemoryContractRepository(ContractRepository):
         existing = sum(1 for o in self._orders.values() if o.contract_id == contract_id)
         return f"CO-{contract_id}-{existing + 1:03d}"
 
+    def append_audit(self, event: AuditEvent) -> AuditEvent:
+        stored = event.model_copy(update={"id": len(self._audit) + 1})
+        self._audit.append(stored)
+        return stored
+
+    def list_audit(self, contract_id: str) -> list[AuditEvent]:
+        return [e for e in self._audit if e.contract_id == contract_id]
+
     def reset(self) -> None:
+        """Restore the seed contract. Audit history is deliberately kept."""
         contract = build_demo_contract()
         self._contracts = {contract.id: contract}
         self._orders = {}

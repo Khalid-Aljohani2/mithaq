@@ -6,6 +6,7 @@ from app.dependencies import LimitsDep, RepositoryDep
 from app.domain.models import CURRENCY, Contract
 from app.regulations.loader import get_regulation
 from app.schemas.contracts import (
+    AuditLogResponse,
     ContractListResponse,
     ContractSummary,
     LedgerResponse,
@@ -70,3 +71,14 @@ async def get_ledger(contract_id: str, repo: RepositoryDep, limits: LimitsDep) -
         orders=list(ledger.orders),
         regulation=_regulation_ref(),
     )
+
+
+@router.get("/{contract_id}/audit", response_model=AuditLogResponse)
+async def get_audit_log(contract_id: str, repo: RepositoryDep) -> AuditLogResponse:
+    """Every state change recorded against this contract, oldest first (FR-13)."""
+    if repo.get_contract(contract_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"contract {contract_id} not found",
+        )
+    return AuditLogResponse(contract_id=contract_id, events=repo.list_audit(contract_id))

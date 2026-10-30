@@ -57,6 +57,9 @@ and PyPI (`https://pypi.org/pypi/<pkg>/json`). No version here came from memory.
 | `python-dotenv` | 1.2.4 | PyPI | https://saurabh-kumar.com/python-dotenv/ |
 | `httpx` | 0.28.1 | PyPI | https://www.python-httpx.org/ |
 | `pyyaml` | 6.0.3 | PyPI | https://pyyaml.org/wiki/PyYAMLDocumentation |
+| `sqlalchemy` | 2.1.6 | PyPI | https://docs.sqlalchemy.org/en/20/core/pooling.html |
+| `psycopg[binary]` | 3.3.6 | PyPI | https://www.psycopg.org/psycopg3/docs/basic/install.html |
+| `alembic` | 1.20.1 | PyPI | https://alembic.sqlalchemy.org/en/latest/tutorial.html |
 
 ### Dev
 
@@ -87,6 +90,37 @@ Transitive packages pinned by pip resolution (not declared directly):
 | CORS middleware setup in `app/main.py` | https://fastapi.tiangolo.com/tutorial/cors/ |
 | `Settings(BaseSettings)` + `SettingsConfigDict(env_file=...)` in `app/config.py` | https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/ |
 | `TestClient` usage in `tests/test_health.py` | https://fastapi.tiangolo.com/tutorial/testing/ |
+
+## Infrastructure and deployment sources (checked 2026-10-30)
+
+| Thing | Version / value | Official doc |
+| --- | --- | --- |
+| Vercel FastAPI entrypoint | `app/main.py` with an instance named `app` | https://vercel.com/docs/frameworks/backend/fastapi |
+| Vercel `functions` config | `vercel.json` keyed by the resolved entrypoint | https://vercel.com/docs/frameworks/backend/fastapi |
+| Vercel Python version | 3.12 (default), 3.13, 3.14 - **3.11 is not supported** | https://vercel.com/docs/functions/runtimes/python/python-version |
+| Postgres image | `postgres:18.6-trixie` | https://hub.docker.com/_/postgres |
+| Postgres 18 volume path | mount at `/var/lib/postgresql`, not `/data` | https://github.com/docker-library/postgres/pull/1259 |
+| `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` (v7.0.1) | https://github.com/actions/checkout |
+| `actions/setup-python` | `6d4fd22b20465ccc0f7354476588e8df7c9ca0e0` (v7.1.0) | https://github.com/actions/setup-python |
+| `actions/setup-node` | `949feb2413d6458794dcd2491c4babbbce0c15c1` (v7.1.0) | https://github.com/actions/setup-node |
+
+Every workflow `uses:` is pinned to a full 40-character commit SHA with the
+release tag in a trailing comment. Each SHA was resolved from that action's own
+repository via the GitHub API and re-verified to resolve back to the same commit.
+A tag such as `v7` is a moving pointer the action owner can repoint at will; a
+SHA cannot be changed underneath us.
+
+The Vercel FastAPI page states Vercel "looks for a `FastAPI` instance named
+`app` at supported entrypoints", listing `main.py` inside `app/` - which is
+exactly where ours already lives, so the backend needs no entrypoint shim.
+
+### Verified empirically rather than from a doc page
+
+- **`postgresql+psycopg://` selects psycopg 3.** The SQLAlchemy PostgreSQL
+  dialect page lists psycopg as a DBAPI but the fetched content truncated before
+  the URL prefix. Confirmed directly instead:
+  `make_url("postgresql+psycopg://...").get_dialect().__name__` returns
+  `PGDialect_psycopg` on the installed SQLAlchemy 2.1.6.
 
 ## Legal source: the regulation file
 
@@ -147,3 +181,11 @@ confirms moving the CLI out of runtime `dependencies` matches upstream intent.
 
 - **`[tool.ruff] src`** — accepted by `ruff 0.17.3` (it errors on unknown keys),
   but not shown on the configuration page fetched above.
+- **NullPool as the serverless recommendation.** SQLAlchemy's pooling page
+  documents what `NullPool` does — "does not pool connections... literally opens
+  and closes the underlying DB-API connection per each connection open/close" —
+  and shows the `poolclass=NullPool` form. It does **not** state that NullPool is
+  the recommended choice for serverless functions. That part is an engineering
+  judgement: a Vercel Function is frozen between invocations, so a pooled
+  connection held across them is likely dead on reuse, and the managed Postgres
+  pooler on the other end of the connection string is where pooling belongs.

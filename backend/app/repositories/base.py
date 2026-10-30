@@ -7,6 +7,7 @@ so nothing above this line has to change.
 
 from abc import ABC, abstractmethod
 
+from app.domain.audit import AuditEvent
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
 
 
@@ -42,5 +43,20 @@ class ContractRepository(ABC):
         """Allocate the next change-order id for a contract."""
 
     @abstractmethod
+    def append_audit(self, event: AuditEvent) -> AuditEvent:
+        """Append one audit entry (FR-13).
+
+        This is the ONLY write path to the audit log. There is deliberately no
+        update or delete counterpart anywhere in the interface.
+        """
+
+    @abstractmethod
+    def list_audit(self, contract_id: str) -> list[AuditEvent]:
+        """Return the audit trail for a contract, oldest first."""
+
+    @abstractmethod
     def reset(self) -> None:
-        """Restore the seed state (FR-15)."""
+        """Restore the seed contract and clear change orders (FR-15).
+
+        Audit rows survive a reset; the caller appends a DEMO_RESET event.
+        """

@@ -356,11 +356,14 @@ def evaluate(
         if warning is not None:
             warnings.append(warning)
 
-    # ---- Article 72(1): eligibility flag only, never a day count ----
+    # ---- Flags only: the engine raises them, it computes nothing ----
+    # Article 72(1) time extension and Article 59(2)(z) final-guarantee exemption
+    # share one trigger: an allowed order that adds work.
     allowed = not violations
-    eligible = allowed and rule.adds_work
-    if eligible:
+    adds_work = allowed and rule.adds_work
+    if adds_work:
         refs.append(limits.time_extension.article_ref_en)
+        refs.append(limits.final_guarantee_exemption.article_ref_en)
 
     return RuleResult(
         allowed=allowed,
@@ -369,7 +372,8 @@ def evaluate(
         blocking_violations=tuple(violations),
         warnings=tuple(warnings),
         usage=usage,
-        eligible_for_time_extension=eligible,
+        eligible_for_time_extension=adds_work,
+        exempt_from_final_guarantee=adds_work,
         article_refs=tuple(dict.fromkeys(refs)),
         needs_legal_review=rule.needs_legal_review,
     )

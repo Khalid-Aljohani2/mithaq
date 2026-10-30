@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.domain.audit import AuditEvent
 from app.domain.models import ChangeOrder, Contract
 from app.domain.rules import UsageSnapshot
 
@@ -72,3 +73,12 @@ class LedgerResponse(BaseModel):
     usage: dict[str, UsageSnapshot]
     orders: list[ChangeOrder]
     regulation: RegulationRef
+
+
+class AuditLogResponse(BaseModel):
+    """The append-only trail for one contract, oldest first (FR-13)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    contract_id: str
+    events: list[AuditEvent]

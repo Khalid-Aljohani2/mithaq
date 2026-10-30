@@ -1,0 +1,122 @@
+# Continuous integration (NFR-10). Main must stay green.
+#
+# Every third-party action is pinned to a full commit SHA, with the release tag
+# in the trailing comment. A tag like `v7` is a moving pointer that the action
+# owner can repoint at any commit; a SHA cannot be changed under us.
+# SHAs resolved from each action's own repository on 2026-10-30.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the local development version.
+        # 3.12 is the lowest version Vercel's Python runtime supports, so it is
+        # what production actually runs - test it rather than assume it.
+        python-version: ["3.11", "3.12"]
+
+    services:
+      postgres:
+        image: postgres:18.6-trixie
+        env:
+          POSTGRES_USER: mithaq
+          POSTGRES_PASSWORD: mithaq_ci
+          POSTGRES_DB: mithaq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mithaq -d mithaq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://mithaq:mithaq_ci@localhost:5432/mithaq_test
+      ALLOWED_ORIGINS: http://localhost:3000
+      DEMO_RESET_TOKEN: ci-demo-token
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Alembic migrations apply cleanly
+        env:
+          DATABASE_URL: postgresql+psycopg://mithaq:mithaq_ci@localhost:5432/mithaq
+        run: alembic upgrade head
+
+      - name: Seed command is idempotent
+        env:
+          DATABASE_URL: postgresql+psycopg://mithaq:mithaq_ci@localhost:5432/mithaq
+        run: |
+          python -m app.seed.load
+          python -m app.seed.load
+
+      - name: Pytest with coverage
+        run: pytest
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Next build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: npm run build

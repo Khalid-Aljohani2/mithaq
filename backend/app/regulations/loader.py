@@ -62,8 +62,8 @@ class CombinedLimit(BaseModel):
     needs_legal_review: bool = False
 
 
-class TimeExtensionRule(BaseModel):
-    """Article 72(1): eligibility flag only, never a day count."""
+class FlagOnlyRule(BaseModel):
+    """A rule the engine only raises a flag for; it computes nothing."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -73,6 +73,14 @@ class TimeExtensionRule(BaseModel):
     article_ref_en: str
     note: str
     needs_legal_review: bool = False
+
+
+class TimeExtensionRule(FlagOnlyRule):
+    """Article 72(1): eligibility flag only, never a day count."""
+
+
+class FinalGuaranteeExemptionRule(FlagOnlyRule):
+    """Article 59(2)(z): no final guarantee for assigned additional works."""
 
 
 class Limits(BaseModel):
@@ -87,6 +95,7 @@ class Limits(BaseModel):
     categories: dict[ChangeCategory, CategoryLimit]
     combined: CombinedLimit
     time_extension: TimeExtensionRule
+    final_guarantee_exemption: FinalGuaranteeExemptionRule
 
 
 class RegulationSource(BaseModel):

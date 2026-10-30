@@ -67,12 +67,16 @@ ScopeGuardAi/
 │   ├── app/main.py            app factory, CORS, router wiring
 │   ├── app/config.py          pydantic-settings Settings + get_settings()
 │   ├── app/dependencies.py    injected repository + limits
-│   ├── app/domain/            enums, models, RuleResult types (no I/O)
+│   ├── app/db/                engine (NullPool) + SQLAlchemy tables
+│   ├── app/domain/            enums, models, RuleResult, audit (no I/O)
 │   ├── app/regulations/       gtpl_2026.yaml + loader - the only home for percentages
 │   ├── app/repositories/      storage interface + in-memory impl (Postgres in Step 3)
 │   ├── app/routers/           one module per resource (health, contracts, change_orders)
 │   ├── app/schemas/           Pydantic request/response models
-│   ├── app/seed/              fictional demo contract
+│   ├── app/seed/              fictional demo contract + `python -m app.seed.load`
+│   ├── alembic/               migrations (env.py reads DATABASE_URL)
+│   ├── vercel.json            function config; entrypoint is app/main.py by convention
+│   ├── .python-version        3.12 - Vercel's floor, NOT our local 3.11
 │   ├── app/services/          rules_engine.py (pure) + change_orders.py (workflow)
 │   ├── tests/                 pytest
 │   ├── .venv/                 virtualenv (git-ignored)
@@ -82,7 +86,10 @@ ScopeGuardAi/
 │   └── .env.example           LLM_PROVIDER, LLM_API_KEY, LLM_MODEL
 ├── docs/
 │   ├── REQUIREMENTS.md        spec of record - FR-01..19, NFR-01..14
+│   ├── MANUAL_STEPS.md        what the human must do by hand (GitHub, DB, Vercel)
 │   └── decisions/             short decision records (NFR-11)
+├── docker-compose.yml         local Postgres for dev and tests
+├── .github/workflows/ci.yml   CI - actions pinned to commit SHAs
 ├── CLAUDE.md
 ├── README.md
 ├── SOURCES.md
@@ -91,11 +98,19 @@ ScopeGuardAi/
 
 ## Run commands — Windows 11, PowerShell 5.1
 
+Database (terminal 0, once):
+
+```powershell
+docker compose up -d          # Postgres 18 on localhost:5433
+```
+
 Backend (terminal 1):
 
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
+alembic upgrade head          # after any schema change
+python -m app.seed.load       # idempotent
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -159,6 +174,17 @@ curl.exe http://localhost:8000/api/health
 - Frontend fetches the backend from the **browser** (client components), so the
   production build never needs the API to be up.
 - The API base URL comes from `NEXT_PUBLIC_API_URL`, never hardcoded in a component.
-- CORS allows `http://localhost:3000` only; widen it deliberately, not by habit.
+- CORS origins come from `ALLOWED_ORIGINS` (comma separated); widen it
+  deliberately, not by habit.
+- Money is `Decimal` in Python and `NUMERIC` in Postgres, end to end. A float
+  must never touch money, a percentage or a legal limit.
+- The repository interface is the only way to reach storage. Routers and the
+  rules engine never import a concrete store.
+- `audit_log` is append-only: there is `append_audit` and `list_audit`, and
+  deliberately no update or delete anywhere in the code.
+- No long-lived connection pool. Vercel Functions are frozen between
+  invocations, so the engine uses `NullPool` and pooling belongs to the managed
+  Postgres pooler.
+- Local dev runs Python 3.11; Vercel's floor is 3.12. CI tests both.
 - Frontend types that mirror backend schemas live in `src/lib/api.ts` and are
   kept in sync by hand — if a Pydantic model changes, change the TS type too.

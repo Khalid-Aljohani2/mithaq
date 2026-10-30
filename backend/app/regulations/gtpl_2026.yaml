@@ -181,3 +181,13 @@ limits:
       be ''متناسبة مع حجم الأعمال وطبيعتها وتاريخ التكليف بها'' (proportional to the volume, nature and
       assignment date of the works), which is a human judgement.'
     needs_legal_review: false
+  final_guarantee_exemption:
+    flag_only: true
+    trigger: an APPROVED change order whose category adds work (NEW_ITEMS or INCREASE_EXISTING)
+    article_ref_ar: المادة التاسعة والخمسون - الفقرة (2) البند (ز)
+    article_ref_en: Article 59(2)(z)
+    note: 'Eligibility only. Article 59(2) lists the cases where no final guarantee is required,
+      and item (z) is ''إذا كُلف المتعاقد معه بأعمال إضافية'' (if the contractor is assigned
+      additional works). The engine flags the exemption; it never computes or releases a guarantee
+      amount.'
+    needs_legal_review: false
