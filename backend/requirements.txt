@@ -1,0 +1,7 @@
+# Runtime dependencies - pinned to exact versions verified on PyPI 2026-10-30
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.2
+pydantic-settings==2.16.2
+python-dotenv==1.2.4
+httpx==0.28.1
