@@ -192,6 +192,17 @@ test.describe.serial("English recording path", () => {
     await shoot(page, "case-signed-seal");
   });
 
+  test("English VO prints on one A4 page", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("mithaqai.lang", "en"));
+    await page.emulateMedia({ media: "print", colorScheme: "light" });
+    await page.goto(`/contracts/${PRIV}/variation-orders/CR-C-SUBSTITUTION-VO`);
+    await page.getByText("This variation order covers").first().waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    const pages = pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? [];
+    expect(pages.length).toBe(1);
+  });
+
   test("VO, limits, audit, evaluation", async ({ page }) => {
     await open(page, `/contracts/${PRIV}/variation-orders/CR-C-SUBSTITUTION-VO`, /VO-0/);
     await shoot(page, "vo-document");
