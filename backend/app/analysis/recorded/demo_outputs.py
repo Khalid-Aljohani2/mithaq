@@ -311,7 +311,7 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
     """
     headlines = {
         "CLOSE_IN_SCOPE": "الطلب مغطى بالعقد الحالي ويوصى بإغلاقه كطلب داخل النطاق.",
-        "APPROVE": "يوصى باعتماد الطلب بعد استكمال سلسلة الاعتماد.",
+        "APPROVE": "يوصى باعتماد الطلب بعد استكمال الموافقات.",
         "REJECT": "يوصى برفض الطلب لتعارضه مع حد نظامي لا يجوز تجاوزه.",
         "REQUEST_REVISION": "يوصى بإعادة الطلب لاستكمال النواقص قبل الاعتماد.",
     }
@@ -333,7 +333,7 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
             "The request is covered by the existing contract and is recommended for"
             " closure as in scope."
         ),
-        "APPROVE": "The request is recommended for approval once the approval chain completes.",
+        "APPROVE": "The request is recommended for approval once all approvals are signed.",
         "REJECT": "The request is recommended for rejection: it breaches a legal limit that"
         " cannot be exceeded.",
         "REQUEST_REVISION": "The request is recommended for return so the gaps can be completed"
@@ -368,14 +368,14 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
         summary_ar=headlines.get(recommendation, "تمت دراسة الطلب."),
         reasons_ar=tuple(reasons[code] for code in reason_codes if code in reasons),
         next_actions_ar=(
-            ("رفع الطلب إلى أصحاب الصلاحية حسب سلسلة الاعتماد.",)
+            ("رفع الطلب إلى أصحاب الصلاحية بالترتيب المبين في الموافقات.",)
             if approve
             else ("إبلاغ مقدم الطلب بالنتيجة والأسباب.",)
         ),
         summary_en=headlines_en.get(recommendation, "The request has been reviewed."),
         reasons_en=tuple(reasons_en[code] for code in reason_codes if code in reasons_en),
         next_actions_en=(
-            ("Send the request to the approvers, following the approval chain.",)
+            ("Send the request to the approvers, in the order shown under Approvals.",)
             if approve
             else ("Tell the requester the outcome and the reasons.",)
         ),

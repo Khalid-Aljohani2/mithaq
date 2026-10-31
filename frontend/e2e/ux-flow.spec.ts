@@ -34,14 +34,18 @@ test("next steps, sign as, and back to contract along one request", async ({ pag
   await expect(start).toBeVisible({ timeout: 30_000 });
   await start.getByRole("button", { name: "Start approval" }).click();
 
-  // The contractor is acting; the pending slot is the owner's project manager.
-  const signAs = page.locator("[data-sign-as]");
-  await expect(signAs).toBeVisible({ timeout: 20_000 });
-  await signAs.click();
-  const name = page.locator("[data-sign-name]");
-  await expect(name).toBeFocused();
-  await expect(name).toHaveValue("Reem Al-Shehri");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  // The contractor is acting. The owner's approvals run project manager,
+  // procurement manager, finance manager; each slot is signed through Sign as,
+  // which switches the role and prefills the demo directory name.
+  for (const signer of ["Reem Al-Shehri", "Nasser Al-Harthi", "Majed Al-Harbi"]) {
+    const signAs = page.locator("[data-sign-as]");
+    await expect(signAs).toBeVisible({ timeout: 20_000 });
+    await signAs.click();
+    const name = page.locator("[data-sign-name]");
+    await expect(name).toBeFocused();
+    await expect(name).toHaveValue(signer);
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+  }
 
   const issue = page.locator('[data-next-step="issue-vo"]');
   await expect(issue).toBeVisible({ timeout: 20_000 });

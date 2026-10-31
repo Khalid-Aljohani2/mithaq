@@ -670,7 +670,7 @@ def decide_step(
         new_state = transition(previous, CRState.APPROVED, ActorType.HUMAN)
         action = AuditAction.CR_APPROVED
         kind = NotificationKind.APPROVAL_COMPLETED
-        message_ar = f"اكتملت سلسلة الاعتماد للطلب {cr_id}."
+        message_ar = f"اكتملت الموافقات للطلب {cr_id}."
         message_en = f"Change request {cr_id} is fully approved."
     else:
         new_state = transition(previous, CRState.IN_APPROVAL, ActorType.HUMAN)

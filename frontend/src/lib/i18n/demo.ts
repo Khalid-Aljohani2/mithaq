@@ -59,11 +59,11 @@ const ar = {
       ],
     },
     {
-      title: "التوصية ومسار الاعتماد",
-      line: "الجهة الحكومية توقّع، ثم يوقّع المدير الفني.",
+      title: "التوصية والموافقات",
+      line: "توقّع الجهة الحكومية بالترتيب: مدير المشروع ثم مدير المشتريات ثم المدير الفني ثم المدير المالي.",
       notes: [
-        "ابدأ مسار الاعتماد، ثم اكتب الاسم واضغط اعتماد. يظهر الختم بالاسم والوقت.",
-        "التوقيع التالي للمدير الفني: بدّل الصفة من أعلى الصفحة.",
+        "ابدأ مسار الاعتماد، ثم اضغط «وقّع بصفة» على الخانة التالية واعتمد. يظهر الختم بالاسم والوقت.",
+        "كرّر مع مدير المشتريات والمدير الفني والمدير المالي. زر «وقّع بصفة» يبدّل الصفة ويملأ الاسم.",
         "الوكيل أوصى ولم يعتمد شيئًا. كل توقيع لشخص.",
       ],
     },
@@ -127,7 +127,7 @@ const en: typeof ar = {
   dismiss: "Dismiss",
   resetFailed: "The reset failed.",
   noVoYet:
-    "No variation order has been issued for this request yet, so the request itself is open. Complete the approval chain, then issue the order.",
+    "No variation order has been issued for this request yet, so the request itself is open. Complete the approvals, then issue the order.",
   noSalami:
     "The salami preset has not been loaded in this browser. Load it from the demo bar first to reach the eighth request.",
   acts: [
@@ -151,11 +151,11 @@ const en: typeof ar = {
       ],
     },
     {
-      title: "The recommendation and the approval chain",
-      line: "The government entity signs, then the technical manager.",
+      title: "The recommendation and the approvals",
+      line: "The government entity signs in order: project manager, procurement manager, technical manager, finance manager.",
       notes: [
-        "Start approval, type a name and approve. The seal stamps the name and time.",
-        "The technical manager signs next: switch persona at the top of the page.",
+        "Start approval, press Sign as on the next slot and approve. The seal stamps the name and time.",
+        "Repeat for procurement, technical and finance. Sign as switches the role and fills in the name.",
         "The agent recommended. It approved nothing. Every signature is a person's.",
       ],
     },

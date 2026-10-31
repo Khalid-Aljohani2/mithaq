@@ -25,11 +25,13 @@ const PRIV = "CT-2027-0419";
 
 type Persona = { party: "GOVERNMENT_ENTITY" | "CONTRACTOR"; role: string };
 const GOV_PM: Persona = { party: "GOVERNMENT_ENTITY", role: "PROJECT_MANAGER" };
+const GOV_PROC: Persona = { party: "GOVERNMENT_ENTITY", role: "PROCUREMENT_MANAGER" };
+const GOV_FIN: Persona = { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" };
 const caseUrl = (contract: string, cr: string) => `/contracts/${contract}/requests/${cr}`;
 
 /** Codes that must never reach an English reader as-is. */
 const RAW_CODE =
-  /\b(APPROVE|REJECT|REQUEST_REVISION|CLOSE_IN_SCOPE|IN_SCOPE|SUBSTITUTION|UNCLEAR|IN_APPROVAL|VO_ISSUED|AWAITING_DOCUMENTS|RECOMMENDED|RECEIVED|PROJECT_MANAGER|FINANCE_MANAGER|TECHNICAL_MANAGER|LEGAL_ADVISOR|GOVERNMENT_ENTITY|CONTRACTOR|[A-Z]+_[A-Z_]+)\b|\w+=(True|False)/;
+  /\b(APPROVE|REJECT|REQUEST_REVISION|CLOSE_IN_SCOPE|IN_SCOPE|SUBSTITUTION|UNCLEAR|IN_APPROVAL|VO_ISSUED|AWAITING_DOCUMENTS|RECOMMENDED|RECEIVED|PROJECT_MANAGER|PROCUREMENT_MANAGER|FINANCE_MANAGER|TECHNICAL_MANAGER|LEGAL_ADVISOR|GOVERNMENT_ENTITY|CONTRACTOR|[A-Z]+_[A-Z_]+)\b|\w+=(True|False)/;
 
 test.skip(!TAG, "set ENGLISH_SHOTS_TAG to capture the English recording path");
 test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
@@ -106,15 +108,18 @@ test.describe.serial("English recording path", () => {
     }
     for (const cr of ["CR-C-SUBSTITUTION", "CR-D-POLICY", "CR-D-GOV"]) await start(cr);
     await approve("CR-C-SUBSTITUTION", GOV_PM, "Eng. Noura Alshehri");
+    await approve("CR-C-SUBSTITUTION", GOV_PROC, "Nasser Al-Harthi");
     await approve(
       "CR-C-SUBSTITUTION",
       { party: "GOVERNMENT_ENTITY", role: "TECHNICAL_MANAGER" },
       "Eng. Khalid Alotaibi",
     );
+    await approve("CR-C-SUBSTITUTION", GOV_FIN, "Reem Alharbi");
     if ((await state("CR-C-SUBSTITUTION")) === "APPROVED") {
       await post("/api/change-requests/CR-C-SUBSTITUTION/variation-order");
     }
     await approve("CR-D-POLICY", GOV_PM, "Eng. Noura Alshehri");
+    await approve("CR-D-POLICY", GOV_PROC, "Nasser Al-Harthi");
 
     const list = await (await api.get(`/api/contracts/${PRIV}/change-requests`)).json();
     type Row = { id: string; body_ar: string; requester_name: string; state: string };

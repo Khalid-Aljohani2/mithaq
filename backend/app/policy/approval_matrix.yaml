@@ -4,6 +4,11 @@
 # and what escalates. `position` orders the whole chain across both parties:
 # the contractor's consent sits before the client's internal approvals.
 #
+# Government order for a request with a cost impact: Project manager,
+# Procurement manager, Finance manager, then the Legal advisor when a legal
+# flag applies, then the CEO when a policy exception applies. The Technical
+# manager, when a product changes, signs between Procurement and Finance.
+#
 # `when` names a condition evaluated in code (app/pipeline/approvals.py).
 # Adding a condition here without implementing it is a configuration error and
 # is rejected at load time rather than silently never firing.
@@ -33,6 +38,14 @@ parties:
         reason_code: DEFAULT_APPROVER
         description_en: The default approver for every change request.
 
+      - role: PROCUREMENT_MANAGER
+        position: 25
+        when: always
+        reason_code: PROCUREMENT_REVIEW
+        description_en: >-
+          Procurement signs every change request, directly after the project
+          manager.
+
       - role: TECHNICAL_MANAGER
         position: 30
         when: changes_approved_product
@@ -46,7 +59,9 @@ parties:
         when: cost_impact_above_finance_threshold
         reason_code: FINANCE_THRESHOLD
         description_en: >-
-          A cost impact above the configured value needs finance sign-off.
+          A cost impact above `finance_approval_value` in policy.yaml needs
+          finance sign-off. That value is 0, so every request with a cost
+          impact goes to Finance and a request without one skips it.
 
       - role: LEGAL_ADVISOR
         position: 50

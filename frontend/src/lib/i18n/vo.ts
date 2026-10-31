@@ -13,7 +13,7 @@ const ar = {
   loading: "جارٍ تحميل أمر التغيير",
   notFound: (id: string) => `لا يوجد أمر تغيير بالمرجع ${id}`,
   backToRequests: "العودة إلى سجل الطلبات",
-  notFoundHint: "يصدر أمر التغيير بعد اكتمال سلسلة الاعتماد. افتح الطلب المعتمد وأصدره من ملفه.",
+  notFoundHint: "يصدر أمر التغيير بعد اكتمال الموافقات. افتح الطلب المعتمد وأصدره من ملفه.",
 
   // Toolbar
   caseFile: "ملف الطلب",
@@ -43,9 +43,9 @@ const ar = {
   valueNote: "حسبت القيمة قاعدة برمجية من الكميات وأسعار العقد، واعتمدها أصحاب الصلاحية أدناه.",
   articlesTitle: "المواد النظامية المستشهد بها",
   noArticles: "لا يستشهد هذا الأمر بمواد نظامية.",
-  signatures: "التواقيع",
+  signatures: "الموافقات",
   signer: (role: string, party: string) => `${role}، ${party}`,
-  footerBefore: "صدر هذا الأمر في MithaqAi بعد اكتمال سلسلة الاعتماد للطلب",
+  footerBefore: "صدر هذا الأمر في MithaqAi بعد اكتمال الموافقات للطلب",
   footerAfter: ". يوصي الوكيل ويصوغ، ولا يُلزم شيء إلا بتوقيع أصحاب الصلاحية أعلاه.",
 
   // VO block in the case file
@@ -56,7 +56,7 @@ const ar = {
   openVo: "فتح أمر التغيير",
   seeLimits: "عرض الحدود المحدّثة",
   issueIntro:
-    "اكتملت سلسلة الاعتماد. يصدر VO (أمر تغيير) بالقيمة والمدة المعتمدتين، ويحمل تواقيع السلسلة وختم الاعتماد.",
+    "اكتملت الموافقات. يصدر VO (أمر تغيير) بالقيمة والمدة المعتمدتين، ويحمل تواقيع المعتمدين وختم الاعتماد.",
   issue: "إصدار أمر التغيير",
   issuing: "جارٍ إصدار أمر التغيير",
   issueFailed: (reason: string) => `لم يصدر أمر التغيير. ${reason}`,
@@ -76,7 +76,7 @@ const en: typeof ar = {
   notFound: (id: string) => `No variation order with reference ${id}`,
   backToRequests: "Back to change requests",
   notFoundHint:
-    "A variation order is issued once the approval chain is complete. Open the approved change request and issue it from its case file.",
+    "A variation order is issued once all approvals are signed. Open the approved change request and issue it from its case file.",
 
   caseFile: "Case file",
   recorded: "Recorded wording",
@@ -104,9 +104,9 @@ const en: typeof ar = {
     "The value was calculated by a code rule from the contract quantities and rates, and approved by the authorised signatories below.",
   articlesTitle: "Articles cited",
   noArticles: "This order cites no articles.",
-  signatures: "Signatures",
+  signatures: "Approvals",
   signer: (role: string, party: string) => `${role}, ${party}`,
-  footerBefore: "This order was issued in MithaqAi after the approval chain was completed for change request",
+  footerBefore: "This order was issued in MithaqAi after all approvals were signed for change request",
   footerAfter:
     ". The agent recommends and drafts; nothing is binding without the signatures of the authorised signatories above.",
 
@@ -117,7 +117,7 @@ const en: typeof ar = {
   openVo: "Open the variation order",
   seeLimits: "See updated limits",
   issueIntro:
-    "The approval chain is complete. The VO is issued at the approved value and time, and carries the chain's signatures and the approval seal.",
+    "All approvals are signed. The VO is issued at the approved value and time, and carries the approvers' signatures and the approval seal.",
   issue: "Issue variation order",
   issuing: "Issuing the variation order",
   issueFailed: (reason: string) => `The variation order was not issued. ${reason}`,

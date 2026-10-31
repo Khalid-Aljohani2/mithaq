@@ -55,13 +55,13 @@ thresholds:
 
   finance_approval_value:
     source: organization_policy
-    cap_value: "200000"
+    cap_value: "0"
     currency: SAR
     blocking: false
     description_en: >-
-      A cost impact above this value adds the Finance Manager to the approval
-      chain.
-    description_ar: يضيف الأثر المالي الذي يتجاوز هذه القيمة مدير المالية إلى سلسلة الاعتماد.
+      A cost impact above this value adds the Finance Manager to the approvals.
+      Set to 0, so every request with a cost impact needs finance sign-off.
+    description_ar: يضيف الأثر المالي الذي يتجاوز هذه القيمة المدير المالي إلى الموافقات.
 
   minimum_confidence:
     source: default

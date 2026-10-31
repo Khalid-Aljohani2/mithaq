@@ -9,6 +9,7 @@ import type { Lang } from "./i18n";
 const DIRECTORY: Partial<Record<Party, Partial<Record<Role, { ar: string; en: string }>>>> = {
   GOVERNMENT_ENTITY: {
     PROJECT_MANAGER: { ar: "ريم الشهري", en: "Reem Al-Shehri" },
+    PROCUREMENT_MANAGER: { ar: "ناصر الحارثي", en: "Nasser Al-Harthi" },
     FINANCE_MANAGER: { ar: "ماجد الحربي", en: "Majed Al-Harbi" },
     CEO: { ar: "عبدالرحمن المطيري", en: "Abdulrahman Al-Mutairi" },
     LEGAL_ADVISOR: { ar: "لمى الزهراني", en: "Lama Al-Zahrani" },

@@ -188,7 +188,7 @@ def test_approvers_act_in_chain_order() -> None:
     final = approve_whole_chain("CR-D-POLICY")
     assert final["request"]["state"] == "APPROVED"
     order = [s["role"] for s in final["chain"]]
-    assert order == ["PROJECT_MANAGER", "FINANCE_MANAGER", "CEO"]
+    assert order == ["PROJECT_MANAGER", "PROCUREMENT_MANAGER", "FINANCE_MANAGER", "CEO"]
     assert all(s["decision"] == "APPROVED" for s in final["chain"])
 
 
@@ -260,7 +260,8 @@ def test_vo_is_issued_with_signatures_and_values() -> None:
     vo = body["variation_order"]
     assert vo["number"] == "VO-001"
     assert vo["value"] == "132000"
-    assert len(vo["signatures"]) == 2
+    # Project manager, procurement, technical, finance.
+    assert len(vo["signatures"]) == 4
     assert vo["scope_ar"]
     # vo_draft v2: the English wording comes from the same call.
     assert vo["scope_en"].startswith("This variation order covers: replacing")

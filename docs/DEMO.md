@@ -110,7 +110,7 @@ curl.exe -s -X POST "http://localhost:8000/api/demo/reset?preset=salami" -H "X-D
 
 The preset is built by driving the **real service functions** with recorded AI
 outputs, so it takes a few seconds and the state it produces is one the product
-can genuinely reach — full agent traces, real approval chains, real VOs.
+can genuinely reach — full agent traces, real approvals, real VOs.
 
 Audit rows are never deleted. A reset appends a `DEMO_RESET` event instead, so
 the audit page keeps growing across takes. That is worth showing, not hiding.
@@ -138,7 +138,7 @@ page:
 |---|---|---|
 | 1. The contract and its limits | `CT-2027-0418` workspace | Government entity, Project manager |
 | 2. A new request and the 11 stages | `CR-C-SUBSTITUTION` on `CT-2027-0419`, ready to analyse | Contractor, Project manager |
-| 3. Recommendation and approval chain | The same request | Government entity, Project manager (then switch to Technical manager for the second signature) |
+| 3. Recommendation and approvals | The same request | Government entity: Project manager, then Procurement manager, Technical manager and Finance manager, each through **Sign as** |
 | 4. The variation order | The VO of `CR-C-SUBSTITUTION` (the request itself, with a note, if no VO yet) | Government entity, Project manager |
 | 5. The salami case | `CT-2027-0418` limits page; **Open the eighth request** after a salami reset | Government entity, Legal advisor |
 | 6. Measured results | `/evaluation` | unchanged |
@@ -258,10 +258,12 @@ manager)
 ### Act 4 — A human approves (≈45 s)
 
 1. Still on `CR-C-SUBSTITUTION`, click **بدء مسار الاعتماد** (start approval).
-2. Switch to **الجهة الحكومية · مدير المشروع**. Type a name, click **اعتماد**.
-   The **seal** stamps with the name and the time.
-3. Switch to **الجهة الحكومية · المدير الفني** and approve. The chain
-   completes.
+2. Under **الموافقات** (Approvals), click **وقّع بصفة مدير المشروع** (Sign as)
+   on the pending slot. The role switches and, in demo mode, the name is
+   filled in. Click **اعتماد**. The **seal** stamps with the name and the time.
+3. Repeat **وقّع بصفة** for **مدير المشتريات** (Procurement manager, Nasser
+   Al-Harthi), **المدير الفني** (Technical manager) and **المدير المالي**
+   (Finance manager, Majed Al-Harbi). The approvals complete.
 4. Click through to the **variation order**. Code assembled the values and the
    citations; the model drafted only the Arabic scope paragraph. Hit
    **طباعة** — one A4 page, no app chrome.

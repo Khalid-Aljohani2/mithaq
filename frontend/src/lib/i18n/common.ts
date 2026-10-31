@@ -45,6 +45,7 @@ const ar = {
   clientNeutral: "الجهة الحكومية أو المالك",
   role: {
     PROJECT_MANAGER: "مدير المشروع",
+    PROCUREMENT_MANAGER: "مدير المشتريات",
     TECHNICAL_MANAGER: "المدير الفني",
     FINANCE_MANAGER: "المدير المالي",
     LEGAL_ADVISOR: "المستشار القانوني",
@@ -79,9 +80,10 @@ const ar = {
   },
   chainReason: {
     DEFAULT_APPROVER: "المعتمد الافتراضي لكل طلب تغيير.",
+    PROCUREMENT_REVIEW: "تراجع المشتريات كل طلب تغيير بعد مدير المشروع.",
     CONTRACTOR_CONSENT: "موافقة المقاول مطلوبة نظامًا لهذا التغيير.",
     TECHNICAL_APPROVAL_REQUIRED: "الطلب يغيّر منتجًا أو مواصفة معتمدة.",
-    FINANCE_THRESHOLD: "أثر التكلفة يتجاوز حد الاعتماد المالي.",
+    FINANCE_THRESHOLD: "للطلب أثر مالي، فيلزم اعتماد المدير المالي.",
     LEGAL_REVIEW_REQUIRED: "الطلب يمس حدًا نظاميًا ويحتاج مراجعة قانونية.",
     POLICY_EXCEPTION: "الطلب يتجاوز حد السياسة الداخلية ويحتاج استثناءً.",
   } as Record<string, string>,
@@ -118,14 +120,14 @@ const ar = {
     REASON_REQUIRED: "اكتب سبب القرار، فالرفض وطلب التعديل لا يُقبلان دون سبب.",
     NOT_ANALYSABLE: "لا يمكن تحليل الطلب في حالته الحالية. أعد تحميل الصفحة لرؤية حالته.",
     NOT_IN_APPROVAL: "الطلب ليس في مسار الاعتماد الآن. أعد تحميل الصفحة لرؤية حالته.",
-    NO_CHAIN: "لا توجد سلسلة اعتماد لهذا الطلب. حلّل الطلب أولًا.",
+    NO_CHAIN: "لا توجد موافقات لهذا الطلب بعد. حلّل الطلب أولًا.",
     legalCap: (refs: string[]) =>
       "تعذّر إتمام الاعتماد: الاعتماد الآن يتجاوز حدًا نظاميًا تراكميًا" +
       `${refs.length ? ` (${refs.join("، ")})` : ""}. لا يرفع هذا الحد أي اعتماد داخلي، وقد أُحيل الطلب للمراجعة النظامية.`,
     WRONG_PARTY: "هذا الإجراء يخص الطرف الذي قدّم الطلب. بدّل الجهة من أعلى الصفحة.",
     NOT_AWAITING_DOCUMENTS: "الطلب ليس بانتظار مستندات الآن. أعد تحميل الصفحة لرؤية حالته.",
     NOT_PRICED: "لم تُحتسب قيم الطلب بعد. أعد تحليل الطلب قبل بدء الاعتماد.",
-    CHAIN_COMPLETE: "اكتملت سلسلة الاعتماد بالفعل.",
+    CHAIN_COMPLETE: "اكتملت الموافقات بالفعل.",
     CR_NOT_FOUND: "لم يُعثر على الطلب. ارجع إلى سجل الطلبات واختر طلبًا آخر.",
     CONTRACT_NOT_FOUND: "لم يُعثر على العقد. اختر عقدًا آخر من أعلى الصفحة.",
     CONTRACT_INVALID: "لم يُقبل المشروع. صحّح الحقول المعلَّمة ثم أعد الإنشاء.",
@@ -247,6 +249,7 @@ const en: typeof ar = {
   clientNeutral: "Government entity or owner",
   role: {
     PROJECT_MANAGER: "Project manager",
+    PROCUREMENT_MANAGER: "Procurement manager",
     TECHNICAL_MANAGER: "Technical manager",
     FINANCE_MANAGER: "Finance manager",
     LEGAL_ADVISOR: "Legal advisor",
@@ -281,9 +284,10 @@ const en: typeof ar = {
   },
   chainReason: {
     DEFAULT_APPROVER: "Default approver for every change request.",
+    PROCUREMENT_REVIEW: "Procurement reviews every change request after the project manager.",
     CONTRACTOR_CONSENT: "The law requires the contractor's consent for this change.",
     TECHNICAL_APPROVAL_REQUIRED: "The request changes an approved product or specification.",
-    FINANCE_THRESHOLD: "The cost impact exceeds the finance approval threshold.",
+    FINANCE_THRESHOLD: "The request has a cost impact, so finance signs.",
     LEGAL_REVIEW_REQUIRED: "The request touches a legal limit and needs legal review.",
     POLICY_EXCEPTION: "The request exceeds an internal policy limit and needs an exception.",
   },
@@ -320,14 +324,14 @@ const en: typeof ar = {
     REASON_REQUIRED: "Write a reason. A rejection or revision request needs one.",
     NOT_ANALYSABLE: "The request cannot be analysed in its current state. Reload the page to see its state.",
     NOT_IN_APPROVAL: "The request is not in approval now. Reload the page to see its state.",
-    NO_CHAIN: "This request has no approval chain. Analyse it first.",
+    NO_CHAIN: "This request has no approvals yet. Analyse it first.",
     legalCap: (refs: string[]) =>
       "Approval could not be completed: approving now would exceed a cumulative legal limit" +
       `${refs.length ? ` (${refs.join(", ")})` : ""}. No internal approval can lift this limit, and the request has been referred for legal review.`,
     WRONG_PARTY: "This action belongs to the party that submitted the request. Switch the party at the top of the page.",
     NOT_AWAITING_DOCUMENTS: "The request is not awaiting documents now. Reload the page to see its state.",
     NOT_PRICED: "The request has not been priced yet. Analyse it again before starting approval.",
-    CHAIN_COMPLETE: "The approval chain is already complete.",
+    CHAIN_COMPLETE: "All approvals are already signed.",
     CR_NOT_FOUND: "Request not found. Go back to the request register and choose another.",
     CONTRACT_NOT_FOUND: "Contract not found. Choose another contract at the top of the page.",
     CONTRACT_INVALID: "The project was not accepted. Correct the marked fields, then create it again.",

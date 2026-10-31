@@ -35,7 +35,7 @@ const ar = {
   emptyTitle: "لا توجد طلبات تغيير على هذا العقد",
   submitFirst: "تقديم أول طلب تغيير",
   emptyHint: "كل طلب يُسجَّل هنا بمرجعه وحالته وأثره، ويراه الطرفان معًا.",
-  chainComplete: "اكتملت السلسلة",
+  chainComplete: "اكتملت الموافقات",
   approvalNotStarted: "لم يبدأ الاعتماد",
   none: "لا يوجد",
   colRef: "المرجع",
@@ -81,7 +81,7 @@ const en: typeof ar = {
   submitFirst: "Submit the first change request",
   emptyHint:
     "Every request is recorded here with its reference, state and impact, and both parties see it.",
-  chainComplete: "Chain complete",
+  chainComplete: "Approvals complete",
   approvalNotStarted: "Approval not started",
   none: "None",
   colRef: "Reference",

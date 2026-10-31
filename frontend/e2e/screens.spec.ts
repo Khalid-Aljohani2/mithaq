@@ -17,6 +17,8 @@ const PRIV = "CT-2027-0419";
 
 type Persona = { party: "GOVERNMENT_ENTITY" | "CONTRACTOR"; role: string };
 const GOV_PM: Persona = { party: "GOVERNMENT_ENTITY", role: "PROJECT_MANAGER" };
+const GOV_PROC: Persona = { party: "GOVERNMENT_ENTITY", role: "PROCUREMENT_MANAGER" };
+const GOV_FIN: Persona = { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" };
 
 type Screen = {
   name: string;
@@ -97,8 +99,8 @@ const SCREENS: Screen[] = [
     persona: { party: "CONTRACTOR", role: "PROJECT_MANAGER" },
     ready: "محجوب نظامًا",
   },
-  { name: "vo-document", url: VO_URL, ready: "التواقيع" },
-  { name: "vo-document-government", url: GOV_VO_URL, ready: "التواقيع" },
+  { name: "vo-document", url: VO_URL, ready: "الموافقات" },
+  { name: "vo-document-government", url: GOV_VO_URL, ready: "الموافقات" },
   {
     name: "notifications-drawer",
     url: `/contracts/${PRIV}`,
@@ -169,19 +171,23 @@ test.beforeAll(async () => {
     await analyse(cr);
   }
   for (const cr of ["CR-C-SUBSTITUTION", "CR-D-POLICY", "CR-D-GOV"]) await start(cr);
-  // CR-C through its whole chain (project manager, then technical manager),
-  // then the VO is issued: the document screens need a real one.
+  // CR-C through all its approvals (project manager, procurement, technical,
+  // finance), then the VO is issued: the document screens need a real one.
   await approve("CR-C-SUBSTITUTION", GOV_PM, "م. نورة الشهري");
+  await approve("CR-C-SUBSTITUTION", GOV_PROC, "أ. ناصر الحارثي");
   await approve(
     "CR-C-SUBSTITUTION",
     { party: "GOVERNMENT_ENTITY", role: "TECHNICAL_MANAGER" },
     "م. خالد العتيبي",
   );
+  await approve("CR-C-SUBSTITUTION", GOV_FIN, "أ. ريم الحربي");
   if ((await state("CR-C-SUBSTITUTION")) === "APPROVED") {
     await post("/api/change-requests/CR-C-SUBSTITUTION/variation-order");
   }
-  // CR-D (private) waits at the finance manager after the project manager signs.
+  // CR-D (private) waits at the finance manager after the project manager and
+  // procurement sign.
   await approve("CR-D-POLICY", GOV_PM, "م. نورة الشهري");
+  await approve("CR-D-POLICY", GOV_PROC, "أ. ناصر الحارثي");
 
   // CR-F on the government contract stays within Article 67: its whole chain,
   // contractor consent first, then a VO that cites the article.
@@ -189,7 +195,8 @@ test.beforeAll(async () => {
   await start("CR-F-GOV-OK");
   await approve("CR-F-GOV-OK", { party: "CONTRACTOR", role: "PROJECT_MANAGER" }, "م. فهد القحطاني");
   await approve("CR-F-GOV-OK", GOV_PM, "م. نورة الشهري");
-  await approve("CR-F-GOV-OK", { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" }, "أ. ريم الحربي");
+  await approve("CR-F-GOV-OK", GOV_PROC, "أ. ناصر الحارثي");
+  await approve("CR-F-GOV-OK", GOV_FIN, "أ. ريم الحربي");
   await approve("CR-F-GOV-OK", { party: "GOVERNMENT_ENTITY", role: "LEGAL_ADVISOR" }, "أ. سلمان العمري");
   if ((await state("CR-F-GOV-OK")) === "APPROVED") {
     await post("/api/change-requests/CR-F-GOV-OK/variation-order");
@@ -267,7 +274,7 @@ test("approval action stamps the seal", async ({ page }) => {
   await page.getByRole("button", { name: "تراجع" }).click();
 
   await page.getByRole("button", { name: "اعتماد", exact: true }).click();
-  await expect(page.getByRole("img", { name: /معتمد/ })).toHaveCount(2);
+  await expect(page.getByRole("img", { name: /معتمد/ })).toHaveCount(3);
   // The chain moves on to the CEO, whose slot this persona cannot act on.
   await expect(page.getByText(/الخطوة التالية لـالرئيس التنفيذي/)).toBeVisible();
   if (SCRATCH) {
@@ -322,7 +329,7 @@ for (const [label, url, file] of [
 test(`variation order prints on one A4 page (${label})`, async ({ page }) => {
   await page.emulateMedia({ media: "print", colorScheme: "light" });
   await page.goto(url);
-  await page.getByText("التواقيع").first().waitFor();
+  await page.getByText("الموافقات").first().waitFor();
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole("button", { name: "طباعة" })).toBeHidden();
   await expect(page.getByRole("banner").filter({ hasText: "تعمل بصفة" })).toBeHidden();

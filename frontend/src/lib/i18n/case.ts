@@ -34,12 +34,12 @@ const ar = {
   sevenStages:
     "يمر الطلب بسبع مراحل: الاستلام، والمستندات، والنطاق، والتقييم الفني، والتكلفة والمدة، والمخاطر، ثم التوصية. يوصي الوكيل ولا يقرر.",
   analyse: "تحليل الطلب",
-  approvalChain: "سلسلة الاعتماد",
+  approvalChain: "الموافقات",
   signaturesInOrder: (n: number) => `${n} ${n === 1 ? "توقيع" : "تواقيع"} بالترتيب`,
-  noChain: "لم تُبنَ سلسلة اعتماد لهذا الطلب.",
+  noChain: "لم تُحدَّد موافقات لهذا الطلب.",
   sending: "جارٍ إرسال الطلب",
   startApproval: "بدء مسار الاعتماد",
-  startApprovalNote: "يُرسل الطلب إلى أول معتمد في السلسلة، ويُبلَّغ كل من فيها بدوره.",
+  startApprovalNote: "يُرسل الطلب إلى أول معتمد في الموافقات، ويُبلَّغ كل معتمد بدوره.",
   approvedNote: "اعتُمد الطلب بجميع التواقيع، وهو جاهز لإصدار أمر التغيير.",
   rejectedNote: "رُفض الطلب وأُبلغ مقدمه بالسبب.",
 
@@ -49,7 +49,7 @@ const ar = {
   reasons: "الأسباب",
   conflicts: "تعارضات بين المراحل",
   nextActions: "الإجراءات التالية",
-  recommendationOnly: "هذه توصية، والقرار لأصحاب الصلاحية في سلسلة الاعتماد.",
+  recommendationOnly: "هذه توصية، والقرار لأصحاب الصلاحية في الموافقات.",
 
   // Flags
   flags: "التنبيهات",
@@ -63,12 +63,12 @@ const ar = {
   policyCost: (after: string, cap: string) =>
     `التكلفة التراكمية بعد الطلب ${after} من قيمة العقد، والحد ${cap}. `,
   policyTime: (after: string, cap: string) => `التمديد التراكمي ${after} من المدة، والحد ${cap}. `,
-  policyRole: (role: string) => `أُضيف ${role} إلى سلسلة الاعتماد لاعتماد الاستثناء.`,
+  policyRole: (role: string) => `أُضيف ${role} إلى الموافقات لاعتماد الاستثناء.`,
   policyNotLegal: " استثناء السياسة لا يرفع الحد النظامي.",
   legalReviewTitle: "يحتاج مراجعة قانونية",
   legalReviewBody: "الطلب يمس حدًا نظاميًا.",
   consentTitle: "موافقة المقاول مطلوبة",
-  consentBody: "أُضيفت موافقة المقاول إلى سلسلة الاعتماد.",
+  consentBody: "أُضيفت موافقة المقاول إلى الموافقات.",
   rateTitle: "سعر الوحدة معلَّم",
   rateLine: (proposed: string, contract: string, deviation: string, cap: string) =>
     `: المقترح ${proposed} مقابل ${contract} في العقد، بانحراف ${deviation} والحد ${cap}.`,
@@ -77,7 +77,7 @@ const ar = {
   manualRateBody:
     "لا يقابل السعر بندًا في العقد، فاعتُمد السعر الذي أدخله مقدم الطلب، ويحتاج تحققًا بشريًا.",
   productTitle: "يغيّر منتجًا معتمدًا",
-  productBody: "أُضيف اعتماد فني إلى سلسلة الاعتماد.",
+  productBody: "أُضيف اعتماد فني إلى الموافقات.",
 
   // Impact block
   impactHeading: "أثر التكلفة والمدة",
@@ -172,7 +172,7 @@ const ar = {
   rejectedSummary: "رفض أحد المعتمدين الطلب، وأُبلغ مقدمه.",
   notApplicable: "لا ينطبق",
   signing: "قيد التوقيع",
-  signedOf: (signed: number, total: number) => `وقّع ${signed} من ${total} في سلسلة الاعتماد.`,
+  signedOf: (signed: number, total: number) => `وقّع ${signed} من ${total} في الموافقات.`,
   revisionStatus: "طُلب تعديل",
   revisionSummary: "أُعيد الطلب إلى مقدمه للتعديل.",
   complete: "اكتمل",
@@ -289,12 +289,12 @@ const en: typeof ar = {
   sevenStages:
     "The request passes seven stages: intake, documents, scope, technical review, cost and schedule, risk, then the recommendation. The agent recommends; it does not decide.",
   analyse: "Analyse request",
-  approvalChain: "Approval chain",
+  approvalChain: "Approvals",
   signaturesInOrder: (n: number) => `${n} ${n === 1 ? "signature" : "signatures"} in order`,
-  noChain: "No approval chain was built for this request.",
+  noChain: "No approvals were set up for this request.",
   sending: "Sending",
   startApproval: "Start approval",
-  startApprovalNote: "The request goes to the first approver in the chain, and each one is notified in turn.",
+  startApprovalNote: "The request goes to the first approver, and each approver is notified in turn.",
   approvedNote: "The request has every signature and is ready for a variation order.",
   rejectedNote: "The request was rejected and the requester was told why.",
 
@@ -303,7 +303,7 @@ const en: typeof ar = {
   reasons: "Reasons",
   conflicts: "Conflicts between stages",
   nextActions: "Next actions",
-  recommendationOnly: "This is a recommendation. Authorised approvers in the chain decide.",
+  recommendationOnly: "This is a recommendation. Authorised approvers decide.",
 
   flags: "Flags",
   noFlags: "No flags: the request is within limits and changes no approved product.",
@@ -317,12 +317,12 @@ const en: typeof ar = {
     `Cumulative cost after this request is ${after} of the contract value; the limit is ${cap}. `,
   policyTime: (after: string, cap: string) =>
     `Cumulative extension is ${after} of the duration; the limit is ${cap}. `,
-  policyRole: (role: string) => `${role} was added to the approval chain to approve the exception.`,
+  policyRole: (role: string) => `${role} was added to Approvals to approve the exception.`,
   policyNotLegal: " A policy exception does not lift the legal limit.",
   legalReviewTitle: "Needs legal review",
   legalReviewBody: "The request touches a legal limit.",
   consentTitle: "Contractor consent required",
-  consentBody: "Contractor consent was added to the approval chain.",
+  consentBody: "Contractor consent was added to Approvals.",
   rateTitle: "Unit rate flagged",
   rateLine: (proposed: string, contract: string, deviation: string, cap: string) =>
     `: proposed ${proposed} against ${contract} in the contract, a deviation of ${deviation}; the limit is ${cap}.`,
@@ -331,7 +331,7 @@ const en: typeof ar = {
   manualRateBody:
     "The rate matches no contract item, so the requester's rate was used. It needs human verification.",
   productTitle: "Changes an approved product",
-  productBody: "A technical approval was added to the approval chain.",
+  productBody: "A technical approval was added to Approvals.",
 
   impactHeading: "Cost and schedule impact",
   costImpact: "Cost impact",
@@ -402,7 +402,7 @@ const en: typeof ar = {
   signAs: "Sign as",
   nextStep: "Next step",
   backToContract: "Back to contract",
-  nextStartApproval: "Analysis complete. Start the approval chain to send the request to the first approver.",
+  nextStartApproval: "Analysis complete. Start approvals to send the request to the first approver.",
   signAsRole: (who: string) => `Sign as ${who}`,
   nameMissing: "Enter your name as it appears on the signature.",
   approve: "Approve",
@@ -422,7 +422,7 @@ const en: typeof ar = {
   rejectedSummary: "An approver rejected the request and the requester was told.",
   notApplicable: "Not applicable",
   signing: "Signing",
-  signedOf: (signed: number, total: number) => `${signed} of ${total} in the approval chain have signed.`,
+  signedOf: (signed: number, total: number) => `${signed} of ${total} approvers have signed.`,
   revisionStatus: "Revision requested",
   revisionSummary: "The request was returned to the requester for revision.",
   complete: "Complete",

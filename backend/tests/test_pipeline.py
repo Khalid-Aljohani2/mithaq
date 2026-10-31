@@ -79,11 +79,11 @@ def test_in_scope_request_closes_and_builds_no_chain(private: Contract) -> None:
     assert result.request.matched_line_ids == ("ITM-07",)
 
 
-def test_pcr_within_limits_needs_only_the_project_manager(private: Contract) -> None:
+def test_pcr_within_limits_goes_to_pm_procurement_and_finance(private: Contract) -> None:
     result = analyse(private, "CR-B-PCR")
     assert result.request.kind is ChangeKind.PCR
     assert result.request.cost_impact == Decimal("135000")
-    assert roles(result) == [Role.PROJECT_MANAGER]
+    assert roles(result) == [Role.PROJECT_MANAGER, Role.PROCUREMENT_MANAGER, Role.FINANCE_MANAGER]
     assert result.request.recommendation is Recommendation.APPROVE
 
 
@@ -92,7 +92,12 @@ def test_substitution_adds_technical_approval(private: Contract) -> None:
     result = analyse(private, "CR-C-SUBSTITUTION")
     assert result.request.kind is ChangeKind.SUBSTITUTION
     assert result.request.changes_approved_product is True
-    assert roles(result) == [Role.PROJECT_MANAGER, Role.TECHNICAL_MANAGER]
+    assert roles(result) == [
+        Role.PROJECT_MANAGER,
+        Role.PROCUREMENT_MANAGER,
+        Role.TECHNICAL_MANAGER,
+        Role.FINANCE_MANAGER,
+    ]
     # 12 x (56,000 - 45,000)
     assert result.request.cost_impact == Decimal("132000")
 
@@ -115,7 +120,12 @@ def test_policy_breach_adds_the_ceo(private: Contract) -> None:
     assert result.policy.cost_after_pct == Decimal("21.0000")
     assert result.policy.cost_exceeded is True
     assert result.request.policy_exception_required is True
-    assert roles(result) == [Role.PROJECT_MANAGER, Role.FINANCE_MANAGER, Role.CEO]
+    assert roles(result) == [
+        Role.PROJECT_MANAGER,
+        Role.PROCUREMENT_MANAGER,
+        Role.FINANCE_MANAGER,
+        Role.CEO,
+    ]
     assert result.request.recommendation is Recommendation.APPROVE
 
 
@@ -124,7 +134,7 @@ def test_ncr_reduces_the_contract(private: Contract) -> None:
     assert result.request.kind is ChangeKind.NCR
     # 15 training days x 7,500
     assert result.request.cost_impact == Decimal("-112500")
-    assert roles(result) == [Role.PROJECT_MANAGER]
+    assert roles(result) == [Role.PROJECT_MANAGER, Role.PROCUREMENT_MANAGER, Role.FINANCE_MANAGER]
 
 
 def test_q1_default_flags_a_human_entered_rate(private: Contract) -> None:

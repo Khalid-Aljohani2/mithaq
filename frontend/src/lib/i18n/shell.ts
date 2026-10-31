@@ -14,7 +14,7 @@ const ar = {
   availableContracts: "العقود المتاحة",
   loadingContracts: "جارٍ تحميل العقود",
   actingAs: "تعمل بصفة",
-  roleHint: "يحدد الدور الإجراءات المتاحة لك في سلسلة الاعتماد.",
+  roleHint: "يحدد الدور الإجراءات المتاحة لك في الموافقات.",
   party: "الطرف",
   role: "الدور",
   themeToDark: "التبديل إلى الوضع الداكن",
@@ -34,7 +34,7 @@ const ar = {
   notificationsFailed: "تعذر تحميل الإشعارات.",
   noNotifications: "لا إشعارات لدورك الآن.",
   noNotificationsHint:
-    "يصلك إشعار حين يحين دورك في سلسلة اعتماد، أو حين يتغير طلب قدّمه طرفك. بدّل الدور من أعلى الصفحة لرؤية إشعارات دور آخر.",
+    "يصلك إشعار حين يحين دورك في الموافقات، أو حين يتغير طلب قدّمه طرفك. بدّل الدور من أعلى الصفحة لرؤية إشعارات دور آخر.",
   reminder: "تذكير",
   contractWord: "عقد",
 };
@@ -69,7 +69,7 @@ const en: typeof ar = {
   notificationsFailed: "Could not load notifications.",
   noNotifications: "No notifications for your role right now.",
   noNotificationsHint:
-    "You are notified when it is your turn in an approval chain, or when a request from your party changes. Switch roles at the top of the page to see another role's notifications.",
+    "You are notified when it is your turn to approve, or when a request from your party changes. Switch roles at the top of the page to see another role's notifications.",
   reminder: "Reminder",
   contractWord: "Contract",
 };

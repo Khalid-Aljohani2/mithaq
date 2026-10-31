@@ -1563,7 +1563,7 @@ export interface components {
          * @description Approver roles. PROJECT_MANAGER is the default approver (FR-02).
          * @enum {string}
          */
-        Role: "PROJECT_MANAGER" | "TECHNICAL_MANAGER" | "FINANCE_MANAGER" | "LEGAL_ADVISOR" | "CEO";
+        Role: "PROJECT_MANAGER" | "PROCUREMENT_MANAGER" | "TECHNICAL_MANAGER" | "FINANCE_MANAGER" | "LEGAL_ADVISOR" | "CEO";
         /**
          * Signature
          * @description One approval recorded on a variation order (FR-12).

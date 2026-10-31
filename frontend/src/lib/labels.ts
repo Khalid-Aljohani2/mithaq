@@ -131,6 +131,7 @@ export const ROLE_LABEL: Record<Role, string> = labelMap((d) => d.common.role);
 export const PARTIES: readonly Party[] = ["GOVERNMENT_ENTITY", "CONTRACTOR"];
 export const ROLES: readonly Role[] = [
   "PROJECT_MANAGER",
+  "PROCUREMENT_MANAGER",
   "TECHNICAL_MANAGER",
   "FINANCE_MANAGER",
   "LEGAL_ADVISOR",
