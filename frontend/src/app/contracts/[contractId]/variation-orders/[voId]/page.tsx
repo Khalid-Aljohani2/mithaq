@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { Empty, ErrorState, Loading } from "@/components/file";
 import { Seal } from "@/components/glyphs";
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ApiError, api, type BreakdownLine, type Contract, type VariationOrder } from "@/lib/api";
@@ -18,7 +19,8 @@ import {
   formatMoney,
   formatNumber,
 } from "@/lib/format";
-import { CONTRACT_TYPE_LABEL, ROLE_LABEL, TERMS, partyLabel } from "@/lib/labels";
+import { CONTRACT_TYPE_LABEL, ROLE_LABEL, partyLabel } from "@/lib/labels";
+import { useT } from "@/lib/prefs";
 import { useResource } from "@/lib/use-resource";
 
 /**
@@ -31,6 +33,7 @@ export default function VariationOrderPage() {
   const voId = decodeURIComponent(params.voId);
   const { id, contract } = useCurrentContract();
   const contracts = useContracts();
+  const t = useT();
 
   const orders = useResource((s) => api.variationOrder(voId, s), [voId]);
   // The VO cites articles by their English reference; the ledger carries the
@@ -44,7 +47,7 @@ export default function VariationOrderPage() {
     body = (
       <ErrorState
         error={orders.error ?? contracts.error}
-        what="أمر التغيير"
+        what={t.vo.what}
         onRetry={() => {
           orders.reload();
           contracts.reload();
@@ -54,24 +57,24 @@ export default function VariationOrderPage() {
   } else if ((orders.status === "loading" && !notFound) || !contract) {
     body =
       contracts.status === "ready" && !contract ? (
-        <Empty title={`لا يوجد عقد بالمرجع ${id ?? ""}`}>اختر عقدًا من أعلى الصفحة.</Empty>
+        <Empty title={t.vo.noContract(id ?? "")}>{t.vo.chooseContract}</Empty>
       ) : (
-        <Loading label="جارٍ تحميل أمر التغيير" rows={6} />
+        <Loading label={t.vo.loading} rows={6} />
       );
   } else if (!vo) {
     body = (
       <Empty
-        title={`لا يوجد أمر تغيير بالمرجع ${voId}`}
+        title={t.vo.notFound(voId)}
         action={
           <Link
             href={`/contracts/${encodeURIComponent(contract.id)}`}
             className={buttonVariants({ variant: "outline" })}
           >
-            العودة إلى سجل الطلبات
+            {t.vo.backToRequests}
           </Link>
         }
       >
-        يصدر أمر التغيير بعد اكتمال سلسلة الاعتماد. افتح الطلب المعتمد وأصدره من ملفه.
+        {t.vo.notFoundHint}
       </Empty>
     );
   } else {
@@ -99,17 +102,18 @@ function VoDocument({
     .map((lineId) => contract.breakdown.find((l) => l.id === lineId))
     .filter((l): l is BreakdownLine => Boolean(l));
   const client = partyLabel("GOVERNMENT_ENTITY", contract.contract_type);
+  const t = useT().vo;
 
   return (
     <div className="px-4 pt-6 pb-16 md:px-8 print:p-0">
       {/* Screen-only toolbar */}
       <div className="mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href={caseHref} className="text-sm underline-offset-4 hover:underline">
-          ملف الطلب <span className="ref">{vo.cr_id}</span>
+          {t.caseFile} <span className="ref">{vo.cr_id}</span>
         </Link>
         <div className="flex items-center gap-3">
-          {vo.recorded && <Badge variant="muted">صياغة مسجلة</Badge>}
-          <Button onClick={() => window.print()}>طباعة</Button>
+          {vo.recorded && <Badge variant="muted">{t.recorded}</Badge>}
+          <Button onClick={() => window.print()}>{t.print}</Button>
         </div>
       </div>
 
@@ -122,60 +126,71 @@ function VoDocument({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-sans text-xs text-ink-muted">
-                عقد {CONTRACT_TYPE_LABEL[contract.contract_type]} رقم{" "}
+                {t.contractLine(CONTRACT_TYPE_LABEL[contract.contract_type])}{" "}
                 <span className="ref">{contract.id}</span>
               </p>
               <h1 id="vo-title" className="mt-1 text-2xl font-bold">
-                {TERMS.VO}
+                {t.title}
               </h1>
               <p className="font-sans text-xs text-ink-muted">
-                VO ({TERMS.VO})، صادر عن الطلب <span className="ref">{vo.cr_id}</span>
+                {t.issuedFrom} <span className="ref">{vo.cr_id}</span>
               </p>
             </div>
             <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 font-sans text-sm">
-              <dt className="text-ink-muted">الرقم</dt>
+              <dt className="text-ink-muted">{t.number}</dt>
               <dd className="ref font-semibold">{vo.number}</dd>
-              <dt className="text-ink-muted">التاريخ</dt>
+              <dt className="text-ink-muted">{t.date}</dt>
               <dd className="font-medium">{formatDate(vo.issued_at)}</dd>
             </dl>
           </div>
-          <p className="mt-3 text-base font-semibold print:mt-1">{contract.title_ar}</p>
+          <ArabicOriginal as="p" showLabel={false} className="mt-3 text-base font-semibold print:mt-1">
+            {contract.title_ar}
+          </ArabicOriginal>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 print:mt-2 print:grid-cols-2">
             <div className="border-s-2 border-ink ps-3">
-              <dt className="font-sans text-xs text-ink-muted">الطرف الأول، {client}</dt>
-              <dd className="font-semibold">{contract.entity_name}</dd>
+              <dt className="font-sans text-xs text-ink-muted">{t.firstParty(client)}</dt>
+              <dd className="font-semibold">
+                <ArabicOriginal as="span" showLabel={false}>{contract.entity_name}</ArabicOriginal>
+              </dd>
             </div>
             <div className="border-s-2 border-ink ps-3">
-              <dt className="font-sans text-xs text-ink-muted">الطرف الثاني، المقاول</dt>
-              <dd className="font-semibold">{contract.contractor_name}</dd>
+              <dt className="font-sans text-xs text-ink-muted">{t.secondParty}</dt>
+              <dd className="font-semibold">
+                <ArabicOriginal as="span" showLabel={false}>{contract.contractor_name}</ArabicOriginal>
+              </dd>
             </div>
           </dl>
         </header>
 
-        <DocSection n={1} title="وصف التغيير">
-          <p className="text-[0.9375rem] leading-7 whitespace-pre-line print:text-sm print:leading-6">{vo.scope_ar}</p>
+        <DocSection n={1} title={t.scopeTitle}>
+          <ArabicOriginal>
+            <p className="text-[0.9375rem] leading-7 whitespace-pre-line print:text-sm print:leading-6">{vo.scope_ar}</p>
+          </ArabicOriginal>
         </DocSection>
 
-        <DocSection n={2} title="البنود المتأثرة وأسعار العقد">
+        <DocSection n={2} title={t.linesTitle}>
           {lines.length === 0 ? (
-            <p className="text-sm">لا يقابل هذا الأمر بندًا قائمًا في جدول الكميات، فهو بند جديد.</p>
+            <p className="text-sm">{t.noLines}</p>
           ) : (
             <table className="w-full border-collapse font-sans text-sm">
               <thead>
                 <tr className="border-y border-rule-strong text-xs text-ink-muted">
-                  <th scope="col" className="py-1.5 pe-3 text-start font-medium">البند</th>
-                  <th scope="col" className="py-1.5 pe-3 text-start font-medium">الوصف</th>
-                  <th scope="col" className="py-1.5 pe-3 text-end font-medium">الكمية</th>
-                  <th scope="col" className="py-1.5 text-end font-medium">سعر الوحدة في العقد</th>
+                  <th scope="col" className="py-1.5 pe-3 text-start font-medium">{t.colItem}</th>
+                  <th scope="col" className="py-1.5 pe-3 text-start font-medium">{t.colDescription}</th>
+                  <th scope="col" className="py-1.5 pe-3 text-end font-medium">{t.colQuantity}</th>
+                  <th scope="col" className="py-1.5 text-end font-medium">{t.colUnitRate}</th>
                 </tr>
               </thead>
               <tbody>
                 {lines.map((l) => (
                   <tr key={l.id} className="border-b border-rule">
                     <td className="py-1.5 pe-3"><span className="ref font-medium">{l.id}</span></td>
-                    <td className="py-1.5 pe-3">{l.description_ar}</td>
+                    <td className="py-1.5 pe-3">
+                      <ArabicOriginal as="span" showLabel={false}>{l.description_ar}</ArabicOriginal>
+                    </td>
                     <td className="py-1.5 pe-3 text-end whitespace-nowrap">
-                      {formatNumber(l.quantity)} {l.unit_ar}
+                      {formatNumber(l.quantity)}{" "}
+                      <ArabicOriginal as="span" showLabel={false}>{l.unit_ar}</ArabicOriginal>
                     </td>
                     <td className="py-1.5 text-end whitespace-nowrap">{formatMoney(l.unit_rate)}</td>
                   </tr>
@@ -185,30 +200,34 @@ function VoDocument({
           )}
         </DocSection>
 
-        <DocSection n={3} title="القيمة والمدة">
+        <DocSection n={3} title={t.valueTitle}>
           <dl className="grid grid-cols-2 gap-4 font-sans">
             <div>
-              <dt className="text-xs text-ink-muted">قيمة الأمر</dt>
+              <dt className="text-xs text-ink-muted">{t.value}</dt>
               <dd className="text-xl font-semibold print:text-lg">{formatImpact(vo.value)}</dd>
             </div>
             <div>
-              <dt className="text-xs text-ink-muted">تمديد المدة</dt>
+              <dt className="text-xs text-ink-muted">{t.extension}</dt>
               <dd className="text-xl font-semibold print:text-lg">{formatDays(vo.time_extension_days)}</dd>
             </div>
           </dl>
           <p className="mt-2 font-sans text-xs text-ink-muted">
-            حسبت القيمة قاعدة برمجية من الكميات وأسعار العقد، واعتمدها أصحاب الصلاحية أدناه.
+            {t.valueNote}
           </p>
         </DocSection>
 
-        <DocSection n={4} title="المواد النظامية المستشهد بها">
+        <DocSection n={4} title={t.articlesTitle}>
           {vo.cited_articles.length === 0 ? (
-            <p className="text-sm">لا يستشهد هذا الأمر بمواد نظامية.</p>
+            <p className="text-sm">{t.noArticles}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {vo.cited_articles.map((a) => (
                 <li key={a} className="flex flex-wrap items-baseline gap-x-3">
-                  {arabicRefs[a] && <span className="font-semibold">{arabicRefs[a]}</span>}
+                  {arabicRefs[a] && (
+                    <ArabicOriginal as="span" showLabel={false} className="font-semibold">
+                      {arabicRefs[a]}
+                    </ArabicOriginal>
+                  )}
                   <span className="ref font-sans text-xs text-ink-muted">{a}</span>
                 </li>
               ))}
@@ -218,12 +237,12 @@ function VoDocument({
 
         {/* Signature blocks */}
         <section aria-labelledby="vo-signatures" className="rule-double-top relative mt-6 pt-4 break-inside-avoid print:mt-3 print:pt-2">
-          <h2 id="vo-signatures" className="text-base font-bold">التواقيع</h2>
+          <h2 id="vo-signatures" className="text-base font-bold">{t.signatures}</h2>
           <ol className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 pe-28 sm:grid-cols-2 sm:pe-32 print:mt-1 print:grid-cols-2 print:gap-y-2 print:pe-32">
             {vo.signatures.map((sig, i) => (
               <li key={`${sig.role}-${i}`} className="border-b border-rule pb-2">
                 <p className="font-sans text-xs text-ink-muted">
-                  {ROLE_LABEL[sig.role]}، {partyLabel(sig.party, contract.contract_type)}
+                  {t.signer(ROLE_LABEL[sig.role], partyLabel(sig.party, contract.contract_type))}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-seal print:mt-0.5 print:text-base">{sig.decided_by}</p>
                 <p className="font-sans text-xs text-ink-muted">{formatDateTime(sig.decided_at)}</p>
@@ -237,9 +256,8 @@ function VoDocument({
         </section>
 
         <footer className="mt-6 border-t border-rule pt-2 print:mt-3 font-sans text-[0.6875rem] leading-4 text-ink-muted">
-          صدر هذا الأمر في MithaqAi بعد اكتمال سلسلة الاعتماد للطلب{" "}
-          <span className="ref">{vo.cr_id}</span>. يوصي الوكيل ويصوغ، ولا يُلزم شيء إلا بتوقيع
-          أصحاب الصلاحية أعلاه.
+          {t.footerBefore} <span className="ref">{vo.cr_id}</span>
+          {t.footerAfter}
         </footer>
       </article>
     </div>

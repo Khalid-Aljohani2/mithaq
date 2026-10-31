@@ -44,6 +44,7 @@ import {
   readNarrative,
   stageOf,
 } from "@/lib/payload";
+import { useT } from "@/lib/prefs";
 import { useSession } from "@/lib/session";
 import { useResource } from "@/lib/use-resource";
 
@@ -51,8 +52,9 @@ const REVEAL_MS = 140;
 const ANALYSABLE = new Set(["RECEIVED", "AWAITING_DOCUMENTS", "REVISION_REQUESTED"]);
 
 export default function CaseFilePage() {
+  const t = useT();
   return (
-    <Suspense fallback={<Shell><Loading label="جارٍ فتح ملف الطلب" /></Shell>}>
+    <Suspense fallback={<Shell><Loading label={t.case.opening} /></Shell>}>
       <CaseFileRoute />
     </Suspense>
   );
@@ -63,6 +65,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function CaseFileRoute() {
+  const t = useT();
   const params = useParams<{ crId: string }>();
   const crId = decodeURIComponent(params.crId);
   const { id, contract } = useCurrentContract();
@@ -79,14 +82,14 @@ function CaseFileRoute() {
         <div className="pt-6">
           <ErrorState
             error={detail.error ?? contracts.error}
-            what="ملف الطلب"
+            what={t.case.whatFile}
             onRetry={() => {
               detail.reload();
               contracts.reload();
             }}
           />
           <Link href={back} className={buttonVariants({ variant: "link" }) + " mt-4"}>
-            العودة إلى سجل الطلبات
+            {t.case.backToRegister}
           </Link>
         </div>
       </Shell>
@@ -97,14 +100,14 @@ function CaseFileRoute() {
       return (
         <Shell>
           <div className="pt-6">
-            <Empty title={`لا يوجد عقد بالمرجع ${id ?? ""}`}>اختر عقدًا من أعلى الصفحة.</Empty>
+            <Empty title={t.case.noContract(id ?? "")}>{t.case.chooseContract}</Empty>
           </div>
         </Shell>
       );
     }
     return (
       <Shell>
-        <Loading label="جارٍ فتح ملف الطلب" rows={6} />
+        <Loading label={t.case.opening} rows={6} />
       </Shell>
     );
   }
@@ -138,6 +141,7 @@ function CaseFile({
   reloadTrace: () => void;
   setTrace: (t: TraceResponse) => void;
 }) {
+  const t = useT();
   const { request, chain } = data;
   const state = request.state ?? "RECEIVED";
   const { persona } = useSession();
@@ -176,9 +180,9 @@ function CaseFile({
     } catch (e) {
       setRunning(false);
       setRevealed(11);
-      setActionError(`لم يكتمل التحليل. ${errorMessage(e)}`);
+      setActionError(t.case.analysisFailed(errorMessage(e)));
     }
-  }, [request.id, setData, setTrace, reduce]);
+  }, [request.id, setData, setTrace, reduce, t]);
 
   // Arriving from the new-request form with ?run=1 starts the analysis here.
   useEffect(() => {
@@ -200,7 +204,7 @@ function CaseFile({
       setData(await api.startApproval(request.id));
       reloadTrace();
     } catch (e) {
-      setActionError(`لم يبدأ مسار الاعتماد. ${errorMessage(e)}`);
+      setActionError(t.case.approvalFailed(errorMessage(e)));
     } finally {
       setBusy(false);
     }
@@ -221,7 +225,7 @@ function CaseFile({
       reloadTrace();
       return true;
     } catch (e) {
-      setActionError(`لم يُسجَّل القرار. ${errorMessage(e)}`);
+      setActionError(t.case.decisionFailed(errorMessage(e)));
       return false;
     }
   };
@@ -248,9 +252,9 @@ function CaseFile({
       {/* Case header */}
       <header className="rule-double grid gap-3 pt-6 pb-5 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <nav aria-label="مسار التنقل" className="text-xs text-ink-muted">
+          <nav aria-label={t.case.breadcrumb} className="text-xs text-ink-muted">
             <Link href={`/contracts/${encodeURIComponent(contract.id)}`} className="underline-offset-4 hover:underline">
-              سجل طلبات العقد <span className="ref">{contract.id}</span>
+              {t.case.contractRegister} <span className="ref">{contract.id}</span>
             </Link>
           </nav>
           <h1 className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -262,10 +266,10 @@ function CaseFile({
           </div>
         </div>
         <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
-          <Field label="تاريخ التقديم">{formatDate(request.submitted_at)}</Field>
-          <Field label="الحالة">
+          <Field label={t.case.submittedOn}>{formatDate(request.submitted_at)}</Field>
+          <Field label={t.case.state}>
             <Badge variant={STATE_TONE[state]} className="text-sm">
-              {running ? "قيد التحليل" : STATE_LABEL[state]}
+              {running ? t.case.analysing : STATE_LABEL[state]}
             </Badge>
           </Field>
         </dl>
@@ -286,9 +290,9 @@ function CaseFile({
         {/* Middle zone: the trace. */}
         <div className="order-2 lg:order-none lg:border-x lg:border-rule lg:px-8">
           {traceError ? (
-            <ErrorState error={traceError} what="مسار الطلب" onRetry={reloadTrace} />
+            <ErrorState error={traceError} what={t.case.whatTrace} onRetry={reloadTrace} />
           ) : !trace && !running ? (
-            <Loading label="جارٍ تحميل مسار الطلب" rows={7} />
+            <Loading label={t.case.loadingTrace} rows={7} />
           ) : (
             <Trace
               rows={rows}
@@ -374,17 +378,15 @@ function DecisionZone({
   onStartApproval: () => void;
   onDecide: Decide;
 }) {
+  const t = useT();
   const state = request.state ?? "RECEIVED";
 
   if (running || !settled) {
     return (
       <section className="border-t-2 border-ink pt-4" aria-live="polite">
-        <h2 className="text-xs font-medium text-ink-muted">توصية الوكيل</h2>
-        <p className="mt-1 font-doc text-xl">يحلل الوكيل الطلب الآن</p>
-        <p className="mt-2 text-sm text-ink-muted">
-          تظهر التوصية والتنبيهات بعد اكتمال المراحل السبع. لا يغيّر التحليل حالة
-          اعتماد الطلب ولا قيم العقد.
-        </p>
+        <h2 className="text-xs font-medium text-ink-muted">{t.case.agentRecommendation}</h2>
+        <p className="mt-1 font-doc text-xl">{t.case.agentAnalysingNow}</p>
+        <p className="mt-2 text-sm text-ink-muted">{t.case.analysingNote}</p>
       </section>
     );
   }
@@ -394,17 +396,16 @@ function DecisionZone({
     return (
       <section className="border-t-2 border-ink pt-4">
         <h2 className="font-doc text-xl font-semibold">
-          {state === "REVISION_REQUESTED" ? "طُلب تعديل الطلب" : "لم يُحلَّل الطلب بعد"}
+          {state === "REVISION_REQUESTED" ? t.case.revisionRequested : t.case.notAnalysed}
         </h2>
         {revision?.reason && (
-          <p className="mt-2 border-s-2 border-amber ps-3 font-doc text-sm">{revision.reason}</p>
+          <p dir="auto" className="mt-2 border-s-2 border-amber ps-3 text-start font-doc text-sm">
+            {revision.reason}
+          </p>
         )}
-        <p className="mt-2 text-sm text-ink-muted">
-          يمر الطلب بسبع مراحل: الاستلام، والمستندات، والنطاق، والتقييم الفني،
-          والتكلفة والمدة، والمخاطر، ثم التوصية. يوصي الوكيل ولا يقرر.
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t.case.sevenStages}</p>
         <Button className="mt-4" size="lg" onClick={onAnalyse}>
-          تحليل الطلب
+          {t.case.analyse}
         </Button>
       </section>
     );
@@ -436,14 +437,14 @@ function DecisionZone({
 
       <section aria-labelledby="chain" className="rule-double-top pt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="chain" className="text-lg font-semibold">سلسلة الاعتماد</h2>
+          <h2 id="chain" className="text-lg font-semibold">{t.case.approvalChain}</h2>
           <span className="text-xs text-ink-muted">
-            {data.chain.length} {data.chain.length === 1 ? "توقيع" : "تواقيع"} بالترتيب
+            {t.case.signaturesInOrder(data.chain.length)}
           </span>
         </div>
         <StateNote state={state} />
         {data.chain.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">لم تُبنَ سلسلة اعتماد لهذا الطلب.</p>
+          <p className="mt-2 text-sm text-ink-muted">{t.case.noChain}</p>
         ) : (
           <div className="mt-2">
             <ApprovalChain
@@ -460,10 +461,10 @@ function DecisionZone({
         {state === "RECOMMENDED" && data.chain.length > 0 && (
           <div className="mt-4">
             <Button onClick={onStartApproval} disabled={busy}>
-              {busy ? "جارٍ إرسال الطلب" : "بدء مسار الاعتماد"}
+              {busy ? t.case.sending : t.case.startApproval}
             </Button>
             <p className="mt-2 text-xs text-ink-muted">
-              يُرسل الطلب إلى أول معتمد في السلسلة، ويُبلَّغ كل من فيها بدوره.
+              {t.case.startApprovalNote}
             </p>
           </div>
         )}
@@ -473,17 +474,18 @@ function DecisionZone({
 }
 
 function StateNote({ state }: { state: string }) {
+  const t = useT();
   if (state === "APPROVED") {
     return (
       <p className="mt-2 border-s-4 border-seal bg-seal-wash px-3 py-2 text-sm text-seal">
-        اعتُمد الطلب بجميع التواقيع، وهو جاهز لإصدار أمر التغيير.
+        {t.case.approvedNote}
       </p>
     );
   }
   if (state === "REJECTED") {
     return (
       <p className="mt-2 border-s-4 border-legal bg-legal-wash px-3 py-2 text-sm text-legal">
-        رُفض الطلب وأُبلغ مقدمه بالسبب.
+        {t.case.rejectedNote}
       </p>
     );
   }

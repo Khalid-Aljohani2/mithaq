@@ -364,9 +364,14 @@ export interface paths {
          * List Notifications
          * @description Notifications for one role, with reminders computed on the fly.
          *
-         *     There is no background job: a reminder for an approval that has been
-         *     pending too long is derived at read time, so nothing has to be running for
-         *     it to appear.
+         *     There is no background job: a reminder for an approval or a document that
+         *     has been waited on too long is derived at read time, so nothing has to be
+         *     running for it to appear.
+         *
+         *     Built by ``svc.notifications_for`` rather than assembled here. This route
+         *     used to compose the list itself, which meant the document reminders and
+         *     the dropping of answered asks - both of which live in that function -
+         *     never reached the API at all. One inbox, built in one place.
          */
         get: operations["list_notifications_api_notifications_get"];
         put?: never;
@@ -441,6 +446,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Status
+         * @description Report whether local demo mode is on. Reveals nothing about the token.
+         */
+        get: operations["demo_status_api_demo_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/reset": {
         parameters: {
             query?: never;
@@ -452,9 +477,12 @@ export interface paths {
         put?: never;
         /**
          * Reset Demo
-         * @description Restore the seed state.
+         * @description Restore the seed state, optionally applying a demo preset.
          *
-         *     404 when no token is configured, 403 when the supplied token is wrong.
+         *     In demo mode a loopback client needs no token. Otherwise: 404 when no
+         *     token is configured, 403 when the supplied token is wrong. A
+         *     preset is built by calling the real service functions with the recorded AI
+         *     outputs, so the state it produces is one the product can actually reach.
          */
         post: operations["reset_demo_api_demo_reset_post"];
         delete?: never;
@@ -938,6 +966,23 @@ export interface components {
             reset_at: string;
             /** Audit Events Preserved */
             audit_events_preserved: number;
+            /** Preset */
+            preset?: string | null;
+            /**
+             * Preset Detail
+             * @default {}
+             */
+            preset_detail: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * DemoStatusResponse
+         * @description Whether local demo mode is on. Deliberately says nothing about the token.
+         */
+        DemoStatusResponse: {
+            /** Demo Mode */
+            demo_mode: boolean;
         };
         /**
          * DocumentChecklist
@@ -2217,9 +2262,32 @@ export interface operations {
             };
         };
     };
-    reset_demo_api_demo_reset_post: {
+    demo_status_api_demo_status_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoStatusResponse"];
+                };
+            };
+        };
+    };
+    reset_demo_api_demo_reset_post: {
+        parameters: {
+            query?: {
+                /** @description Optional demo preset to apply after restoring the seed. */
+                preset?: string | null;
+            };
             header?: {
                 "x-demo-token"?: string | null;
             };

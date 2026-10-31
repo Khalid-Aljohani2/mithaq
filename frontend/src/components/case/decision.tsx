@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 
 import { Field, toneText } from "@/components/file";
 import { LineCard } from "@/components/case/request-zone";
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { BreakdownLine, ChangeRequest, Contract } from "@/lib/api";
 import { formatConfidence, formatDays, formatImpact, formatMoney, formatPct } from "@/lib/format";
 import { RECOMMENDATION, REASON_CODE, ROLE_LABEL, type Tone } from "@/lib/labels";
 import type { Compliance, Impact, Narrative } from "@/lib/payload";
+import { useT } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 
 export function RecommendationBlock({
@@ -20,6 +22,7 @@ export function RecommendationBlock({
   narrative: Narrative;
   recorded: boolean;
 }) {
+  const t = useT();
   if (!request.recommendation) return null;
   const rec = RECOMMENDATION[request.recommendation];
   // The agent's own reasons when it gave them; the code labels otherwise.
@@ -32,48 +35,66 @@ export function RecommendationBlock({
     <section aria-labelledby="recommendation" className="border-t-2 border-ink pt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="recommendation" className="text-xs font-medium text-ink-muted">
-          توصية الوكيل
+          {t.case.agentRecommendation}
         </h2>
         <span className="flex items-center gap-2 text-xs text-ink-muted">
-          {recorded && <Badge variant="muted">رد مسجل</Badge>}
-          الثقة {formatConfidence(request.confidence)}
+          {recorded && <Badge variant="muted">{t.case.recordedReply}</Badge>}
+          {t.case.confidence} {formatConfidence(request.confidence)}
         </span>
       </div>
       <p className={cn("mt-1 font-doc text-xl font-semibold", toneText(rec.tone))}>{rec.verb}</p>
-      {narrative.summary && <p className="mt-2 text-sm">{narrative.summary}</p>}
+      {narrative.summary && (
+        <ArabicOriginal as="p" className="mt-2 text-sm">
+          {narrative.summary}
+        </ArabicOriginal>
+      )}
 
       {reasons.length > 0 && (
         <>
-          <h3 className="mt-4 text-xs font-medium text-ink-muted">الأسباب</h3>
-          <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
-            {reasons.map((r) => (
-              <li key={r} className="py-1.5">{r}</li>
-            ))}
-          </ul>
+          <h3 className="mt-4 text-xs font-medium text-ink-muted">{t.case.reasons}</h3>
+          {narrative.reasons.length ? (
+            <ArabicOriginal showLabel={false}>
+              <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
+                {reasons.map((r) => (
+                  <li key={r} className="py-1.5">{r}</li>
+                ))}
+              </ul>
+            </ArabicOriginal>
+          ) : (
+            <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
+              {reasons.map((r) => (
+                <li key={r} className="py-1.5">{r}</li>
+              ))}
+            </ul>
+          )}
         </>
       )}
       {narrative.conflicts.length > 0 && (
         <>
-          <h3 className="mt-4 text-xs font-medium text-legal">تعارضات بين المراحل</h3>
-          <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
-            {narrative.conflicts.map((c) => (
-              <li key={c} className="py-1.5">{c}</li>
-            ))}
-          </ul>
+          <h3 className="mt-4 text-xs font-medium text-legal">{t.case.conflicts}</h3>
+          <ArabicOriginal showLabel={false}>
+            <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
+              {narrative.conflicts.map((c) => (
+                <li key={c} className="py-1.5">{c}</li>
+              ))}
+            </ul>
+          </ArabicOriginal>
         </>
       )}
       {narrative.nextActions.length > 0 && (
         <>
-          <h3 className="mt-4 text-xs font-medium text-ink-muted">الإجراءات التالية</h3>
-          <ol className="mt-1 list-decimal divide-y divide-rule border-y border-rule ps-5 text-sm">
-            {narrative.nextActions.map((a) => (
-              <li key={a} className="py-1.5">{a}</li>
-            ))}
-          </ol>
+          <h3 className="mt-4 text-xs font-medium text-ink-muted">{t.case.nextActions}</h3>
+          <ArabicOriginal showLabel={false}>
+            <ol className="mt-1 list-decimal divide-y divide-rule border-y border-rule ps-5 text-sm">
+              {narrative.nextActions.map((a) => (
+                <li key={a} className="py-1.5">{a}</li>
+              ))}
+            </ol>
+          </ArabicOriginal>
         </>
       )}
       <p className="mt-3 text-xs text-ink-muted">
-        هذه توصية، والقرار لأصحاب الصلاحية في سلسلة الاعتماد.
+        {t.case.recommendationOnly}
       </p>
     </section>
   );
@@ -90,6 +111,7 @@ export function Flags({
   compliance: Compliance;
   impact: Impact;
 }) {
+  const t = useT();
   const flags: Flag[] = [];
   const refs = compliance.legal?.articleRefs ?? [];
   const refList = refs.length ? (
@@ -98,7 +120,7 @@ export function Flags({
       {refs.map((r, i) => (
         <span key={r}>
           <span className="ref">{r}</span>
-          {i < refs.length - 1 ? "، " : ""}
+          {i < refs.length - 1 ? t.case.listSep : ""}
         </span>
       ))}
     </span>
@@ -107,9 +129,9 @@ export function Flags({
   if (request.legally_blocked) {
     flags.push({
       tone: "legal",
-      title: "محجوب نظامًا",
-      body: <>يتجاوز الطلب حدًا نظاميًا، ولا يرفعه أي اعتماد داخلي.{refList}</>,
-      source: "النظام",
+      title: t.case.blockedTitle,
+      body: <>{t.case.blockedBody}{refList}</>,
+      source: t.case.sourceLaw,
     });
   }
   if (request.policy_exception_required) {
@@ -119,81 +141,85 @@ export function Flags({
       : null;
     flags.push({
       tone: "amber",
-      title: "يحتاج استثناءً من السياسة",
+      title: t.case.policyTitle,
       body: (
         <>
           {p?.costExceeded && (
-            <>التكلفة التراكمية بعد الطلب {formatPct(p.costAfterPct)} من قيمة العقد، والحد {formatPct(p.costCapPct)}. </>
+            <>{t.case.policyCost(formatPct(p.costAfterPct), formatPct(p.costCapPct))}</>
           )}
           {p?.timeExceeded && (
-            <>التمديد التراكمي {formatPct(p.timeAfterPct)} من المدة، والحد {formatPct(p.timeCapPct)}. </>
+            <>{t.case.policyTime(formatPct(p.timeAfterPct), formatPct(p.timeCapPct))}</>
           )}
-          {role && <>أُضيف {role} إلى سلسلة الاعتماد لاعتماد الاستثناء.</>}
-          {request.legally_blocked && <> استثناء السياسة لا يرفع الحد النظامي.</>}
+          {role && <>{t.case.policyRole(role)}</>}
+          {request.legally_blocked && <>{t.case.policyNotLegal}</>}
         </>
       ),
-      source: "سياسة الجهة",
+      source: t.case.sourcePolicy,
     });
   }
   if (request.needs_legal_review && !request.legally_blocked) {
     flags.push({
       tone: "amber",
-      title: "يحتاج مراجعة قانونية",
-      body: <>الطلب يمس حدًا نظاميًا.{refList}</>,
-      source: "النظام",
+      title: t.case.legalReviewTitle,
+      body: <>{t.case.legalReviewBody}{refList}</>,
+      source: t.case.sourceLaw,
     });
   }
   if (compliance.legal?.consent) {
     flags.push({
       tone: "amber",
-      title: "موافقة المقاول مطلوبة",
-      body: <>أُضيفت موافقة المقاول إلى سلسلة الاعتماد.{refList}</>,
-      source: "النظام",
+      title: t.case.consentTitle,
+      body: <>{t.case.consentBody}{refList}</>,
+      source: t.case.sourceLaw,
     });
   }
   if (request.unit_rate_flagged) {
     const flagged = impact.rateChecks.filter((c) => c.flagged);
     flags.push({
       tone: "amber",
-      title: "سعر الوحدة معلَّم",
+      title: t.case.rateTitle,
       body: flagged.length ? (
         <>
           {flagged.map((c) => (
             <span key={c.lineId ?? ""} className="block">
-              <span className="ref">{c.lineId}</span>: المقترح {formatMoney(c.proposedRate)} مقابل{" "}
-              {formatMoney(c.contractRate)} في العقد، بانحراف {formatPct(c.deviationPct)} والحد{" "}
-              {formatPct(c.capPct)}.
+              <span className="ref">{c.lineId}</span>
+              {t.case.rateLine(
+                formatMoney(c.proposedRate),
+                formatMoney(c.contractRate),
+                formatPct(c.deviationPct),
+                formatPct(c.capPct),
+              )}
             </span>
           ))}
         </>
       ) : (
-        "السعر المقترح ينحرف عن سعر العقد بأكثر من الحد."
+        t.case.rateBody
       ),
-      source: "سياسة الجهة",
+      source: t.case.sourcePolicy,
     });
   }
   if (request.rate_human_entered) {
     flags.push({
       tone: "neutral",
-      title: "سعر مُدخل يدويًا",
-      body: "لا يقابل السعر بندًا في العقد، فاعتُمد السعر الذي أدخله مقدم الطلب، ويحتاج تحققًا بشريًا.",
-      source: "قاعدة",
+      title: t.case.manualRateTitle,
+      body: t.case.manualRateBody,
+      source: t.case.sourceRule,
     });
   }
   if (request.changes_approved_product) {
     flags.push({
       tone: "amber",
-      title: "يغيّر منتجًا معتمدًا",
-      body: "أُضيف اعتماد فني إلى سلسلة الاعتماد.",
-      source: "قاعدة",
+      title: t.case.productTitle,
+      body: t.case.productBody,
+      source: t.case.sourceRule,
     });
   }
 
   if (flags.length === 0) {
     return (
       <section aria-labelledby="flags">
-        <h2 id="flags" className="text-xs font-medium text-ink-muted">التنبيهات</h2>
-        <p className="mt-1 text-sm">لا تنبيهات: الطلب ضمن الحدود ولا يغيّر منتجًا معتمدًا.</p>
+        <h2 id="flags" className="text-xs font-medium text-ink-muted">{t.case.flags}</h2>
+        <p className="mt-1 text-sm">{t.case.noFlags}</p>
       </section>
     );
   }
@@ -207,7 +233,7 @@ export function Flags({
 
   return (
     <section aria-labelledby="flags">
-      <h2 id="flags" className="text-xs font-medium text-ink-muted">التنبيهات</h2>
+      <h2 id="flags" className="text-xs font-medium text-ink-muted">{t.case.flags}</h2>
       <ul className="mt-2 space-y-2">
         {flags.map((f) => (
           <li key={f.title} className={cn("border-s-4 py-2 ps-3 pe-2", bar[f.tone])}>
@@ -232,48 +258,49 @@ export function ImpactBlock({
   impact: Impact;
   compliance: Compliance;
 }) {
+  const t = useT();
   const p = compliance.policy;
   return (
     <section aria-labelledby="impact">
-      <h2 id="impact" className="text-xs font-medium text-ink-muted">أثر التكلفة والمدة</h2>
+      <h2 id="impact" className="text-xs font-medium text-ink-muted">{t.case.impactHeading}</h2>
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-3">
-        <Field label="أثر التكلفة">
+        <Field label={t.case.costImpact}>
           <span className="text-lg">{formatImpact(request.cost_impact)}</span>
         </Field>
-        <Field label="أثر المدة">
+        <Field label={t.case.timeImpact}>
           <span className="text-lg">{formatDays(request.time_impact_days)}</span>
         </Field>
         {impact.removed && impact.removed !== "0" && (
           <>
-            <Field label="قيمة المضاف">{formatMoney(impact.added)}</Field>
-            <Field label="قيمة المحذوف">{formatMoney(impact.removed)}</Field>
+            <Field label={t.case.addedValue}>{formatMoney(impact.added)}</Field>
+            <Field label={t.case.removedValue}>{formatMoney(impact.removed)}</Field>
           </>
         )}
         {p && (
           <>
-            <Field label="التكلفة التراكمية بعد الطلب">
+            <Field label={t.case.cumulativeCost}>
               <span className={cn(p.costExceeded && "text-amber")}>{formatPct(p.costAfterPct)}</span>
-              <span className="text-xs text-ink-muted"> من حد {formatPct(p.costCapPct)}</span>
+              <span className="text-xs text-ink-muted">{t.case.ofCap(formatPct(p.costCapPct))}</span>
             </Field>
-            <Field label="التمديد التراكمي بعد الطلب">
+            <Field label={t.case.cumulativeTime}>
               <span className={cn(p.timeExceeded && "text-amber")}>{formatPct(p.timeAfterPct)}</span>
-              <span className="text-xs text-ink-muted"> من حد {formatPct(p.timeCapPct)}</span>
+              <span className="text-xs text-ink-muted">{t.case.ofCap(formatPct(p.timeCapPct))}</span>
             </Field>
           </>
         )}
       </dl>
-      <p className="mt-2 text-xs text-ink-muted">حسبتها قاعدة برمجية من الكميات وأسعار العقد، لا الوكيل.</p>
+      <p className="mt-2 text-xs text-ink-muted">{t.case.computedByCode}</p>
     </section>
   );
 }
 
 export function ClosedInScope({ lines }: { lines: BreakdownLine[] }) {
+  const t = useT();
   return (
     <section aria-labelledby="closed" className="border-t-2 border-ink pt-4">
-      <h2 id="closed" className="font-doc text-xl font-semibold">أُغلق كطلب داخل النطاق</h2>
+      <h2 id="closed" className="font-doc text-xl font-semibold">{t.case.closedTitle}</h2>
       <p className="mt-2 text-sm">
-        الطلب مغطى ببنود العقد الحالية، فلا يُعد تغييرًا ولا يُحتسب من أي حد.
-        هذه البنود هي الدليل:
+        {t.case.closedBody}
       </p>
       <ul className="mt-3 space-y-3">
         {lines.map((l) => (

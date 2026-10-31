@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { errorMessage, TERMS, type Term, type Tone } from "@/lib/labels";
+import { useT } from "@/lib/prefs";
 
 /** A ruled section. `margin` is its citation, set in the start-side column. */
 export function Section({
@@ -56,14 +57,15 @@ export function Section({
 
 /** The once-per-screen key for every abbreviation the screen uses. */
 export function TermsKey({ terms }: { terms: readonly Term[] }) {
+  const t = useT().common;
   if (!terms.length) return null;
   return (
     <p className="text-xs text-ink-muted">
-      <span className="font-medium text-ink">المصطلحات: </span>
-      {terms.map((t, i) => (
-        <span key={t}>
-          <span className="ref font-medium text-ink">{t}</span> ({TERMS[t]})
-          {i < terms.length - 1 ? "، " : "."}
+      <span className="font-medium text-ink">{t.termsLabel}</span>
+      {terms.map((term, i) => (
+        <span key={term}>
+          <span className="ref font-medium text-ink">{term}</span> ({TERMS[term]})
+          {i < terms.length - 1 ? t.listSep : "."}
         </span>
       ))}
     </p>
@@ -132,16 +134,17 @@ export function ErrorState({
   what: string;
   onRetry?: () => void;
 }) {
+  const t = useT().common;
   return (
     <div
       role="alert"
       className="border-s-4 border-legal bg-legal-wash px-4 py-4 text-ink"
     >
-      <p className="font-medium text-legal">تعذر تحميل {what}.</p>
+      <p className="font-medium text-legal">{t.couldNotLoad(what)}</p>
       <p className="mt-1 text-sm">{errorMessage(error)}</p>
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
-          إعادة المحاولة
+          {t.retry}
         </Button>
       )}
     </div>

@@ -13,7 +13,29 @@ somebody was adding it up.**
 Two terminals. Nothing here edits a `.env` file; the variables apply to that
 process only.
 
-### With the live provider (what the video should show)
+### For recording with the guided demo (recommended)
+
+In-memory store (every start is a clean seed, nothing touches the dev
+database), the live provider, and `DEMO_MODE` on so the guide bar can reset
+without a token. Needs `LLM_PROVIDER=anthropic` and `LLM_API_KEY` already set
+in `backend/.env`.
+
+```powershell
+# Terminal 1: backend on 8000, in memory, live provider, demo mode
+cd backend
+$env:DATABASE_URL = " "   # one space: PowerShell deletes a variable set to "", and .env would win
+$env:DEMO_MODE = "true"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+
+# Terminal 2: frontend on 3000
+cd frontend
+npm run dev
+```
+
+`DEMO_MODE` lets `POST /api/demo/reset` run without the token **only from
+localhost** (decision record 0005). Never set it on a deployed backend.
+
+### With the live provider on the dev database
 
 The four AI stages call the Claude API, so the trace reads **"live"** rather
 than "recorded" and the latency is real. Needs `LLM_PROVIDER=anthropic` and
@@ -58,7 +80,15 @@ Close that terminal afterwards: the variable is set for that session only.
 
 ## 2. Reset between takes
 
-`DEMO_RESET_TOKEN` must be set in `backend/.env`. Substitute it below.
+**With the guide bar:** open **Presenter notes** in the guide bar. With
+`DEMO_MODE` on, the notes panel holds **Reset demo** and **Load salami
+preset**. They sit inside the notes on purpose, so they are never on camera
+unless you open the notes. The same two buttons are on `/demo`. After a
+salami reset the guide remembers the eighth request, and Act 5 gets an
+**Open the eighth request** button.
+
+**Without demo mode:** `DEMO_RESET_TOKEN` must be set in `backend/.env`.
+Substitute it below.
 
 ```powershell
 # Back to the plain seed: five private requests and two government ones,
@@ -70,7 +100,7 @@ curl.exe -X POST "http://localhost:8000/api/demo/reset" -H "X-Demo-Token: <token
 curl.exe -X POST "http://localhost:8000/api/demo/reset?preset=salami" -H "X-Demo-Token: <token>"
 ```
 
-The preset response names the ids it built — `preset_detail.approved_request_ids`,
+From the command line, the preset response names the ids it built — `preset_detail.approved_request_ids`,
 `preset_detail.awaiting_final_signature_id` — so you never have to guess which
 request to open:
 
@@ -87,9 +117,59 @@ the audit page keeps growing across takes. That is worth showing, not hiding.
 
 ---
 
-## 3. Switching persona
+## 3. The guided demo
 
-Top right of every screen: **"تعمل بصفة"** (acting as). The switcher sets the
+Open `http://localhost:3000`. The home page says what MithaqAi is, shows the
+control principle (AI reads, code decides money and law, people approve) and
+the measured recommendation accuracy. Click **Start the guided demo**.
+
+While the demo is active, a guide bar sits under the letterhead on every
+page:
+
+| Control | What it does |
+|---|---|
+| Previous / Next | Move between the six acts |
+| Act n of 6 and its title | Where you are |
+| **Go** | Sets the persona and opens the act's screen. Never set the persona by hand. |
+| Presenter notes | Two to four talking points for the act, in the current language. Closed on every page load, so they only appear if you open them. Also holds Reset demo and Load salami preset. |
+| Leave demo | Hides the bar |
+
+| Act | Go opens | Persona set by Go |
+|---|---|---|
+| 1. The contract and its limits | `CT-2027-0418` workspace | Government entity, Project manager |
+| 2. A new request and the 11 stages | `CR-C-SUBSTITUTION` on `CT-2027-0419`, ready to analyse | Contractor, Project manager |
+| 3. Recommendation and approval chain | The same request | Government entity, Project manager (then switch to Technical manager for the second signature) |
+| 4. The variation order | The VO of `CR-C-SUBSTITUTION` (the request itself, with a note, if no VO yet) | Government entity, Project manager |
+| 5. The salami case | `CT-2027-0418` limits page; **Open the eighth request** after a salami reset | Government entity, Legal advisor |
+| 6. Measured results | `/evaluation` | unchanged |
+
+Take order: reset to the plain seed, run Acts 1 to 4, then load the salami
+preset from the notes and run Acts 5 and 6. The run of show in section 6
+has the clicks and lines for each moment.
+
+## 4. Language and theme
+
+The letterhead has two toggles: **English / العربية** and light or dark.
+Both are remembered per browser and applied before the page paints.
+
+- **English mode** switches every label, button, heading, empty and error
+  state and the VO document chrome, and mirrors the layout left to right.
+  Contract content written in Arabic (request text, item descriptions, the
+  VO scope paragraph, legal text, the agent's Arabic reasoning) stays Arabic
+  and is labelled **Original Arabic**. Where the backend sends both
+  languages (stage summaries, notifications), the English is shown.
+- The legal refusal in Act 5 reads in English, still naming Article 67(1)(b)
+  and 67(2).
+- Printing the VO is always light, whatever the screen theme.
+
+Suggested: record in Arabic, and show English once (toggle it on the
+workspace in Act 1) so a non-Arabic-speaking judge sees the same screen in
+their language.
+
+## 5. Switching persona
+
+With the guided demo, **Go** sets the persona for you. By hand: the
+letterhead's **"تعمل بصفة"** (acting as) switcher. The switcher sets the
 party and the role. It is a stand-in for sign-in — say so once, early, so
 nobody thinks it is an authentication bypass.
 
@@ -99,7 +179,7 @@ merely hiding a button. Worth demonstrating once if you have 20 seconds spare.
 
 ---
 
-## 4. The run of show
+## 6. The run of show
 
 Reset to the **plain seed** before this section.
 
@@ -199,7 +279,7 @@ manager)
 
 ---
 
-## 5. Request reference
+## 7. Request reference
 
 After a plain reset. Government contract `CT-2027-0418`, private
 `CT-2027-0419`, both 4,800,000 SAR.
@@ -220,12 +300,13 @@ a policy cap that a CEO can lift, and a legal cap that nobody can. A good
 
 ---
 
-## 6. Before you record
+## 8. Before you record
 
 - [ ] Backend answers: `curl.exe http://localhost:8000/api/health`
 - [ ] Frontend loads at `http://localhost:3000`
 - [ ] Reset to the state the take needs
-- [ ] Persona set **before** you start recording, not during
+- [ ] Guided demo started from the home page; presenter notes closed
+- [ ] Persona set by **Go**, not by hand
 - [ ] Browser zoom 100%, window 1440 wide to match the committed screenshots
 - [ ] Try one analyse first — with the live provider, the first call is the
       slowest

@@ -51,6 +51,9 @@ export type UsageSnapshot = Schemas["UsageSnapshot"];
 export type VariationOrder = Schemas["VariationOrder"];
 export type VariationOrderResponse = Schemas["VariationOrderResponse"];
 
+export type DemoResetResponse = Schemas["DemoResetResponse"];
+export type DemoStatusResponse = Schemas["DemoStatusResponse"];
+
 /**
  * The backend origin comes only from `NEXT_PUBLIC_API_URL`.
  *
@@ -255,5 +258,16 @@ export const api = {
     request<NotificationListResponse>(
       `/api/notifications?party=${enc(party)}&role=${enc(role)}`,
       { signal },
+    ),
+
+  /** Whether the backend runs in demo mode. A 404 means it does not. */
+  demoStatus: (signal?: AbortSignal) =>
+    request<DemoStatusResponse>("/api/demo/status", { signal }),
+
+  /** Restore the seed, optionally with a preset. No token ever leaves the browser. */
+  demoReset: (preset?: "salami") =>
+    request<DemoResetResponse>(
+      `/api/demo/reset${preset ? `?preset=${enc(preset)}` : ""}`,
+      { method: "POST" },
     ),
 };

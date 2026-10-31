@@ -3,21 +3,16 @@
 import { Check, X } from "lucide-react";
 import { useId, useState } from "react";
 
+import { ArabicOriginal } from "@/components/original";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, type ChangeRequest, type ChangeRequestResponse } from "@/lib/api";
 import { errorMessage } from "@/lib/labels";
 import type { Documents } from "@/lib/payload";
+import { useT } from "@/lib/prefs";
 import type { Persona } from "@/lib/session";
 import { useResource } from "@/lib/use-resource";
 import { cn } from "@/lib/utils";
-
-const IMPACT_LABEL: Record<string, string> = {
-  COST: "أثر على التكلفة",
-  TIME: "أثر على المدة",
-  BOTH: "أثر على التكلفة والمدة",
-  NONE: "بلا أثر مالي أو زمني",
-};
 
 /**
  * FR-04: the request is waiting on paperwork. The checklist for its impact
@@ -37,6 +32,7 @@ export function AwaitingDocuments({
   onSupplied: (data: ChangeRequestResponse) => void;
   onAnalyse: () => Promise<void> | void;
 }) {
+  const t = useT();
   const checklists = useResource((s) => api.requiredDocuments(s), []);
   const impact = request.impact_type ?? null;
   const fromApi = checklists.data?.checklists.find((c) => c.impact_type === impact)?.required;
@@ -80,24 +76,24 @@ export function AwaitingDocuments({
       onSupplied(result);
       await onAnalyse();
     } catch (e) {
-      setError(`لم تُرسل المستندات. ${errorMessage(e)}`);
+      setError(t.case.docsSendFailed(errorMessage(e)));
       setBusy(false);
     }
   }
 
   return (
     <section aria-labelledby="awaiting" className="border-t-2 border-amber pt-4">
-      <h2 id="awaiting" className="font-doc text-xl font-semibold text-amber">المستندات غير مكتملة</h2>
+      <h2 id="awaiting" className="font-doc text-xl font-semibold text-amber">{t.case.docsIncomplete}</h2>
       <p className="mt-2 text-sm">
-        أُرسلت إلى مقدم الطلب قائمة بالنواقص، وتوقف التحليل عند المرحلة الثانية حتى
-        تُستكمل.
+        {t.case.docsIncompleteBody}
       </p>
 
       <h3 className="mt-4 text-xs font-medium text-ink-muted">
-        المستندات المطلوبة{impact ? ` لطلب ${IMPACT_LABEL[impact] ?? impact}` : ""}
+        {t.case.requiredDocs}
+        {impact ? t.case.requiredFor(t.case.impactLabel[impact] ?? impact) : ""}
       </h3>
       {checklists.status === "error" && !documents ? (
-        <p className="mt-1 text-sm text-legal">تعذر تحميل القائمة. {errorMessage(checklists.error)}</p>
+        <p className="mt-1 text-sm text-legal">{t.case.listFailed(errorMessage(checklists.error))}</p>
       ) : (
         <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
           {required.map((d) => {
@@ -105,8 +101,10 @@ export function AwaitingDocuments({
             return (
               <li key={d} className={cn("flex items-center gap-2 py-2", !has && "text-amber")}>
                 {has ? <Check aria-hidden className="size-4 text-seal" /> : <X aria-hidden className="size-4" />}
-                <span className="flex-1">{d}</span>
-                <span className="text-xs">{has ? "مرفق" : "ناقص"}</span>
+                <ArabicOriginal as="span" showLabel={false} className="flex-1">
+                  {d}
+                </ArabicOriginal>
+                <span className="text-xs">{has ? t.case.attached : t.case.missing}</span>
               </li>
             );
           })}
@@ -122,9 +120,9 @@ export function AwaitingDocuments({
         noValidate
       >
         <fieldset>
-          <legend className="text-base font-semibold">إعادة التقديم بالمستندات</legend>
+          <legend className="text-base font-semibold">{t.case.resubmit}</legend>
           <p className="mt-1 text-xs text-ink-muted">
-            حدّد كل ما أصبح مرفقًا. تُرسل القائمة كاملة وتحل محل السابقة، ثم يُعاد التحليل.
+            {t.case.resubmitNote}
           </p>
           <ul className="mt-3 divide-y divide-rule border-y border-rule">
             {choices.map((doc) => (
@@ -136,16 +134,18 @@ export function AwaitingDocuments({
                     onChange={() => toggle(doc)}
                     className="size-4 accent-[var(--seal)]"
                   />
-                  <span className="flex-1">{doc}</span>
+                  <span dir="auto" className="flex-1 text-start">
+                    {doc}
+                  </span>
                   {required.includes(doc) && !onFile.includes(doc) && (
-                    <span className="text-xs text-amber">كان ناقصًا</span>
+                    <span className="text-xs text-amber">{t.case.wasMissing}</span>
                   )}
                 </label>
               </li>
             ))}
           </ul>
           <div className="mt-3 flex gap-2">
-            <label htmlFor={otherId} className="sr-only">اسم مستند آخر</label>
+            <label htmlFor={otherId} className="sr-only">{t.case.otherDoc}</label>
             <Input
               id={otherId}
               value={other}
@@ -156,16 +156,16 @@ export function AwaitingDocuments({
                   addOther();
                 }
               }}
-              placeholder="اسم مستند آخر"
+              placeholder={t.case.otherDoc}
             />
             <Button type="button" variant="outline" onClick={addOther} disabled={!other.trim()}>
-              إضافة
+              {t.case.add}
             </Button>
           </div>
         </fieldset>
 
         <div className="mt-4">
-          <label htmlFor={nameId} className="text-xs font-medium">مقدَّم من</label>
+          <label htmlFor={nameId} className="text-xs font-medium">{t.case.submittedBy}</label>
           <Input
             id={nameId}
             value={name}
@@ -176,13 +176,13 @@ export function AwaitingDocuments({
             autoComplete="name"
           />
           {touched && !name.trim() && (
-            <p id={`${nameId}-err`} className="mt-1 text-xs text-legal">اكتب اسم من يقدّم المستندات.</p>
+            <p id={`${nameId}-err`} className="mt-1 text-xs text-legal">{t.case.submittedByMissing}</p>
           )}
         </div>
 
         {stillMissing.length > 0 && (
           <p className="mt-3 border-s-2 border-amber ps-3 text-xs">
-            ما زال ناقصًا: {stillMissing.join("، ")}. سيعود الطلب إلى الانتظار إن أُرسل هكذا.
+            {t.case.stillMissing(stillMissing.join(t.case.listSep))}
           </p>
         )}
         {error && (
@@ -191,11 +191,13 @@ export function AwaitingDocuments({
           </p>
         )}
         <Button type="submit" className="mt-4" disabled={busy}>
-          {busy ? "جارٍ الإرسال والتحليل" : "إرسال المستندات وإعادة التحليل"}
+          {busy ? t.case.sendingAndAnalysing : t.case.sendAndAnalyse}
         </Button>
       </form>
       {documents?.gapList && (
-        <p className="mt-3 font-doc text-sm whitespace-pre-line">{documents.gapList}</p>
+        <ArabicOriginal as="p" className="mt-3 font-doc text-sm whitespace-pre-line">
+          {documents.gapList}
+        </ArabicOriginal>
       )}
     </section>
   );

@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # exist at all. Never commit a real token.
     demo_reset_token: str = ""
 
+    #: Local demo convenience. When true, POST /api/demo/reset is accepted
+    #: WITHOUT the token, but only from a loopback client (127.0.0.1, ::1,
+    #: localhost), so the browser never needs the token. Off by default and
+    #: never to be set on a deployed instance. GET /api/demo/status reports it.
+    #: See docs/decisions/0005-local-demo-mode.md.
+    demo_mode: bool = False
+
     # ---- AI provider ----
     # Left empty on purpose: real values belong in .env, never in git.
     #: "anthropic" uses the real provider; anything else uses the scripted one.

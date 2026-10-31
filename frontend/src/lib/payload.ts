@@ -5,6 +5,7 @@
  */
 
 import type { StageResult, TraceResponse } from "./api";
+import { getDict } from "./prefs";
 
 type Obj = Record<string, unknown>;
 
@@ -95,13 +96,14 @@ export function readCompliance(stage: StageResult | undefined): Compliance {
   const policy = isObj(p.policy) ? p.policy : null;
   const legal = isObj(p.legal) ? p.legal : null;
   const risk = isObj(p.risk) ? p.risk : null;
+  const r = getDict().common.risk;
   const riskLines = risk
     ? (
         [
-          ["delivery_risk_ar", "التسليم"],
-          ["operational_risk_ar", "التشغيل"],
-          ["commercial_risk_ar", "التجاري"],
-          ["compliance_risk_ar", "الامتثال"],
+          ["delivery_risk_ar", r.delivery],
+          ["operational_risk_ar", r.operational],
+          ["commercial_risk_ar", r.commercial],
+          ["compliance_risk_ar", r.compliance],
         ] as const
       ).flatMap(([key, label]) => {
         const text = str(risk[key]);

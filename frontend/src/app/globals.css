@@ -2,8 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Dark follows the system setting; Playwright emulates it for screenshots. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * Dark follows the system setting unless the viewer chose a theme with the
+ * letterhead toggle, which sets data-theme on <html> (see lib/prefs.tsx).
+ * Playwright emulates the system setting for screenshots.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
  * MithaqAi tokens. See docs/design/DESIGN_PLAN.md section 2.
@@ -29,7 +33,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper: #1c232b;
     --sheet: #232b34;
     --ink: #e7eae6;
@@ -47,9 +51,26 @@
   }
 }
 
+:root[data-theme="dark"] {
+  --paper: #1c232b;
+  --sheet: #232b34;
+  --ink: #e7eae6;
+  --ink-muted: #a8b0b8;
+  --rule: #36404b;
+  --rule-strong: #6e7a86;
+  --seal: #6cc29e;
+  --seal-wash: #1f3a31;
+  --on-seal: #0f1a15;
+  --amber: #e2b45c;
+  --amber-wash: #3a3020;
+  --legal: #f2948d;
+  --legal-wash: #422726;
+  color-scheme: dark;
+}
+
 @theme inline {
-  --font-sans: var(--font-ui), system-ui, sans-serif;
-  --font-doc: var(--font-naskh), var(--font-ui), serif;
+  --font-sans: var(--font-face), system-ui, sans-serif;
+  --font-doc: var(--font-doc-face), var(--font-ui), serif;
 
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
@@ -105,6 +126,25 @@
 
   /* Radius by hierarchy: sections 0, controls 2px, seal and glyphs round. */
   --radius-ctl: 2px;
+}
+
+/*
+ * English uses the Latin Plex. Its font carries no Arabic glyphs, so Arabic
+ * contract text inside the English interface falls through to the Arabic
+ * faces: Plex Arabic for the interface, Naskh for documents.
+ */
+:root {
+  --font-face: var(--font-ui);
+  --font-doc-face: var(--font-naskh);
+}
+:root[lang="en"] {
+  --font-face: var(--font-ui-latin), var(--font-ui);
+  --font-doc-face: var(--font-ui-latin), var(--font-naskh);
+}
+
+/* Hidden until React has rendered the stored language, to avoid a flash. */
+:root[data-lang-pending] body {
+  visibility: hidden;
 }
 
 @layer base {
@@ -174,7 +214,8 @@
 }
 
 @media print {
-  :root {
+  /* The id in :not() lifts this above the [data-theme] and dark rules. */
+  :root:not(#print-light) {
     --paper: #ffffff;
     --sheet: #ffffff;
     --ink: #1b2430;
@@ -183,8 +224,11 @@
     --rule-strong: #7a837c;
     --seal: #0e6b4f;
     --seal-wash: #e3efe8;
+    --on-seal: #ffffff;
     --amber: #8a5d0e;
+    --amber-wash: #f5ecda;
     --legal: #a3201d;
+    --legal-wash: #f7e4e2;
     color-scheme: light;
   }
   html,

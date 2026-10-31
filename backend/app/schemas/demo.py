@@ -19,3 +19,11 @@ class DemoResetResponse(BaseModel):
     #: What the preset built, so a demo script can name the requests it needs
     #: without guessing ids.
     preset_detail: dict[str, object] = {}
+
+
+class DemoStatusResponse(BaseModel):
+    """Whether local demo mode is on. Deliberately says nothing about the token."""
+
+    model_config = ConfigDict(frozen=True)
+
+    demo_mode: bool

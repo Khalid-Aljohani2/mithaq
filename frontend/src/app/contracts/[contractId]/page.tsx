@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { Empty, ErrorState, Field, Loading, Section, TermsKey } from "@/components/file";
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { LimitRows, MeterKey, lawLimits, policyLimits } from "@/components/workspace/limits";
@@ -20,12 +21,14 @@ import {
   partyLabel,
   type Term,
 } from "@/lib/labels";
+import { getDict, useBilingual, useT } from "@/lib/prefs";
 import { rememberContract } from "@/lib/session";
 import { useResource } from "@/lib/use-resource";
 
 export default function ContractWorkspace() {
   const { id, contract } = useCurrentContract();
   const contracts = useContracts();
+  const t = useT().workspace;
 
   useEffect(() => {
     if (contract) rememberContract(contract.id);
@@ -34,14 +37,14 @@ export default function ContractWorkspace() {
   if (contracts.status === "error") {
     return (
       <Page>
-        <ErrorState error={contracts.error} what="العقد" onRetry={contracts.reload} />
+        <ErrorState error={contracts.error} what={t.whatContract} onRetry={contracts.reload} />
       </Page>
     );
   }
   if (contracts.status === "loading") {
     return (
       <Page>
-        <Loading label="جارٍ تحميل العقد" />
+        <Loading label={t.loadingContract} />
       </Page>
     );
   }
@@ -49,14 +52,14 @@ export default function ContractWorkspace() {
     return (
       <Page>
         <Empty
-          title={`لا يوجد عقد بالمرجع ${id ?? ""}`}
+          title={t.noContract(id ?? "")}
           action={
             <Link href="/" className={buttonVariants({ variant: "outline" })}>
-              فتح أول عقد متاح
+              {t.openFirst}
             </Link>
           }
         >
-          اختر عقدًا من قائمة العقود أعلى الصفحة.
+          {t.chooseFromList}
         </Empty>
       </Page>
     );
@@ -70,6 +73,8 @@ function Page({ children }: { children: React.ReactNode }) {
 
 function Workspace({ contract }: { contract: Contract }) {
   const isGov = contract.contract_type === "GOVERNMENT";
+  const t = useT().workspace;
+  const pick = useBilingual();
   const ledger = useResource((s) => api.ledger(contract.id, s), [contract.id]);
   const register = useResource(async (signal) => {
     const list = await api.changeRequests(contract.id, signal);
@@ -101,65 +106,73 @@ function Workspace({ contract }: { contract: Contract }) {
       <Section
         margin={
           <>
-            <span className="block">مرجع العقد</span>
+            <span className="block">{t.contractRef}</span>
             <span className="ref text-sm font-medium text-ink">{contract.id}</span>
           </>
         }
       >
         <div className="flex flex-wrap items-start gap-3">
-          <h1 className="text-2xl font-semibold">{contract.title_ar}</h1>
+          <ArabicOriginal as="span" showLabel={false} className="block">
+            <h1 className="text-2xl font-semibold">{contract.title_ar}</h1>
+          </ArabicOriginal>
           <Badge variant="neutral" className="mt-2">
-            عقد {CONTRACT_TYPE_LABEL[contract.contract_type]}
+            {t.contractOfType(CONTRACT_TYPE_LABEL[contract.contract_type])}
           </Badge>
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-[repeat(5,auto)] md:justify-start">
           <Field label={partyLabel("GOVERNMENT_ENTITY", contract.contract_type)}>
-            {contract.entity_name}
+            <ArabicOriginal as="span" showLabel={false}>
+              {contract.entity_name}
+            </ArabicOriginal>
           </Field>
-          <Field label="المقاول">{contract.contractor_name}</Field>
-          <Field label="القيمة الأصلية">{formatMoney(contract.original_value)}</Field>
-          <Field label="تاريخ البداية">{formatDate(contract.start_date)}</Field>
-          <Field label="تاريخ النهاية">{formatDate(contract.end_date)}</Field>
+          <Field label={t.contractor}>
+            <ArabicOriginal as="span" showLabel={false}>
+              {contract.contractor_name}
+            </ArabicOriginal>
+          </Field>
+          <Field label={t.originalValue}>{formatMoney(contract.original_value)}</Field>
+          <Field label={t.startDate}>{formatDate(contract.start_date)}</Field>
+          <Field label={t.endDate}>{formatDate(contract.end_date)}</Field>
         </dl>
       </Section>
 
       <Section
         id="limits"
-        title="حدود التغيير التراكمية"
+        title={t.limitsTitle}
         action={
           <Link
             href={`/contracts/${encodeURIComponent(contract.id)}/limits`}
             className={buttonVariants({ variant: "outline" })}
           >
-            تفاصيل الحدود
+            {t.limitsDetails}
           </Link>
         }
         margin={
           ledger.status === "ready" ? (
             <>
-              <span className="block">{ledger.data.regulation.law_name_ar}</span>
+              <span className="block">
+                {pick(ledger.data.regulation.law_name_ar, ledger.data.regulation.law_name_en)}
+              </span>
               <a
                 href={ledger.data.regulation.source_url}
                 target="_blank"
                 rel="noreferrer"
                 className="underline underline-offset-2"
               >
-                النص الرسمي
+                {t.officialText}
               </a>
             </>
           ) : null
         }
       >
         {ledger.status === "loading" ? (
-          <Loading label="جارٍ تحميل الحدود" rows={5} />
+          <Loading label={t.loadingLimits} rows={5} />
         ) : ledger.status === "error" ? (
-          <ErrorState error={ledger.error} what="الحدود" onRetry={ledger.reload} />
+          <ErrorState error={ledger.error} what={t.whatLimits} onRetry={ledger.reload} />
         ) : (
           <>
             <p className="mb-4 max-w-prose text-sm text-ink-muted">
-              {isGov
-                ? "المستخدم من حدود السياسة الداخلية ومن كل حد في المادة السابعة والستين، محسوبًا من قيمة العقد ومدته الأصليتين."
-                : "المستخدم من حدود السياسة الداخلية، محسوبًا من قيمة العقد ومدته الأصليتين. حدود المادة السابعة والستين تنطبق على العقود الحكومية."}
+              {isGov ? t.limitsIntroGov : t.limitsIntroPrivate}
             </p>
             <LimitRows limits={[...policyLimits(ledger.data), ...lawLimits(ledger.data)]} />
             <MeterKey />
@@ -169,7 +182,7 @@ function Workspace({ contract }: { contract: Contract }) {
 
       <Section
         id="register"
-        title="سجل طلبات التغيير"
+        title={t.registerTitle}
         margin={
           register.status === "ready" ? (
             <span>{countRequests(register.data.length)}</span>
@@ -181,29 +194,29 @@ function Workspace({ contract }: { contract: Contract }) {
               href={`/contracts/${encodeURIComponent(contract.id)}/audit`}
               className={buttonVariants({ variant: "outline" })}
             >
-              سجل التدقيق
+              {t.auditLog}
             </Link>
             <Link href={newHref} className={buttonVariants()}>
-              طلب تغيير جديد
+              {t.newRequest}
             </Link>
           </div>
         }
         className="border-b-0"
       >
         {register.status === "loading" ? (
-          <Loading label="جارٍ تحميل سجل الطلبات" />
+          <Loading label={t.loadingRegister} />
         ) : register.status === "error" ? (
-          <ErrorState error={register.error} what="سجل الطلبات" onRetry={register.reload} />
+          <ErrorState error={register.error} what={t.whatRegister} onRetry={register.reload} />
         ) : register.data.length === 0 ? (
           <Empty
-            title="لا توجد طلبات تغيير على هذا العقد"
+            title={t.emptyTitle}
             action={
               <Link href={newHref} className={buttonVariants()}>
-                تقديم أول طلب تغيير
+                {t.submitFirst}
               </Link>
             }
           >
-            كل طلب يُسجَّل هنا بمرجعه وحالته وأثره، ويراه الطرفان معًا.
+            {t.emptyHint}
           </Empty>
         ) : (
           <Register contract={contract} rows={register.data} />
@@ -217,17 +230,19 @@ type Row = { request: ChangeRequest; chain: ApprovalStep[] };
 
 function currentApprover(row: Row, contract: Contract): string {
   const { request, chain } = row;
+  const d = getDict();
   if (request.state === "IN_APPROVAL") {
     const next = chain.find((s) => s.decision === "PENDING");
     return next
-      ? `${ROLE_LABEL[next.role]}، ${partyLabel(next.party, contract.contract_type)}`
-      : "اكتملت السلسلة";
+      ? `${ROLE_LABEL[next.role]}${d.common.listSep}${partyLabel(next.party, contract.contract_type)}`
+      : d.workspace.chainComplete;
   }
-  if (request.state === "RECOMMENDED") return "لم يبدأ الاعتماد";
-  return "لا يوجد";
+  if (request.state === "RECOMMENDED") return d.workspace.approvalNotStarted;
+  return d.workspace.none;
 }
 
 function Register({ contract, rows }: { contract: Contract; rows: Row[] }) {
+  const t = useT().workspace;
   const href = (id: string) =>
     `/contracts/${encodeURIComponent(contract.id)}/requests/${encodeURIComponent(id)}`;
 
@@ -238,12 +253,12 @@ function Register({ contract, rows }: { contract: Contract; rows: Row[] }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-y border-rule-strong text-start text-xs text-ink-muted">
-              <th scope="col" className="py-2 pe-4 text-start font-medium">المرجع</th>
-              <th scope="col" className="py-2 pe-4 text-start font-medium">الحالة</th>
-              <th scope="col" className="py-2 pe-4 text-start font-medium">النوع</th>
-              <th scope="col" className="py-2 pe-4 text-end font-medium">أثر التكلفة</th>
-              <th scope="col" className="py-2 pe-4 text-start font-medium">التوصية</th>
-              <th scope="col" className="py-2 text-start font-medium">المعتمد الحالي</th>
+              <th scope="col" className="py-2 pe-4 text-start font-medium">{t.colRef}</th>
+              <th scope="col" className="py-2 pe-4 text-start font-medium">{t.colState}</th>
+              <th scope="col" className="py-2 pe-4 text-start font-medium">{t.colKind}</th>
+              <th scope="col" className="py-2 pe-4 text-end font-medium">{t.colCost}</th>
+              <th scope="col" className="py-2 pe-4 text-start font-medium">{t.colRecommendation}</th>
+              <th scope="col" className="py-2 text-start font-medium">{t.colApprover}</th>
             </tr>
           </thead>
           <tbody>
@@ -256,9 +271,13 @@ function Register({ contract, rows }: { contract: Contract; rows: Row[] }) {
                     <Link href={href(r.id)} className="ref font-medium underline-offset-4 hover:underline">
                       {r.id}
                     </Link>
-                    <span className="block max-w-[22rem] truncate text-xs text-ink-muted">
+                    <ArabicOriginal
+                      as="span"
+                      showLabel={false}
+                      className="block max-w-[22rem] truncate text-xs text-ink-muted"
+                    >
                       {r.requester_name}
-                    </span>
+                    </ArabicOriginal>
                   </td>
                   <td className="py-3 pe-4">
                     <Badge variant={STATE_TONE[state]}>{STATE_LABEL[state]}</Badge>
@@ -266,14 +285,14 @@ function Register({ contract, rows }: { contract: Contract; rows: Row[] }) {
                   <td className="py-3 pe-4">{kindShort(r.kind)}</td>
                   <td className="py-3 pe-4 text-end">
                     {r.cost_impact === null || r.cost_impact === undefined
-                      ? <span className="text-ink-muted">لم يُحسب</span>
+                      ? <span className="text-ink-muted">{t.notCalculated}</span>
                       : formatImpact(r.cost_impact)}
                   </td>
                   <td className="py-3 pe-4">
                     {r.recommendation ? (
                       RECOMMENDATION[r.recommendation].short
                     ) : (
-                      <span className="text-ink-muted">بانتظار التحليل</span>
+                      <span className="text-ink-muted">{t.awaitingAnalysis}</span>
                     )}
                   </td>
                   <td className="py-3">{currentApprover(row, contract)}</td>
@@ -297,16 +316,16 @@ function Register({ contract, rows }: { contract: Contract; rows: Row[] }) {
                   <Badge variant={STATE_TONE[state]}>{STATE_LABEL[state]}</Badge>
                 </span>
                 <dl className="mt-2 grid grid-cols-3 gap-2 text-sm">
-                  <Field label="النوع">{kindShort(r.kind)}</Field>
-                  <Field label="أثر التكلفة">
-                    {r.cost_impact == null ? "لم يُحسب" : formatImpact(r.cost_impact)}
+                  <Field label={t.colKind}>{kindShort(r.kind)}</Field>
+                  <Field label={t.colCost}>
+                    {r.cost_impact == null ? t.notCalculated : formatImpact(r.cost_impact)}
                   </Field>
-                  <Field label="التوصية">
-                    {r.recommendation ? RECOMMENDATION[r.recommendation].short : "بانتظار التحليل"}
+                  <Field label={t.colRecommendation}>
+                    {r.recommendation ? RECOMMENDATION[r.recommendation].short : t.awaitingAnalysis}
                   </Field>
                 </dl>
                 <p className="mt-2 text-xs text-ink-muted">
-                  المعتمد الحالي: {currentApprover(row, contract)}
+                  {t.approverLine(currentApprover(row, contract))}
                 </p>
               </Link>
             </li>
