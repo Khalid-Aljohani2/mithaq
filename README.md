@@ -2,7 +2,7 @@
 
 > **One contract. Two parties. One record of every change.**
 
-MithaqAi is an Arabic-first change-order governance agent for Saudi government
+MithaqAi is a change-order governance agent for Saudi government
 contracts. The government entity and the contractor on the same contract work
 from **one shared change ledger**. A change request arrives as
 free Arabic prose; eleven named stages read it, match it against the contract's
