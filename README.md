@@ -311,27 +311,99 @@ the API must behave identically whichever is behind it.
 
 ## Run it locally
 
-**Prerequisites:** Python 3.11+, Node 20+, Docker.
+**Prerequisites:** Python 3.11+ and Node 20.9+. No API key, no database and no
+Docker are needed for the quick start.
+
+### Quick start: in memory, recorded AI outputs
+
+The backend seeds the two demo contracts and their requests into memory on
+start, and with no `LLM_PROVIDER` it uses recorded AI outputs (see
+[No API key? It still runs.](#no-api-key-it-still-runs)). Do not create
+`backend/.env` for this path.
+
+**Terminal 1, backend.** Windows PowerShell, from the repository root:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:DEMO_MODE = "true"; .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+```
+
+macOS or Linux:
 
 ```bash
-# 1. Database
-docker compose up -d                      # PostgreSQL on localhost:5433
-
-# 2. Backend
 cd backend
-python -m venv .venv && . .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env                      # then fill it in — see below
-alembic upgrade head
-python -m app.seed.load                   # idempotent
-uvicorn app.main:app --reload --port 8000
-
-# 3. Frontend
-cd ../frontend
-npm ci
-cp .env.local.example .env.local          # NEXT_PUBLIC_API_URL=http://localhost:8000
-npm run dev                               # http://localhost:3000
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+DEMO_MODE=true .venv/bin/python -m uvicorn app.main:app --port 8000
 ```
+
+**Terminal 2, frontend.** The same on every system, from the repository root:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open <http://localhost:3000>. In development the frontend calls
+`http://localhost:8000` when `NEXT_PUBLIC_API_URL` is not set, so no
+`.env.local` is needed. `DEMO_MODE=true` turns on the demo reset and the salami
+preset on the `/demo` page, for requests from this machine only; the guided
+demo is in [`docs/DEMO.md`](docs/DEMO.md).
+
+To use other ports, start the backend with `--port 8070`, set
+`ALLOWED_ORIGINS=http://localhost:3070` for the backend and
+`NEXT_PUBLIC_API_URL=http://localhost:8070` in `frontend/.env.local`, then run
+`npx next dev --port 3070` (Windows PowerShell 5.1 drops the `--` in
+`npm run dev -- --port 3070`).
+
+### With PostgreSQL
+
+Uses the backend's virtual environment from the quick start, plus Docker. From
+the repository root, start the database, then create the backend's settings
+file:
+
+```bash
+docker compose up -d                 # PostgreSQL 18 on localhost:5433
+cd backend
+cp .env.example .env                 # Windows PowerShell: Copy-Item .env.example .env
+```
+
+Edit `backend/.env` before running anything else:
+
+```ini
+DATABASE_URL=postgresql://mithaq:mithaq_local_dev@localhost:5433/mithaq
+DEMO_MODE=true
+REMINDER_PENDING_APPROVAL_HOURS=24
+REMINDER_AWAITING_DOCUMENTS_HOURS=48
+```
+
+The two `REMINDER_*` lines must be a number or be deleted: left empty, as in
+the example file, every backend command stops with `Input should be a valid
+integer`. 24 and 48 are the policy defaults; 0 shows reminders at once. The
+database credentials are the local ones from `docker-compose.yml`.
+
+Then, in `backend/`, on Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m app.seed.load
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+```
+
+or on macOS or Linux:
+
+```bash
+.venv/bin/python -m alembic upgrade head
+.venv/bin/python -m app.seed.load
+.venv/bin/python -m uvicorn app.main:app --port 8000
+```
+
+Start the frontend as in the quick start. To run the backend tests, also
+install `requirements-dev.txt`; they use a separate `mithaq_test` database on
+the same server.
 
 ### Environment variables
 
@@ -340,16 +412,22 @@ both git-ignored. The example files ship with empty values.
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string. Unset falls back to the in-memory store. |
-| `ALLOWED_ORIGINS` | Comma-separated CORS origins. |
+| `DATABASE_URL` | PostgreSQL connection string. Unset or empty falls back to the in-memory store. |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins. Defaults to `http://localhost:3000`; must include the frontend's origin. |
+| `DEMO_MODE` | `true` lets requests from this machine reset the demo and apply the salami preset without a token. Local only; never on a deployed instance. |
 | `LLM_PROVIDER` | `anthropic` for the live provider; anything else uses recorded outputs. |
 | `LLM_API_KEY` | Anthropic API key. Never logged, echoed, or included in an error. |
 | `LLM_MODEL` | Overrides the default model. Leave empty to use `claude-opus-5-5`. |
 | `LLM_MODEL_OVERRIDES` | Optional per-stage models, e.g. `INTAKE=claude-haiku-5-5`. |
 | `DEMO_RESET_TOKEN` | Guards `POST /api/demo/reset`. Empty disables the endpoint entirely (404). |
-| `REMINDER_PENDING_APPROVAL_HOURS` | Overrides the policy reminder delay. `0` for demos. |
+| `REMINDER_PENDING_APPROVAL_HOURS` | Overrides the policy reminder delay. `0` for demos. A number or absent; an empty value stops the backend. |
 | `REMINDER_AWAITING_DOCUMENTS_HOURS` | The same, for documents. |
 | `NEXT_PUBLIC_API_URL` | The backend origin. The only source; no hardcoded fallback outside development. |
+
+Environment variables override `backend/.env`. In PowerShell,
+`$env:DATABASE_URL = ""` removes the variable instead of emptying it, so the
+value in `.env` wins; to force the in-memory store over a `.env` that sets a
+database, use a single space: `$env:DATABASE_URL = " "`.
 
 ### No API key? It still runs.
 
