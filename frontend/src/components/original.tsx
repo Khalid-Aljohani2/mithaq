@@ -50,3 +50,24 @@ export function ArabicOriginal({
     </Tag>
   );
 }
+
+/**
+ * A document name from the backend. Known names read in the interface
+ * language; any other name is Arabic data and is shown as the original.
+ */
+export function DocumentName({ name, className }: { name: string; className?: string }) {
+  const { lang, t } = usePrefs();
+  const english = lang === "en" ? t.common.documentName[name] : undefined;
+  if (english) {
+    return (
+      <span className={className} title={name}>
+        {english}
+      </span>
+    );
+  }
+  return (
+    <ArabicOriginal as="span" showLabel={false} className={className}>
+      {name}
+    </ArabicOriginal>
+  );
+}

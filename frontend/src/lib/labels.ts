@@ -42,6 +42,15 @@ function labelMap<K extends string, V>(
   });
 }
 
+/**
+ * A required or attached document's name for display. The backend names
+ * documents in Arabic; in English the known names read in English and any
+ * other name stays as written.
+ */
+export function documentLabel(name: string): string {
+  return getDict().common.documentName[name] ?? name;
+}
+
 export type Tone = "neutral" | "seal" | "amber" | "legal";
 
 export const STATE_LABEL: Record<CRState, string> = labelMap((d) => d.common.state);

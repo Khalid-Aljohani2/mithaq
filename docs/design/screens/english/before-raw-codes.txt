@@ -1,0 +1,33 @@
+workspace: code: CR-C-SUBSTITUTION
+workspace: code: CR-C-SUBSTITUTION
+workspace: code: CR-C-SUBSTITUTION
+case-received: arabic: م. سارة العتيبي
+case-closed-in-scope: arabic: م. سارة العتيبي
+case-recommended: arabic: م. فهد القحطاني
+case-in-approval: arabic: م. فهد القحطاني
+case-vo-issued: code: CR-C-SUBSTITUTION
+case-vo-issued: arabic: م. نورة الدوسري
+case-legal-block: arabic: م. فهد القحطاني
+case-awaiting-documents: arabic: م. فهد القحطاني
+case-awaiting-documents: arabic: طلب تغيير رسمي
+case-awaiting-documents: arabic: عرض سعر أو تحليل تكلفة
+case-awaiting-documents: arabic: Still missing: عرض سعر أو تحليل تكلفة. If sent like this, the request goes back to waiting.
+case-analysing: arabic: م. سارة العتيبي
+case-signed-seal: arabic: م. فهد القحطاني
+vo-document: code: CR-C-SUBSTITUTION
+vo-document: code: CR-C-SUBSTITUTION
+vo-document: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+audit: code: CR-C-SUBSTITUTION
+notifications: code: CR-C-SUBSTITUTION
+notifications: code: CR-C-SUBSTITUTION
+notifications: code: CR-C-SUBSTITUTION
+case-refused-at-final: arabic: م. فهد القحطاني

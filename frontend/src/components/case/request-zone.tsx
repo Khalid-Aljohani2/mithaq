@@ -3,7 +3,7 @@
 import { Check, X } from "lucide-react";
 
 import { Field } from "@/components/file";
-import { ArabicOriginal } from "@/components/original";
+import { ArabicOriginal, DocumentName } from "@/components/original";
 import type { BreakdownLine, ChangeRequest, Contract } from "@/lib/api";
 import { formatDate, formatDays, formatMoney, formatNumber } from "@/lib/format";
 import { partyLabel } from "@/lib/labels";
@@ -148,17 +148,13 @@ function Attachments({
       {provided.map((doc) => (
         <li key={doc} className="flex items-center gap-2 py-2">
           <Check aria-hidden className="size-4 text-seal" />
-          <ArabicOriginal as="span" showLabel={false}>
-            {doc}
-          </ArabicOriginal>
+          <DocumentName name={doc} />
         </li>
       ))}
       {missing.map((doc) => (
         <li key={doc} className={cn("flex items-center gap-2 py-2 text-amber")}>
           <X aria-hidden className="size-4" />
-          <ArabicOriginal as="span" showLabel={false}>
-            {doc}
-          </ArabicOriginal>
+          <DocumentName name={doc} />
           <span className="ms-auto text-xs">{t.case.missing}</span>
         </li>
       ))}

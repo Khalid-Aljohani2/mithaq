@@ -38,6 +38,7 @@ from app.domain.enums import (
     stage_number,
 )
 from app.domain.models import ChangeLedger, ChangeOrder, Contract
+from app.domain.money import money
 from app.pipeline.approvals import ChainFacts, build_chain
 from app.pipeline.costing import CostImpact, compute_impact
 from app.pipeline.decisions import Decision, decide
@@ -69,6 +70,44 @@ class PipelineResult:
     impact: CostImpact | None = None
     policy: PolicyCheck | None = None
     legal: LegalCheck | None = None
+
+
+#: Plain English for the code-built stage summaries. The values are the
+#: enums' own; only the wording a reader sees changes.
+_IMPACT_EN: dict[ImpactType, str] = {
+    ImpactType.COST: "cost",
+    ImpactType.TIME: "time",
+    ImpactType.BOTH: "cost and time",
+    ImpactType.NONE: "neither cost nor time",
+}
+_KIND_EN: dict[ChangeKind, str] = {
+    ChangeKind.IN_SCOPE: "in scope (covered by the contract)",
+    ChangeKind.PCR: "a positive change (adds work or cost)",
+    ChangeKind.NCR: "a negative change (removes work or cost)",
+    ChangeKind.SUBSTITUTION: "a substitution of an approved item",
+    ChangeKind.UNCLEAR: "unclear; a person must classify it",
+}
+_RECOMMENDATION_EN: dict[Recommendation, str] = {
+    Recommendation.APPROVE: "approve",
+    Recommendation.REJECT: "reject",
+    Recommendation.REQUEST_REVISION: "return for revision",
+    Recommendation.CLOSE_IN_SCOPE: "close as in scope",
+}
+
+
+def _scope_summary_en(scope: ScopeOutput) -> str:
+    covered = "Covered by the contract" if scope.in_scope else "Not covered by the contract"
+    return f"{covered}; classified as {_KIND_EN[scope.kind]}."
+
+
+def _impact_summary_en(impact: CostImpact) -> str:
+    """Presentation only: the stored figures in the payload stay exact."""
+    cost = impact.cost_impact
+    sign = "+" if cost > 0 else "-" if cost < 0 else ""
+    cost_text = f"{sign}{money(abs(cost))} SAR" if cost else "no cost change"
+    days = impact.time_impact_days
+    days_text = f"{days:+d} days" if days else "no schedule change"
+    return f"Cost impact {cost_text}; {days_text}."
 
 
 class _Clock:
@@ -161,7 +200,7 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_OK,
-        f"Extracted the request and its impact type ({intake.impact_type.value}).",
+        f"Read the request; it affects {_IMPACT_EN[intake.impact_type]}.",
         intake.requested_change_ar,
         intake.model_dump(mode="json"),
         provider.name,
@@ -213,7 +252,7 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_OK,
-        f"in_scope={scope.in_scope}, classified as {scope.kind.value}.",
+        _scope_summary_en(scope),
         scope.reasoning_ar,
         scope.model_dump(mode="json"),
         provider.name,
@@ -235,7 +274,11 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_OK,
-        f"changes_approved_product={technical.changes_approved_product}.",
+        (
+            "Changes an approved product; technical approval needed."
+            if technical.changes_approved_product
+            else "No approved product is changed."
+        ),
         technical.reasoning_ar,
         technical.model_dump(mode="json"),
         provider.name,
@@ -253,7 +296,7 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_OK,
-        f"Cost impact {impact.cost_impact} SAR, {impact.time_impact_days} days.",
+        _impact_summary_en(impact),
         "",
         {
             "cost_impact": str(impact.cost_impact),
@@ -305,8 +348,9 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_BLOCKED if legal.blocked else STATUS_OK,
-        f"Risk {risk.overall_risk_level}; policy_exceeded={policy.exception_required}, "
-        f"legally_blocked={legal.blocked}.",
+        f"{risk.overall_risk_level.capitalize()} risk; "
+        f"{'above' if policy.exception_required else 'within'} the policy limit; "
+        f"{'blocked by a legal limit' if legal.blocked else 'no legal block'}.",
         risk.compliance_risk_ar,
         {
             "risk": risk.model_dump(mode="json"),
@@ -404,8 +448,9 @@ def run_analysis(
         started,
         clock.tick(),
         STATUS_BLOCKED if decision.legally_blocked else STATUS_OK,
-        f"Recommendation {decision.recommendation.value} "
-        f"(confidence {decision.confidence}); chain of {len(chain)}.",
+        f"Recommends: {_RECOMMENDATION_EN[decision.recommendation]} "
+        f"(confidence {decision.confidence}); "
+        f"{len(chain)} approval step{'' if len(chain) == 1 else 's'}.",
         narrative.summary_ar,
         {
             "recommendation": decision.recommendation.value,

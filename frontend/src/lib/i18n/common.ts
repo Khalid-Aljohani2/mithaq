@@ -200,6 +200,11 @@ const ar = {
   },
   ms: (n: string) => `${n} ملّي ث`,
   seconds: (n: string) => `${n} ث`,
+  /**
+   * English names for the backend's document names, which are Arabic data.
+   * Keyed by the exact Arabic name; an unknown name is shown as written.
+   */
+  documentName: {} as Record<string, string>,
 };
 
 const en: typeof ar = {
@@ -380,6 +385,12 @@ const en: typeof ar = {
   entries: (count: number, n: string) => `${n} ${count === 1 ? "entry" : "entries"}`,
   ms: (n: string) => `${n} ms`,
   seconds: (n: string) => `${n} s`,
+  documentName: {
+    "طلب تغيير رسمي": "Formal change request",
+    "عرض سعر أو تحليل تكلفة": "Price quote or cost analysis",
+    "برنامج زمني محدّث": "Updated schedule",
+    "مواصفات المنتج البديل": "Substitute product specifications",
+  },
 };
 
 export const common = { ar, en };

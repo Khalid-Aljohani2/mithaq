@@ -3,11 +3,11 @@
 import { Check, X } from "lucide-react";
 import { useId, useState } from "react";
 
-import { ArabicOriginal } from "@/components/original";
+import { ArabicOriginal, DocumentName } from "@/components/original";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, type ChangeRequest, type ChangeRequestResponse } from "@/lib/api";
-import { errorMessage } from "@/lib/labels";
+import { documentLabel, errorMessage } from "@/lib/labels";
 import type { Documents } from "@/lib/payload";
 import { useT } from "@/lib/prefs";
 import type { Persona } from "@/lib/session";
@@ -101,9 +101,7 @@ export function AwaitingDocuments({
             return (
               <li key={d} className={cn("flex items-center gap-2 py-2", !has && "text-amber")}>
                 {has ? <Check aria-hidden className="size-4 text-seal" /> : <X aria-hidden className="size-4" />}
-                <ArabicOriginal as="span" showLabel={false} className="flex-1">
-                  {d}
-                </ArabicOriginal>
+                <DocumentName name={d} className="flex-1" />
                 <span className="text-xs">{has ? t.case.attached : t.case.missing}</span>
               </li>
             );
@@ -135,7 +133,7 @@ export function AwaitingDocuments({
                     className="size-4 accent-[var(--seal)]"
                   />
                   <span dir="auto" className="flex-1 text-start">
-                    {doc}
+                    {documentLabel(doc)}
                   </span>
                   {required.includes(doc) && !onFile.includes(doc) && (
                     <span className="text-xs text-amber">{t.case.wasMissing}</span>
@@ -182,7 +180,7 @@ export function AwaitingDocuments({
 
         {stillMissing.length > 0 && (
           <p className="mt-3 border-s-2 border-amber ps-3 text-xs">
-            {t.case.stillMissing(stillMissing.join(t.case.listSep))}
+            {t.case.stillMissing(stillMissing.map(documentLabel).join(t.case.listSep))}
           </p>
         )}
         {error && (
