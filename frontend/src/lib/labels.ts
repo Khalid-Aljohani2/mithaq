@@ -21,7 +21,8 @@ import {
   type Stage,
 } from "./api";
 import type { Dict } from "./i18n";
-import { getDict } from "./prefs";
+import { englishDocumentName } from "./documents";
+import { getDict, getLang } from "./prefs";
 
 /**
  * A read-only record whose values come from the current dictionary at access
@@ -48,7 +49,8 @@ function labelMap<K extends string, V>(
  * other name stays as written.
  */
 export function documentLabel(name: string): string {
-  return getDict().common.documentName[name] ?? name;
+  if (getLang() !== "en") return name;
+  return englishDocumentName(name) ?? getDict().common.documentName[name] ?? name;
 }
 
 export type Tone = "neutral" | "seal" | "amber" | "legal";

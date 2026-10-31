@@ -16,12 +16,25 @@ class DocumentChecklist(BaseModel):
     required: list[str]
 
 
+class DocumentName(BaseModel):
+    """One checklist document: a stable code and its name in each language."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    name_ar: str
+    name_en: str
+
+
 class RequiredDocumentsResponse(BaseModel):
     """Every checklist, so a requester can see the rule before submitting."""
 
     model_config = ConfigDict(frozen=True)
 
     checklists: list[DocumentChecklist]
+    #: Names of every document the checklists use, so the UI can show them in
+    #: the interface language.
+    documents: list[DocumentName]
 
 
 class PolicyThresholdOut(BaseModel):
