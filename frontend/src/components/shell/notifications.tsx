@@ -6,10 +6,11 @@ import { Dialog } from "radix-ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { api, type Notification } from "@/lib/api";
+import { api, type ContractType, type Notification } from "@/lib/api";
 import { useContracts } from "@/lib/contracts";
 import { formatDateTime } from "@/lib/format";
-import { NOTIFICATION_KIND, ROLE_LABEL, errorMessage, partyLabelNeutral } from "@/lib/labels";
+import { CONTRACT_TYPE_LABEL, NOTIFICATION_KIND, ROLE_LABEL, errorMessage, partyLabelNeutral } from "@/lib/labels";
+import { useBilingual, useT } from "@/lib/prefs";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,9 @@ type Feed =
 export function NotificationBell() {
   const { persona } = useSession();
   const contracts = useContracts();
+  const t = useT().shell;
+  const { listSep: sep, retry } = useT().common;
+  const pick = useBilingual();
   const [feed, setFeed] = useState<Feed>({ status: "loading" });
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
@@ -59,16 +63,18 @@ export function NotificationBell() {
   const reminders = feed.status === "ready" ? feed.items.filter((n) => n.is_reminder).length : 0;
   const contractType = (contractId: string) =>
     contracts.data?.find((c) => c.id === contractId)?.contract_type;
-  const who = `${ROLE_LABEL[persona.role]}، ${partyLabelNeutral(persona.party)}`;
+  const typeLabel = (type: ContractType | undefined) =>
+    type ? `${sep}${CONTRACT_TYPE_LABEL[type]}` : "";
+  const who = `${ROLE_LABEL[persona.role]}${sep}${partyLabelNeutral(persona.party)}`;
 
   const label =
     feed.status === "error"
-      ? "الإشعارات: تعذر التحميل"
+      ? t.notifFailedLabel
       : count === null
-        ? "الإشعارات: جارٍ التحميل"
+        ? t.notifLoadingLabel
         : count === 0
-          ? "الإشعارات: لا جديد"
-          : `الإشعارات: ${count}`;
+          ? t.notifNoneLabel
+          : t.notifCountLabel(count);
 
   return (
     <Dialog.Root
@@ -98,17 +104,17 @@ export function NotificationBell() {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-[rgb(15_20_26/0.45)] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed inset-y-0 end-0 z-50 flex w-full max-w-[26rem] flex-col border-s border-rule-strong bg-sheet shadow-[0_8px_24px_color-mix(in_srgb,var(--ink)_12%,transparent)] data-[state=open]:animate-in data-[state=open]:slide-in-from-left-8 motion-reduce:animate-none">
+        <Dialog.Content className="fixed inset-y-0 end-0 z-50 flex w-full max-w-[26rem] flex-col border-s border-rule-strong bg-sheet shadow-[0_8px_24px_color-mix(in_srgb,var(--ink)_12%,transparent)] data-[state=open]:animate-in data-[state=open]:slide-in-from-end-8 motion-reduce:animate-none">
           <header className="rule-double flex items-start justify-between gap-3 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
             <div>
-              <Dialog.Title className="text-lg font-semibold">الإشعارات</Dialog.Title>
+              <Dialog.Title className="text-lg font-semibold">{t.notifications}</Dialog.Title>
               <Dialog.Description className="text-xs text-ink-muted">
-                لدورك: {who}
-                {reminders > 0 && <>، منها {reminders} تذكير</>}
+                {t.forRole(who)}
+                {reminders > 0 && t.remindersOf(reminders)}
               </Dialog.Description>
             </div>
             <Dialog.Close
-              aria-label="إغلاق الإشعارات"
+              aria-label={t.closeNotifications}
               className="inline-flex size-9 items-center justify-center rounded-[var(--radius-ctl)] hover:bg-paper"
             >
               <X aria-hidden className="size-5" />
@@ -117,22 +123,19 @@ export function NotificationBell() {
 
           <div className="flex-1 overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {feed.status === "loading" ? (
-              <p role="status" className="py-6 text-sm text-ink-muted">جارٍ تحميل الإشعارات</p>
+              <p role="status" className="py-6 text-sm text-ink-muted">{t.loadingNotifications}</p>
             ) : feed.status === "error" ? (
               <div role="alert" className="mt-4 border-s-4 border-legal bg-legal-wash px-3 py-3 text-sm">
-                <p className="font-medium text-legal">تعذر تحميل الإشعارات.</p>
+                <p className="font-medium text-legal">{t.notificationsFailed}</p>
                 <p className="mt-1">{errorMessage(feed.error)}</p>
                 <button type="button" onClick={refresh} className="mt-2 text-sm underline underline-offset-4">
-                  إعادة المحاولة
+                  {retry}
                 </button>
               </div>
             ) : feed.items.length === 0 ? (
               <div className="mt-4 border border-dashed border-rule-strong px-4 py-6 text-sm">
-                <p className="font-medium">لا إشعارات لدورك الآن.</p>
-                <p className="mt-1 text-ink-muted">
-                  يصلك إشعار حين يحين دورك في سلسلة اعتماد، أو حين يتغير طلب قدّمه طرفك.
-                  بدّل الدور من أعلى الصفحة لرؤية إشعارات دور آخر.
-                </p>
+                <p className="font-medium">{t.noNotifications}</p>
+                <p className="mt-1 text-ink-muted">{t.noNotificationsHint}</p>
               </div>
             ) : (
               <ol className="divide-y divide-rule">
@@ -151,14 +154,14 @@ export function NotificationBell() {
                           {n.is_reminder && <AlarmClock aria-hidden className="size-4 text-amber" />}
                           {NOTIFICATION_KIND[n.kind]}
                         </span>
-                        {n.is_reminder && <Badge variant="amber">تذكير</Badge>}
+                        {n.is_reminder && <Badge variant="amber">{t.reminder}</Badge>}
                       </span>
-                      <span className="mt-1 block text-sm">{n.message_ar}</span>
+                      <span className="mt-1 block text-sm">{pick(n.message_ar, n.message_en)}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-ink-muted">
                         <span className="ref">{n.cr_id}</span>
                         <span>
-                          عقد <span className="ref">{n.contract_id}</span>
-                          {contractType(n.contract_id) === "PRIVATE" ? "، خاص" : contractType(n.contract_id) === "GOVERNMENT" ? "، حكومي" : ""}
+                          {t.contractWord} <span className="ref">{n.contract_id}</span>
+                          {typeLabel(contractType(n.contract_id))}
                         </span>
                         <time dateTime={n.created_at}>{formatDateTime(n.created_at)}</time>
                       </span>

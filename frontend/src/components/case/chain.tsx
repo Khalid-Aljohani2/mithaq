@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ApprovalDecision, ApprovalStep, ContractType } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { CHAIN_REASON, ROLE_LABEL, partyLabel } from "@/lib/labels";
+import { useT } from "@/lib/prefs";
 import type { Persona } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -86,7 +87,8 @@ function Slot({
   onDecide: Decide;
 }) {
   const reduce = useReducedMotion();
-  const who = `${ROLE_LABEL[step.role]}، ${partyLabel(step.party, contractType)}`;
+  const t = useT();
+  const who = `${ROLE_LABEL[step.role]}${t.case.whoSep}${partyLabel(step.party, contractType)}`;
   const why = CHAIN_REASON[step.reason_code] ?? step.reason_code;
   const cites =
     step.reason_code === "CONTRACTOR_CONSENT" || step.reason_code === "LEGAL_REVIEW_REQUIRED"
@@ -112,7 +114,7 @@ function Slot({
               {cites.map((ref, i) => (
                 <span key={ref}>
                   <span className="ref">{ref}</span>
-                  {i < cites.length - 1 ? "، " : ""}
+                  {i < cites.length - 1 ? t.case.listSep : ""}
                 </span>
               ))}
             </>
@@ -123,7 +125,7 @@ function Slot({
 
         {isNext && !mine && (
           <p className="mt-3 border-s-2 border-amber ps-3 text-xs">
-            الخطوة التالية لـ{who}. بدّل الدور من أعلى الصفحة للتوقيع.
+            {t.case.nextFor(who)}
           </p>
         )}
         {mine && <SlotActions step={step} onDecide={onDecide} />}
@@ -153,10 +155,11 @@ function Slot({
 }
 
 function SignatureLine({ step }: { step: ApprovalStep }) {
+  const t = useT();
   if (step.decision === "PENDING" || !step.decision) {
     return (
       <div className="mt-4 flex items-end gap-2 text-xs text-ink-muted">
-        <span>التوقيع</span>
+        <span>{t.case.signature}</span>
         <span aria-hidden className="mb-1 flex-1 border-b border-dotted border-rule-strong" />
       </div>
     );
@@ -164,7 +167,11 @@ function SignatureLine({ step }: { step: ApprovalStep }) {
   const tone =
     step.decision === "APPROVED" ? "text-seal" : step.decision === "REJECTED" ? "text-legal" : "text-amber";
   const verb =
-    step.decision === "APPROVED" ? "اعتمد" : step.decision === "REJECTED" ? "رفض" : "طلب تعديل";
+    step.decision === "APPROVED"
+      ? t.case.verbApproved
+      : step.decision === "REJECTED"
+        ? t.case.verbRejected
+        : t.case.verbRevision;
   return (
     <div className="mt-3">
       <p className={cn("font-doc text-base font-semibold", tone)}>
@@ -174,7 +181,7 @@ function SignatureLine({ step }: { step: ApprovalStep }) {
         <p className="text-xs text-ink-muted">{formatDateTime(step.decided_at)}</p>
       )}
       {step.reason && (
-        <p className="mt-1 border-s-2 border-rule-strong ps-3 font-doc text-sm">
+        <p dir="auto" className="mt-1 border-s-2 border-rule-strong ps-3 text-start font-doc text-sm">
           {step.reason}
         </p>
       )}
@@ -183,6 +190,7 @@ function SignatureLine({ step }: { step: ApprovalStep }) {
 }
 
 function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide }) {
+  const t = useT();
   const nameId = useId();
   const reasonId = useId();
   const [name, setName] = useState("");
@@ -207,7 +215,7 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
     <div className="mt-4 space-y-3">
       <div>
         <label htmlFor={nameId} className="text-xs font-medium">
-          التوقيع باسم
+          {t.case.signAs}
         </label>
         <Input
           id={nameId}
@@ -220,7 +228,7 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
         />
         {touched && nameMissing && (
           <p id={`${nameId}-err`} className="mt-1 text-xs text-legal">
-            اكتب اسمك كما يظهر في التوقيع.
+            {t.case.nameMissing}
           </p>
         )}
       </div>
@@ -228,19 +236,19 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
       {mode === null ? (
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => submit("APPROVED")} disabled={busy}>
-            اعتماد
+            {t.case.approve}
           </Button>
           <Button variant="destructive" onClick={() => setMode("REJECTED")} disabled={busy}>
-            رفض
+            {t.case.reject}
           </Button>
           <Button variant="amber" onClick={() => setMode("REVISION_REQUESTED")} disabled={busy}>
-            طلب تعديل
+            {t.case.requestRevision}
           </Button>
         </div>
       ) : (
         <div>
           <label htmlFor={reasonId} className="text-xs font-medium">
-            {mode === "REJECTED" ? "سبب الرفض" : "التعديل المطلوب"}
+            {mode === "REJECTED" ? t.case.rejectReason : t.case.revisionWanted}
           </label>
           <Textarea
             id={reasonId}
@@ -256,7 +264,7 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
             id={`${reasonId}-hint`}
             className={cn("mt-1 text-xs", touched && reasonMissing ? "text-legal" : "text-ink-muted")}
           >
-            يصل السبب إلى مقدم الطلب، ولا يُقبل القرار دونه.
+            {t.case.reasonHint}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button
@@ -264,7 +272,7 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
               onClick={() => submit(mode)}
               disabled={busy}
             >
-              {mode === "REJECTED" ? "تأكيد الرفض" : "إرسال طلب التعديل"}
+              {mode === "REJECTED" ? t.case.confirmReject : t.case.sendRevision}
             </Button>
             <Button
               variant="ghost"
@@ -275,7 +283,7 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
               }}
               disabled={busy}
             >
-              تراجع
+              {t.case.cancel}
             </Button>
           </div>
         </div>

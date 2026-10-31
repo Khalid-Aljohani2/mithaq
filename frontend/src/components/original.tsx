@@ -31,7 +31,7 @@ export function ArabicOriginal({
         <span
           lang="en"
           dir="ltr"
-          className="mb-1 block text-2xs font-medium tracking-wide text-ink-muted uppercase"
+          className="mb-1 block text-2xs font-medium text-ink-muted"
         >
           {t.shell.originalArabic}
         </span>

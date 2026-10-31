@@ -2,10 +2,12 @@
 
 import type { CSSProperties } from "react";
 
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { CapLine, LedgerResponse, UsageSnapshot } from "@/lib/api";
 import { formatMoney, formatNumber, formatPct } from "@/lib/format";
 import { ROLE_LABEL, SCOPE_NAME, SOURCE_LABEL, type Tone } from "@/lib/labels";
+import { getDict, getLang, useT } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 
 /**
@@ -60,7 +62,8 @@ export function policyLimits(ledger: LedgerResponse): Limit[] {
         unit: c.unit === "days" ? "days" : "SAR",
         overTone: c.blocking ? "legal" : "amber",
         exceptionRole: c.exception_role,
-        description: c.description_ar,
+        description:
+          getLang() === "en" && c.description_en ? c.description_en : c.description_ar,
       },
     ];
   });
@@ -101,8 +104,9 @@ function over(limit: Limit): boolean {
 }
 
 function amount(limit: Limit, value: string | null): string {
-  if (value === null) return "بلا حد";
-  return limit.unit === "days" ? `${formatNumber(value)} يومًا` : formatMoney(value);
+  const t = getDict().limits;
+  if (value === null) return t.noLimit;
+  return limit.unit === "days" ? t.days(formatNumber(value)) : formatMoney(value);
 }
 
 const OVER_BG: Record<Tone, string> = {
@@ -123,8 +127,9 @@ const OVER_TEXT: Record<Tone, string> = {
  * two thirds along. Widths come from CSS `calc()` on the API's strings.
  */
 export function Meter({ limit, className }: { limit: Limit; className?: string }) {
+  const t = useT().limits;
   if (!limit.capPct) {
-    return <span className={cn("text-xs text-ink-muted", className)}>بلا حد نسبي</span>;
+    return <span className={cn("text-xs text-ink-muted", className)}>{t.noRelativeLimit}</span>;
   }
   const isOver = over(limit);
   const style = {
@@ -132,9 +137,11 @@ export function Meter({ limit, className }: { limit: Limit; className?: string }
     "--used": limit.usedPct,
     "--pending": limit.pendingPct,
   } as CSSProperties;
-  const label = `المستخدم ${formatPct(limit.usedPct)}، وقيد الاعتماد ${formatPct(
-    limit.pendingPct,
-  )}، والحد ${formatPct(limit.capPct)}`;
+  const label = t.meterLabel(
+    formatPct(limit.usedPct),
+    formatPct(limit.pendingPct),
+    formatPct(limit.capPct),
+  );
 
   return (
     <span
@@ -162,19 +169,20 @@ export function Meter({ limit, className }: { limit: Limit; className?: string }
 }
 
 export function MeterKey() {
+  const t = useT().limits;
   return (
     <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-muted">
       <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="inline-block h-2 w-5 bg-ink" />
-        المعتمد
+        {t.keyApproved}
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="hatch inline-block h-2 w-5 border border-rule-strong" />
-        قيد الاعتماد
+        {t.keyPending}
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="inline-block h-3 w-0.5 bg-ink" />
-        الحد
+        {t.keyCap}
       </span>
     </p>
   );
@@ -182,6 +190,8 @@ export function MeterKey() {
 
 /** Compact rows for the workspace summary. */
 export function LimitRows({ limits }: { limits: Limit[] }) {
+  const t = useT().limits;
+  const en = getLang() === "en";
   return (
     <ul className="divide-y divide-rule border-y border-rule">
       {limits.map((l) => (
@@ -190,16 +200,16 @@ export function LimitRows({ limits }: { limits: Limit[] }) {
           className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_11rem_1fr_15rem]"
         >
           <span className="margin-ref order-3 col-span-2 md:order-none md:col-span-1">
-            {l.citeAr ?? SOURCE_LABEL[l.source] ?? l.source}
+            {(en ? (l.citeEn ?? l.citeAr) : l.citeAr) ?? SOURCE_LABEL[l.source] ?? l.source}
           </span>
           <span className={cn("text-sm font-medium", (l.key === "COMBINED") && "font-semibold")}>{l.name}</span>
           <Meter limit={l} className="order-4 col-span-2 md:order-none md:col-span-1" />
           <span className="text-end text-sm">
             <span className={cn("font-medium", over(l) && OVER_TEXT[l.overTone])}>{formatPct(l.usedPct)}</span>
-            {l.capPct && <span className="text-ink-muted"> من {formatPct(l.capPct)}</span>}
+            {l.capPct && <span className="text-ink-muted"> {t.of} {formatPct(l.capPct)}</span>}
             <span className="block text-xs text-ink-muted">
               {amount(l, l.usedValue)}
-              {l.capValue && <> من {amount(l, l.capValue)}</>}
+              {l.capValue && <> {t.of} {amount(l, l.capValue)}</>}
             </span>
           </span>
         </li>
@@ -210,6 +220,7 @@ export function LimitRows({ limits }: { limits: Limit[] }) {
 
 /** Full rows for the limits page: cap, used, pending, headroom and source. */
 export function LimitDetail({ limits }: { limits: Limit[] }) {
+  const t = useT().limits;
   return (
     <ul className="divide-y divide-rule border-y border-rule-strong">
       {limits.map((l) => {
@@ -220,7 +231,11 @@ export function LimitDetail({ limits }: { limits: Limit[] }) {
               <Badge variant={l.source === "law" ? "neutral" : "muted"}>
                 {SOURCE_LABEL[l.source] ?? l.source}
               </Badge>
-              {l.citeAr && <span className="mt-2 block text-ink">{l.citeAr}</span>}
+              {l.citeAr && (
+                <ArabicOriginal as="span" showLabel={false} className="mt-2 block text-ink">
+                  {l.citeAr}
+                </ArabicOriginal>
+              )}
               {l.citeEn && <span className="ref mt-0.5 block">{l.citeEn}</span>}
             </div>
             <div className="min-w-0">
@@ -228,30 +243,30 @@ export function LimitDetail({ limits }: { limits: Limit[] }) {
                 <h3 className="text-base font-semibold">{l.name}</h3>
                 {isOver && (
                   <Badge variant={l.overTone === "legal" ? "legal" : "amber"}>
-                    {l.overTone === "legal" ? "تجاوز الحد النظامي" : "تجاوز حد السياسة"}
+                    {l.overTone === "legal" ? t.overLegal : t.overPolicy}
                   </Badge>
                 )}
               </div>
               {l.description && <p className="mt-0.5 text-sm text-ink-muted">{l.description}</p>}
               <Meter limit={l} className="mt-3 max-w-3xl" />
               <dl className="mt-3 grid max-w-3xl grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
-                <Figure label="الحد" pct={l.capPct} value={amount(l, l.capValue)} />
-                <Figure label="المعتمد" pct={l.usedPct} value={amount(l, l.usedValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
-                <Figure label="قيد الاعتماد" pct={l.pendingPct} value={amount(l, l.pendingValue)} />
-                <Figure label="المتبقي" pct={l.headroomPct} value={amount(l, l.headroomValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
+                <Figure label={t.figCap} pct={l.capPct} value={amount(l, l.capValue)} />
+                <Figure label={t.figUsed} pct={l.usedPct} value={amount(l, l.usedValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
+                <Figure label={t.figPending} pct={l.pendingPct} value={amount(l, l.pendingValue)} />
+                <Figure label={t.figHeadroom} pct={l.headroomPct} value={amount(l, l.headroomValue)} tone={isOver ? OVER_TEXT[l.overTone] : undefined} />
               </dl>
               {l.exceptionRole && (
                 <p className="mt-3 text-xs text-ink-muted">
-                  تجاوزه يحتاج استثناءً، فيُضاف{" "}
+                  {t.exceptionBefore}{" "}
                   {l.exceptionRole in ROLE_LABEL
                     ? ROLE_LABEL[l.exceptionRole as keyof typeof ROLE_LABEL]
                     : l.exceptionRole}{" "}
-                  إلى سلسلة الاعتماد.
+                  {t.exceptionAfter}
                 </p>
               )}
               {l.overTone === "legal" && l.source === "law" && l.capPct && (
                 <p className="mt-3 text-xs text-ink-muted">
-                  حد نظامي ملزم: لا يرفعه أي اعتماد داخلي.
+                  {t.bindingLegal}
                 </p>
               )}
             </div>
@@ -263,10 +278,11 @@ export function LimitDetail({ limits }: { limits: Limit[] }) {
 }
 
 function Figure({ label, pct, value, tone }: { label: string; pct: string | null; value: string; tone?: string }) {
+  const t = useT().limits;
   return (
     <div>
       <dt className="text-xs text-ink-muted">{label}</dt>
-      <dd className={cn("font-medium", tone)}>{pct ? formatPct(pct) : "بلا حد"}</dd>
+      <dd className={cn("font-medium", tone)}>{pct ? formatPct(pct) : t.noLimit}</dd>
       <dd className="text-xs text-ink-muted">{value}</dd>
     </div>
   );

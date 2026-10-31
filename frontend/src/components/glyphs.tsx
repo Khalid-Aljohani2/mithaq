@@ -10,6 +10,7 @@ import { Calculator, PenLine, ScanSearch } from "lucide-react";
 
 import type { ActorType } from "@/lib/api";
 import { ACTOR_LABEL } from "@/lib/labels";
+import { getDict } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 
 export function ActorGlyph({
@@ -44,7 +45,7 @@ export function ActorGlyph({
  */
 export function Seal({
   date,
-  label = "معتمد",
+  label = getDict().common.approvedSeal,
   className,
 }: {
   date: string;
@@ -55,7 +56,7 @@ export function Seal({
     <svg
       viewBox="0 0 120 120"
       role="img"
-      aria-label={`${label}، ${date}`}
+      aria-label={`${label}${getDict().common.listSep}${date}`}
       className={cn("text-seal", className)}
     >
       <defs>

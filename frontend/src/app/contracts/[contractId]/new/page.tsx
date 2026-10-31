@@ -5,18 +5,21 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 
 import { Empty, ErrorState, Loading, Section, TermsKey } from "@/components/file";
+import { ArabicOriginal } from "@/components/original";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api, type Contract, type Party } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import { errorMessage, PARTIES, partyLabel } from "@/lib/labels";
+import { useT } from "@/lib/prefs";
 import { useSession } from "@/lib/session";
 
 /**
  * Document names the backend's checklist uses, as seen in the seeded data.
  * No endpoint lists the required documents per change type (API gap 5), so
- * these are offered as choices and any other name can be added.
+ * these are offered as choices and any other name can be added. They are the
+ * backend's own Arabic names, so they stay Arabic in both languages.
  */
 const KNOWN_DOCUMENTS = [
   "طلب تغيير رسمي",
@@ -31,21 +34,20 @@ const DAYS = /^-?\d{1,4}$/;
 export default function NewChangeRequestPage() {
   const { id, contract } = useCurrentContract();
   const contracts = useContracts();
+  const t = useT().forms;
 
   return (
     <div className="mx-auto max-w-[90rem] px-4 pb-16 md:px-8">
       {contracts.status === "error" ? (
         <div className="pt-6">
-          <ErrorState error={contracts.error} what="العقد" onRetry={contracts.reload} />
+          <ErrorState error={contracts.error} what={t.whatContract} onRetry={contracts.reload} />
         </div>
       ) : !contract ? (
         contracts.status === "loading" ? (
-          <Loading label="جارٍ تحميل العقد" />
+          <Loading label={t.loadingContract} />
         ) : (
           <div className="pt-6">
-            <Empty title={`لا يوجد عقد بالمرجع ${id ?? ""}`}>
-              اختر عقدًا من قائمة العقود أعلى الصفحة، ثم قدّم الطلب عليه.
-            </Empty>
+            <Empty title={t.noContract(id ?? "")}>{t.chooseThenSubmit}</Empty>
           </div>
         )
       ) : (
@@ -58,6 +60,7 @@ export default function NewChangeRequestPage() {
 function NewRequestForm({ contract }: { contract: Contract }) {
   const router = useRouter();
   const { persona } = useSession();
+  const t = useT().forms;
   const ids = { name: useId(), party: useId(), body: useId(), amount: useId(), rate: useId(), days: useId(), other: useId() };
 
   const [name, setName] = useState("");
@@ -74,11 +77,11 @@ function NewRequestForm({ contract }: { contract: Contract }) {
 
   const choices = [...KNOWN_DOCUMENTS, ...attachments.filter((a) => !KNOWN_DOCUMENTS.includes(a))];
   const problems = {
-    name: name.trim() ? null : "اكتب اسم مقدم الطلب.",
-    body: body.trim().length >= 10 ? null : "اكتب نص الطلب كما ورد، عشرة أحرف على الأقل.",
-    amount: !amount || MONEY.test(amount) ? null : "اكتب المبلغ بالأرقام، وبحد أقصى منزلتين عشريتين.",
-    rate: !rate || MONEY.test(rate) ? null : "اكتب سعر الوحدة بالأرقام، وبحد أقصى منزلتين عشريتين.",
-    days: !days || DAYS.test(days) ? null : "اكتب عدد الأيام رقمًا صحيحًا.",
+    name: name.trim() ? null : t.errName,
+    body: body.trim().length >= 10 ? null : t.errBody,
+    amount: !amount || MONEY.test(amount) ? null : t.errAmount,
+    rate: !rate || MONEY.test(rate) ? null : t.errRate,
+    days: !days || DAYS.test(days) ? null : t.errDays,
   };
   const invalid = Object.values(problems).some(Boolean);
 
@@ -132,22 +135,21 @@ function NewRequestForm({ contract }: { contract: Contract }) {
       <Section
         margin={
           <>
-            <span className="block">على العقد</span>
+            <span className="block">{t.onContract}</span>
             <span className="ref text-sm font-medium text-ink">{contract.id}</span>
           </>
         }
       >
-        <h1 className="text-2xl font-semibold">طلب تغيير جديد</h1>
+        <h1 className="text-2xl font-semibold">{t.title}</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          يُسجَّل الطلب بمرجع جديد، ثم يحلله الوكيل ويعرض توصيته. لا يُعتمد شيء
-          إلا بتوقيع أصحاب الصلاحية.
+          {t.intro}
         </p>
       </Section>
 
-      <Section margin={<FormStep n={1} />} title="مقدم الطلب">
+      <Section margin={<FormStep n={1} />} title={t.requester}>
         <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor={ids.name} className="text-sm font-medium">الاسم</label>
+            <label htmlFor={ids.name} className="text-sm font-medium">{t.name}</label>
             <Input
               id={ids.name}
               value={name}
@@ -160,7 +162,7 @@ function NewRequestForm({ contract }: { contract: Contract }) {
             <FieldError id={`${ids.name}-err`} message={show("name")} />
           </div>
           <div>
-            <label htmlFor={ids.party} className="text-sm font-medium">الطرف</label>
+            <label htmlFor={ids.party} className="text-sm font-medium">{t.party}</label>
             <select
               id={ids.party}
               value={party}
@@ -175,14 +177,14 @@ function NewRequestForm({ contract }: { contract: Contract }) {
         </div>
       </Section>
 
-      <Section margin={<FormStep n={2} />} title="نص الطلب">
-        <label htmlFor={ids.body} className="sr-only">نص الطلب</label>
+      <Section margin={<FormStep n={2} />} title={t.body}>
+        <label htmlFor={ids.body} className="sr-only">{t.body}</label>
         <Textarea
           id={ids.body}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={8}
-          placeholder="الصق نص الطلب كما ورد من مقدمه."
+          placeholder={t.bodyPlaceholder}
           aria-invalid={Boolean(show("body"))}
           aria-describedby={show("body") ? `${ids.body}-err` : undefined}
           className="max-w-3xl font-doc text-doc"
@@ -190,11 +192,10 @@ function NewRequestForm({ contract }: { contract: Contract }) {
         <FieldError id={`${ids.body}-err`} message={show("body")} />
       </Section>
 
-      <Section margin={<FormStep n={3} />} title="المرفقات">
+      <Section margin={<FormStep n={3} />} title={t.attachments}>
         <fieldset>
           <legend className="mb-3 max-w-prose text-sm text-ink-muted">
-            حدّد المستندات المرفقة فعلًا. يطابقها الوكيل بقائمة المستندات المطلوبة
-            لنوع الطلب، ويعيد إليك قائمة بالنواقص إن وُجدت.
+            {t.attachmentsHint}
           </legend>
           <ul className="max-w-2xl divide-y divide-rule border-y border-rule">
             {choices.map((doc) => (
@@ -206,13 +207,15 @@ function NewRequestForm({ contract }: { contract: Contract }) {
                     onChange={() => toggle(doc)}
                     className="size-4 accent-[var(--seal)]"
                   />
-                  <span>{doc}</span>
+                  <ArabicOriginal as="span" showLabel={false}>
+                    {doc}
+                  </ArabicOriginal>
                 </label>
               </li>
             ))}
           </ul>
           <div className="mt-3 flex max-w-2xl gap-2">
-            <label htmlFor={ids.other} className="sr-only">اسم مرفق آخر</label>
+            <label htmlFor={ids.other} className="sr-only">{t.otherAttachment}</label>
             <Input
               id={ids.other}
               value={other}
@@ -223,40 +226,40 @@ function NewRequestForm({ contract }: { contract: Contract }) {
                   addOther();
                 }
               }}
-              placeholder="اسم مرفق آخر"
+              placeholder={t.otherAttachment}
             />
             <Button type="button" variant="outline" onClick={addOther} disabled={!other.trim()}>
-              إضافة المرفق
+              {t.addAttachment}
             </Button>
           </div>
         </fieldset>
       </Section>
 
-      <Section margin={<FormStep n={4} />} title="المبالغ والمدة">
+      <Section margin={<FormStep n={4} />} title={t.amounts}>
         <p className="mb-4 max-w-prose border-s-2 border-ink ps-3 text-sm">
-          المبالغ يُدخلها الأشخاص دائمًا، ولا يقترحها الوكيل ولا يسعّر بها بندًا.
+          {t.amountsRule}
         </p>
         <div className="grid max-w-3xl gap-4 sm:grid-cols-3">
           <NumberField
             id={ids.amount}
-            label="المبلغ المطلوب"
-            unit="ر.س"
+            label={t.amount}
+            unit={t.sar}
             value={amount}
             onChange={setAmount}
             error={show("amount")}
           />
           <NumberField
             id={ids.rate}
-            label="سعر الوحدة المقترح"
-            unit="ر.س"
+            label={t.rate}
+            unit={t.sar}
             value={rate}
             onChange={setRate}
             error={show("rate")}
           />
           <NumberField
             id={ids.days}
-            label="التمديد المطلوب"
-            unit="يوم"
+            label={t.extension}
+            unit={t.dayUnit}
             value={days}
             onChange={setDays}
             error={show("days")}
@@ -264,8 +267,7 @@ function NewRequestForm({ contract }: { contract: Contract }) {
           />
         </div>
         <p className="mt-2 text-xs text-ink-muted">
-          اترك الحقل فارغًا إذا لم يذكره الطلب. تُحسب التكلفة من الكميات وأسعار
-          العقد، ويُعلَّم أي سعر مُدخل يدويًا.
+          {t.amountsHint}
         </p>
       </Section>
 
@@ -274,23 +276,23 @@ function NewRequestForm({ contract }: { contract: Contract }) {
         <div>
           {error && (
             <p role="alert" className="mb-4 max-w-prose border-s-4 border-legal bg-legal-wash px-4 py-3 text-sm">
-              لم يُقدَّم الطلب. {error}
+              {t.notSubmitted(error)}
             </p>
           )}
           {touched && invalid && (
             <p role="alert" className="mb-4 text-sm text-legal">
-              صحّح الحقول المعلَّمة أعلاه ثم قدّم الطلب.
+              {t.fixFields}
             </p>
           )}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={submitting}>
-              {submitting ? "جارٍ تقديم الطلب" : "تقديم الطلب وتحليله"}
+              {submitting ? t.submitting : t.submit}
             </Button>
             <Link
               href={`/contracts/${encodeURIComponent(contract.id)}`}
               className={buttonVariants({ variant: "ghost", size: "lg" })}
             >
-              إلغاء
+              {t.cancel}
             </Link>
           </div>
         </div>
@@ -300,7 +302,8 @@ function NewRequestForm({ contract }: { contract: Contract }) {
 }
 
 function FormStep({ n }: { n: number }) {
-  return <span className="text-sm font-medium text-ink">البند {n}</span>;
+  const t = useT().forms;
+  return <span className="text-sm font-medium text-ink">{t.step(n)}</span>;
 }
 
 function FieldError({ id, message }: { id: string; message: string | null }) {

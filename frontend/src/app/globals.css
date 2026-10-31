@@ -70,7 +70,7 @@
 
 @theme inline {
   --font-sans: var(--font-face), system-ui, sans-serif;
-  --font-doc: var(--font-naskh), var(--font-ui), serif;
+  --font-doc: var(--font-doc-face), var(--font-ui), serif;
 
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
@@ -128,16 +128,18 @@
   --radius-ctl: 2px;
 }
 
-/* English uses the Latin Plex; Arabic runs inside it fall back to Plex Arabic. */
+/*
+ * English uses the Latin Plex. Its font carries no Arabic glyphs, so Arabic
+ * contract text inside the English interface falls through to the Arabic
+ * faces: Plex Arabic for the interface, Naskh for documents.
+ */
 :root {
   --font-face: var(--font-ui);
+  --font-doc-face: var(--font-naskh);
 }
 :root[lang="en"] {
   --font-face: var(--font-ui-latin), var(--font-ui);
-}
-/* Arabic content inside the English interface keeps the Arabic face. */
-:root[lang="en"] [lang="ar"] {
-  font-family: var(--font-ui), system-ui, sans-serif;
+  --font-doc-face: var(--font-ui-latin), var(--font-naskh);
 }
 
 /* Hidden until React has rendered the stored language, to avoid a flash. */

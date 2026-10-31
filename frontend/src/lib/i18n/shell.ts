@@ -22,6 +22,21 @@ const ar = {
   langSwitch: "English",
   langSwitchLabel: "Switch the interface to English",
   originalArabic: "النص الأصلي بالعربية",
+  notifications: "الإشعارات",
+  notifFailedLabel: "الإشعارات: تعذر التحميل",
+  notifLoadingLabel: "الإشعارات: جارٍ التحميل",
+  notifNoneLabel: "الإشعارات: لا جديد",
+  notifCountLabel: (n: number) => `الإشعارات: ${n}`,
+  forRole: (who: string) => `لدورك: ${who}`,
+  remindersOf: (n: number) => `، منها ${n} تذكير`,
+  closeNotifications: "إغلاق الإشعارات",
+  loadingNotifications: "جارٍ تحميل الإشعارات",
+  notificationsFailed: "تعذر تحميل الإشعارات.",
+  noNotifications: "لا إشعارات لدورك الآن.",
+  noNotificationsHint:
+    "يصلك إشعار حين يحين دورك في سلسلة اعتماد، أو حين يتغير طلب قدّمه طرفك. بدّل الدور من أعلى الصفحة لرؤية إشعارات دور آخر.",
+  reminder: "تذكير",
+  contractWord: "عقد",
 };
 
 const en: typeof ar = {
@@ -42,6 +57,21 @@ const en: typeof ar = {
   langSwitch: "العربية",
   langSwitchLabel: "التبديل إلى الواجهة العربية",
   originalArabic: "Original Arabic",
+  notifications: "Notifications",
+  notifFailedLabel: "Notifications: could not load",
+  notifLoadingLabel: "Notifications: loading",
+  notifNoneLabel: "Notifications: nothing new",
+  notifCountLabel: (n: number) => `Notifications: ${n}`,
+  forRole: (who: string) => `For your role: ${who}`,
+  remindersOf: (n: number) => `, ${n} of them ${n === 1 ? "a reminder" : "reminders"}`,
+  closeNotifications: "Close notifications",
+  loadingNotifications: "Loading notifications",
+  notificationsFailed: "Could not load notifications.",
+  noNotifications: "No notifications for your role right now.",
+  noNotificationsHint:
+    "You are notified when it is your turn in an approval chain, or when a request from your party changes. Switch roles at the top of the page to see another role's notifications.",
+  reminder: "Reminder",
+  contractWord: "Contract",
 };
 
 export const shell = { ar, en };

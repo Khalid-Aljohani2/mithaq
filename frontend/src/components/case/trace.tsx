@@ -5,11 +5,13 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
 import { ActorGlyph } from "@/components/glyphs";
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { ActorType, ApprovalStep, ChangeRequest, StageResult } from "@/lib/api";
 import { formatDateTime, formatDays, formatDuration, formatImpact } from "@/lib/format";
 import { STAGES } from "@/lib/labels";
 import { payloadEntries } from "@/lib/payload";
+import { getDict, getLang, usePrefs, useT } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 
 type Marker = "done" | "active" | "waiting" | "blocked" | "held" | "na";
@@ -21,17 +23,20 @@ type Row = {
   marker: Marker;
   status: string;
   summary: string | null;
+  /** True when the summary is Arabic shown in the English interface. */
+  arabicOnly?: boolean;
   result: StageResult | null;
 };
 
 function fromResult(result: StageResult): Pick<Row, "marker" | "status"> {
+  const t = getDict().case;
   // Missing paperwork holds the request; it is not a legal block, so it is
   // amber, not red.
   if (result.status === "BLOCKED" && result.stage === "DOCUMENT_VALIDATION") {
-    return { marker: "held", status: "بانتظار المستندات" };
+    return { marker: "held", status: t.awaitingDocs };
   }
-  if (result.status === "BLOCKED") return { marker: "blocked", status: "محجوب" };
-  if (result.status === "OK") return { marker: "done", status: "تم" };
+  if (result.status === "BLOCKED") return { marker: "blocked", status: t.blocked };
+  if (result.status === "OK") return { marker: "done", status: t.done };
   return { marker: "done", status: result.status };
 }
 
@@ -41,6 +46,7 @@ function humanStage(
   request: ChangeRequest,
   chain: ApprovalStep[],
 ): Pick<Row, "marker" | "status" | "summary"> {
+  const t = getDict().case;
   const state = request.state ?? "RECEIVED";
   const signed = chain.filter((s) => s.decision === "APPROVED").length;
   const ended = state === "REJECTED" || state === "CLOSED_IN_SCOPE";
@@ -48,49 +54,49 @@ function humanStage(
 
   if (ended) {
     if (no === 8 && state === "REJECTED") {
-      return { marker: "blocked", status: "رُفض", summary: "رفض أحد المعتمدين الطلب، وأُبلغ مقدمه." };
+      return { marker: "blocked", status: t.rejected, summary: t.rejectedSummary };
     }
-    return { marker: "na", status: "لا ينطبق", summary: null };
+    return { marker: "na", status: t.notApplicable, summary: null };
   }
   switch (no) {
     case 8:
       if (state === "IN_APPROVAL") {
         return {
           marker: "active",
-          status: "قيد التوقيع",
-          summary: `وقّع ${signed} من ${chain.length} في سلسلة الاعتماد.`,
+          status: t.signing,
+          summary: t.signedOf(signed, chain.length),
         };
       }
       if (state === "REVISION_REQUESTED") {
-        return { marker: "blocked", status: "طُلب تعديل", summary: "أُعيد الطلب إلى مقدمه للتعديل." };
+        return { marker: "blocked", status: t.revisionStatus, summary: t.revisionSummary };
       }
       if (after(["APPROVED", "VO_ISSUED", "IN_EXECUTION", "CLOSED"])) {
-        return { marker: "done", status: "اكتمل", summary: `وقّع جميع المعتمدين (${chain.length}).` };
+        return { marker: "done", status: t.complete, summary: t.allSigned(chain.length) };
       }
       if (state === "RECOMMENDED") {
-        return { marker: "waiting", status: "لم يبدأ", summary: "ينتظر بدء مسار الاعتماد." };
+        return { marker: "waiting", status: t.notStarted, summary: t.awaitingApprovalStart };
       }
-      return { marker: "waiting", status: "لم يبدأ", summary: null };
+      return { marker: "waiting", status: t.notStarted, summary: null };
     case 9:
-      if (after(["VO_ISSUED", "IN_EXECUTION", "CLOSED"])) return { marker: "done", status: "صدر", summary: null };
-      return { marker: "waiting", status: "لم يبدأ", summary: state === "APPROVED" ? "جاهز لإصدار أمر التغيير." : null };
+      if (after(["VO_ISSUED", "IN_EXECUTION", "CLOSED"])) return { marker: "done", status: t.issued, summary: null };
+      return { marker: "waiting", status: t.notStarted, summary: state === "APPROVED" ? t.readyForVo : null };
     case 10:
-      if (after(["VO_ISSUED", "IN_EXECUTION", "CLOSED"])) return { marker: "done", status: "تم", summary: null };
-      return { marker: "waiting", status: "لم يبدأ", summary: null };
+      if (after(["VO_ISSUED", "IN_EXECUTION", "CLOSED"])) return { marker: "done", status: t.done, summary: null };
+      return { marker: "waiting", status: t.notStarted, summary: null };
     default:
-      if (state === "CLOSED") return { marker: "done", status: "أُغلق", summary: null };
-      if (state === "IN_EXECUTION") return { marker: "active", status: "قيد التنفيذ", summary: null };
-      return { marker: "waiting", status: "لم يبدأ", summary: null };
+      if (state === "CLOSED") return { marker: "done", status: t.closed, summary: null };
+      if (state === "IN_EXECUTION") return { marker: "active", status: t.inExecution, summary: null };
+      return { marker: "waiting", status: t.notStarted, summary: null };
   }
 }
 
-/** Stage 5 is code and returns no Arabic summary; compose one from its numbers. */
-function arabicSummary(result: StageResult): string | null {
+/** Stage 5 is code and returns no summary; compose one from its numbers. */
+function composedSummary(result: StageResult): string | null {
   if (result.stage !== "COST_SCHEDULE_IMPACT") return null;
   const p = result.payload ?? {};
   const cost = typeof p.cost_impact === "string" ? p.cost_impact : null;
   const days = typeof p.time_impact_days === "number" ? p.time_impact_days : null;
-  return `أثر التكلفة ${formatImpact(cost)}، وأثر المدة ${formatDays(days)}.`;
+  return getDict().case.impactSummary(formatImpact(cost), formatDays(days));
 }
 
 export function buildRows(
@@ -98,6 +104,8 @@ export function buildRows(
   request: ChangeRequest,
   chain: ApprovalStep[],
 ): Row[] {
+  const t = getDict().case;
+  const english = getLang() === "en";
   const latest = new Map<string, StageResult>();
   for (const s of stages) latest.set(s.stage, s);
 
@@ -109,7 +117,11 @@ export function buildRows(
         name,
         actor: result.actor_type,
         ...fromResult(result),
-        summary: result.summary_ar || arabicSummary(result) || result.summary_en || null,
+        summary: english
+          ? result.summary_en || composedSummary(result) || result.summary_ar || null
+          : result.summary_ar || composedSummary(result) || result.summary_en || null,
+        arabicOnly:
+          english && !result.summary_en && !composedSummary(result) && Boolean(result.summary_ar),
         result,
       };
     }
@@ -120,7 +132,7 @@ export function buildRows(
       name,
       actor,
       marker: ended && stages.length > 0 ? "na" : "waiting",
-      status: ended && stages.length > 0 ? "لا ينطبق" : "لم يبدأ",
+      status: ended && stages.length > 0 ? t.notApplicable : t.notStarted,
       summary: null,
       result: null,
     };
@@ -144,15 +156,16 @@ export function Trace({
   totalMs: number | null;
 }) {
   const reduce = useReducedMotion();
+  const t = useT();
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold">مسار الطلب</h2>
+        <h2 className="text-lg font-semibold">{t.case.traceHeading}</h2>
         <span className="text-xs text-ink-muted" aria-live="polite">
           {running
-            ? "يحلل الوكيل الطلب الآن"
+            ? t.case.agentAnalysingNow
             : totalMs !== null
-              ? `زمن التحليل ${formatDuration(totalMs)}`
+              ? t.case.analysisTime(formatDuration(totalMs))
               : null}
         </span>
       </div>
@@ -166,7 +179,7 @@ export function Trace({
           return (
             <TraceRow
               key={row.no}
-              row={hidden ? { ...row, marker: pending && i === 0 ? "active" : "waiting", status: pending ? "قيد الانتظار" : row.status, summary: null, result: null } : row}
+              row={hidden ? { ...row, marker: pending && i === 0 ? "active" : "waiting", status: pending ? t.case.queued : row.status, summary: null, result: null } : row}
               running={pending && i === 0}
               reduce={Boolean(reduce)}
               justRevealed={!hidden && i === revealed - 1 && row.no <= 7}
@@ -179,12 +192,13 @@ export function Trace({
 }
 
 function ActorKey() {
+  const t = useT();
   return (
     <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
       {(["CODE", "AI", "HUMAN"] as const).map((a) => (
         <span key={a} className="inline-flex items-center gap-1.5">
           <ActorGlyph actor={a} className="size-5" />
-          {a === "CODE" ? "قاعدة برمجية تحسب" : a === "AI" ? "ذكاء اصطناعي يقرأ ويصنّف" : "إنسان يقرر ويوقّع"}
+          {a === "CODE" ? t.case.actorCode : a === "AI" ? t.case.actorAi : t.case.actorHuman}
         </span>
       ))}
     </p>
@@ -221,6 +235,7 @@ function TraceRow({
   reduce: boolean;
   justRevealed: boolean;
 }) {
+  const { lang, t } = usePrefs();
   const [open, setOpen] = useState(false);
   const detail = row.result;
   const panelId = `stage-${row.no}-detail`;
@@ -249,7 +264,7 @@ function TraceRow({
           {detail && (
             <span className="text-xs text-ink-muted">{formatDuration(detail.duration_ms)}</span>
           )}
-          {detail?.recorded && <Badge variant="muted">رد مسجل</Badge>}
+          {detail?.recorded && <Badge variant="muted">{t.case.recordedReply}</Badge>}
           {detail && (
             <button
               type="button"
@@ -258,7 +273,7 @@ function TraceRow({
               onClick={() => setOpen((o) => !o)}
               className="ms-auto inline-flex items-center gap-1 rounded-[var(--radius-ctl)] px-1 text-xs text-ink-muted hover:text-ink"
             >
-              {open ? "إخفاء التفاصيل" : "التفاصيل"}
+              {open ? t.case.hideDetails : t.case.details}
               <ChevronDown aria-hidden className={cn("size-3.5 transition-transform", open && "rotate-180")} />
             </button>
           )}
@@ -268,22 +283,30 @@ function TraceRow({
           <span aria-hidden className="mt-2 block h-0.5 w-full overflow-hidden bg-rule">
             <motion.span
               className="block h-full w-1/3 bg-ink"
-              initial={{ x: "100%" }}
-              animate={reduce ? { x: "0%" } : { x: ["100%", "-300%"] }}
+              initial={{ x: lang === "en" ? "-100%" : "100%" }}
+              animate={
+                reduce ? { x: "0%" } : { x: lang === "en" ? ["-100%", "300%"] : ["100%", "-300%"] }
+              }
               transition={reduce ? { duration: 0 } : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
             />
           </span>
         )}
 
         {row.summary && (
-          <motion.p
+          <motion.div
             initial={justRevealed && !reduce ? { opacity: 0, y: 4 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
             className={cn("mt-1 text-sm", muted && "text-ink-muted")}
           >
-            {row.summary}
-          </motion.p>
+            {row.arabicOnly ? (
+              <ArabicOriginal as="p" showLabel={false}>
+                {row.summary}
+              </ArabicOriginal>
+            ) : (
+              <p>{row.summary}</p>
+            )}
+          </motion.div>
         )}
 
         <AnimatePresence initial={false}>
@@ -305,71 +328,49 @@ function TraceRow({
   );
 }
 
-const KEY_LABEL: Record<string, string> = {
-  provider: "المزوّد",
-  recorded: "رد مسجل",
-  confidence: "الثقة",
-  requester_name_ar: "مقدم الطلب",
-  requested_change_ar: "التغيير المطلوب",
-  impact_type: "نوع الأثر",
-  quoted_phrase_ar: "العبارة المقتبسة",
-  required: "المستندات المطلوبة",
-  provided: "المستندات المقدمة",
-  missing: "المستندات الناقصة",
-  complete: "مكتملة",
-  in_scope: "داخل النطاق",
-  kind: "النوع",
-  matched_line_ids: "البنود المطابقة",
-  quantity_delta: "فرق الكمية",
-  substitute_product_ar: "المنتج البديل",
-  reasoning_ar: "التعليل",
-  changes_approved_product: "يغيّر منتجًا معتمدًا",
-  affected_line_ids: "البنود المتأثرة",
-  restriction_conflicts_ar: "تعارض مع القيود",
-  cost_impact: "أثر التكلفة",
-  added_value: "قيمة المضاف",
-  removed_value: "قيمة المحذوف",
-  time_impact_days: "أثر المدة بالأيام",
-  rate_human_entered: "سعر مُدخل يدويًا",
-  unit_rate_flagged: "سعر الوحدة معلَّم",
-  rate_checks: "فحص أسعار الوحدات",
-  notes_en: "ملاحظات (إنجليزية)",
-  findings_en: "النتائج (إنجليزية)",
-  article_refs: "المواد",
-  recommendation: "التوصية",
-  reason_codes: "رموز الأسباب",
-  conflicts: "التعارضات",
-};
-
-function labelFor(path: string): string {
+function labelFor(path: string, t: ReturnType<typeof getDict>["case"]): string {
   const parts = path.split(".");
   const last = parts[parts.length - 1];
   const prefix =
-    parts[0] === "risk" ? "المخاطر: " : parts[0] === "policy" ? "السياسة: " : parts[0] === "legal" ? "النظام: " : parts[0] === "narrative" ? "الصياغة: " : "";
-  return prefix + (KEY_LABEL[last] ?? last);
+    parts[0] === "risk"
+      ? t.prefixRisk
+      : parts[0] === "policy"
+        ? t.prefixPolicy
+        : parts[0] === "legal"
+          ? t.prefixLegal
+          : parts[0] === "narrative"
+            ? t.prefixNarrative
+            : "";
+  return prefix + (t.keyLabel[last] ?? last);
 }
 
 function StageDetail({ result }: { result: StageResult }) {
+  const t = useT().case;
   const entries = payloadEntries(result.payload).filter(
     (e) => !["chain", "narrative_provider"].some((k) => e.key.startsWith(k)),
   );
   return (
     <div className="mt-3 border-s-2 border-rule-strong ps-3 text-sm">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[minmax(8rem,auto)_1fr]">
-        <dt className="text-xs text-ink-muted">المنفذ</dt>
+        <dt className="text-xs text-ink-muted">{t.executor}</dt>
         <dd>
-          {result.actor_type === "AI" ? "ذكاء اصطناعي" : result.actor_type === "CODE" ? "قاعدة برمجية" : "إنسان"}
+          {result.actor_type === "AI" ? t.ai : result.actor_type === "CODE" ? t.code : t.human}
           {result.provider ? <span className="ref ms-2 text-xs text-ink-muted">{result.provider}</span> : null}
         </dd>
-        <dt className="text-xs text-ink-muted">بدأ وانتهى</dt>
+        <dt className="text-xs text-ink-muted">{t.startedEnded}</dt>
         <dd className="text-xs">
-          {formatDateTime(result.started_at)}، {formatDuration(result.duration_ms)}
+          {formatDateTime(result.started_at)}
+          {t.listSep}
+          {formatDuration(result.duration_ms)}
         </dd>
         {entries.map((e) => (
           <div key={e.key} className="contents">
-            <dt className="text-xs text-ink-muted">{labelFor(e.key)}</dt>
-            <dd className={cn("break-words whitespace-pre-line", /_en$/.test(e.key) && "text-start [direction:ltr]")}>
-              {e.value === "true" ? "نعم" : e.value === "false" ? "لا" : e.value}
+            <dt className="text-xs text-ink-muted">{labelFor(e.key, t)}</dt>
+            <dd
+              dir="auto"
+              className={cn("break-words whitespace-pre-line text-start", /_en$/.test(e.key) && "[direction:ltr]")}
+            >
+              {e.value === "true" ? t.yes : e.value === "false" ? t.no : e.value}
             </dd>
           </div>
         ))}

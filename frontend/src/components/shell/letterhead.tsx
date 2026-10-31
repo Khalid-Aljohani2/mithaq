@@ -6,6 +6,7 @@ import { ChevronDown, Check, Moon, Sun } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useId, useState } from "react";
 
+import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { Party, Role } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
@@ -70,7 +71,7 @@ function ThemeToggle() {
   const { theme, toggleTheme, t } = usePrefs();
   const label = theme === "dark" ? t.shell.themeToLight : t.shell.themeToDark;
   return (
-    <button type="button" onClick={toggleTheme} aria-label={label} title={label} className={toggleClass}>
+    <button type="button" data-theme-toggle onClick={toggleTheme} aria-label={label} title={label} className={toggleClass}>
       {theme === "dark" ? <Sun aria-hidden className="size-5" /> : <Moon aria-hidden className="size-5" />}
     </button>
   );
@@ -82,6 +83,7 @@ function LanguageToggle() {
   return (
     <button
       type="button"
+      data-lang-toggle
       onClick={() => setLang(next)}
       aria-label={t.shell.langSwitchLabel}
       title={t.shell.langSwitchLabel}
@@ -166,9 +168,14 @@ function ContractSwitcher() {
                       <span className="ref text-sm font-medium">{c.id}</span>
                       <Badge variant="muted">{CONTRACT_TYPE_LABEL[c.contract_type]}</Badge>
                     </span>
-                    <span className="block text-sm">{c.title_ar}</span>
+                    <ArabicOriginal as="span" showLabel={false} className="block text-sm">
+                      {c.title_ar}
+                    </ArabicOriginal>
                     <span className="block text-xs text-ink-muted">
-                      {partyLabel("GOVERNMENT_ENTITY", c.contract_type)}: {c.entity_name}
+                      {partyLabel("GOVERNMENT_ENTITY", c.contract_type)}:{" "}
+                      <ArabicOriginal as="span" showLabel={false}>
+                        {c.entity_name}
+                      </ArabicOriginal>
                     </span>
                   </span>
                 </Link>
@@ -199,7 +206,9 @@ function RoleSwitcher() {
         <span className="min-w-0">
           <span className="block text-2xs text-ink-muted">{t.shell.actingAs}</span>
           <span className="block truncate text-sm font-medium">
-            {ROLE_LABEL[persona.role]}، {partyName(persona.party)}
+            {ROLE_LABEL[persona.role]}
+            {t.common.listSep}
+            {partyName(persona.party)}
           </span>
         </span>
         <ChevronDown aria-hidden className="ms-auto size-4 text-ink-muted" />
