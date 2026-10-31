@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { Empty, ErrorState, Loading, Section, TermsKey } from "@/components/file";
 import { ArabicOriginal } from "@/components/original";
-import { LimitDetail, MeterKey, lawLimits, policyLimits } from "@/components/workspace/limits";
+import { ClosestLegalLimit, LimitDetail, MeterKey, lawLimits, latestChanges, policyLimits } from "@/components/workspace/limits";
 import { api, type Contract } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import { formatDate, formatDays, formatImpact, formatMoney } from "@/lib/format";
@@ -49,6 +49,11 @@ function Limits({ contract }: { contract: Contract }) {
   const isGov = contract.contract_type === "GOVERNMENT";
   const t = useT().limits;
   const pick = useBilingual();
+  const voNumber = (crId: string) =>
+    orders.status === "ready"
+      ? (orders.data.variation_orders.find((vo) => vo.cr_id === crId)?.number ?? null)
+      : null;
+  const latest = ledger.status === "ready" ? latestChanges(ledger.data, voNumber) : {};
 
   return (
     <>
@@ -66,7 +71,7 @@ function Limits({ contract }: { contract: Contract }) {
         }
       >
         <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <ArabicOriginal as="p" showLabel={false} className="mt-1 max-w-prose text-sm text-ink-muted">
+        <ArabicOriginal as="span" showLabel={false} className="mt-1 block max-w-prose text-sm text-ink-muted">
           {contract.title_ar}
         </ArabicOriginal>
         <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
@@ -81,6 +86,9 @@ function Limits({ contract }: { contract: Contract }) {
             </dd>
           </div>
         </dl>
+        {ledger.status === "ready" && ledger.data.legal_limits_apply && (
+          <ClosestLegalLimit ledger={ledger.data} />
+        )}
       </Section>
 
       {ledger.status === "loading" ? (
@@ -99,7 +107,7 @@ function Limits({ contract }: { contract: Contract }) {
             <p className="mb-4 max-w-prose text-sm text-ink-muted">
               {t.policyIntro}
             </p>
-            <LimitDetail limits={policyLimits(ledger.data)} />
+            <LimitDetail limits={policyLimits(ledger.data)} latest={latest} />
             <MeterKey />
           </Section>
 
@@ -127,7 +135,7 @@ function Limits({ contract }: { contract: Contract }) {
                 <p className="mb-4 max-w-prose text-sm text-ink-muted">
                   {t.lawIntro}
                 </p>
-                <LimitDetail limits={lawLimits(ledger.data)} />
+                <LimitDetail limits={lawLimits(ledger.data)} latest={latest} />
                 <MeterKey />
               </>
             ) : (

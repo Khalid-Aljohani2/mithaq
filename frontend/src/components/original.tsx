@@ -29,9 +29,13 @@ export function ArabicOriginal({
     <Tag
       lang="ar"
       dir="rtl"
-      // A labelled passage reads as an Arabic block; a short inline value
-      // (a name, a title) keeps the alignment of the English around it.
-      className={cn(showLabel ? "text-start" : "[text-align:match-parent]", className)}
+      // A labelled passage reads as an Arabic block. A short inline value (a
+      // name, a unit, an item) sits on the English column's left edge: `left`,
+      // not `start`, which under dir=rtl would push it to the right.
+      className={cn(
+        showLabel ? "text-start" : Tag === "span" ? "text-left" : "[text-align:match-parent]",
+        className,
+      )}
     >
       {showLabel && (
         <span

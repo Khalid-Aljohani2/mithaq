@@ -64,7 +64,7 @@ function AuditLog({ contract }: { contract: Contract }) {
         }
       >
         <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <ArabicOriginal as="p" showLabel={false} className="mt-1 max-w-prose text-sm text-ink-muted">
+        <ArabicOriginal as="span" showLabel={false} className="mt-1 block max-w-prose text-sm text-ink-muted">
           {contract.title_ar}
         </ArabicOriginal>
         <p className="mt-3 max-w-prose border-s-2 border-ink ps-3 text-sm">

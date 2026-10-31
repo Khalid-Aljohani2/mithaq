@@ -1,11 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { CapLine, LedgerResponse, UsageSnapshot } from "@/lib/api";
-import { formatMoney, formatNumber, formatPct } from "@/lib/format";
+import { compareDecimal, formatImpact, formatMoney, formatNumber, formatPct } from "@/lib/format";
 import { ROLE_LABEL, SCOPE_NAME, SOURCE_LABEL, type Tone } from "@/lib/labels";
 import { getDict, getLang, useT } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
@@ -99,6 +99,63 @@ export function lawLimits(ledger: LedgerResponse): Limit[] {
   });
 }
 
+/** The latest approved order behind a limit's total, as the ledger lists it. */
+export type Latest = { value: string; ref: string };
+
+/**
+ * For each limit key, the most recent approved order that counts towards it:
+ * by category for the Article 67 scopes, any cost order for the combined and
+ * policy cost totals. Values are the ledger's strings, untouched.
+ */
+export function latestChanges(
+  ledger: LedgerResponse,
+  refFor: (crId: string) => string | null = () => null,
+): Record<string, Latest> {
+  const approved = ledger.orders
+    .map((o, i) => ({ o, i }))
+    .filter(({ o }) => o.status === "APPROVED")
+    .sort((a, b) => a.o.created_at.localeCompare(b.o.created_at) || a.i - b.i)
+    .map(({ o }) => o);
+  const toLatest = (o: (typeof approved)[number]): Latest => ({
+    value: o.value,
+    ref: (o.change_request_id && refFor(o.change_request_id)) || o.change_request_id || o.id,
+  });
+  const out: Record<string, Latest> = {};
+  for (const o of approved) {
+    out[o.type] = toLatest(o);
+    if (o.type !== "NON_FINANCIAL") {
+      out.COMBINED = toLatest(o);
+      out.cost_increase = toLatest(o);
+    }
+  }
+  return out;
+}
+
+function LatestDelta({ latest, className }: { latest?: Latest; className?: string }) {
+  const t = useT().limits;
+  if (!latest) return null;
+  return (
+    <p className={cn("text-xs text-ink-muted", className)} data-testid="latest-delta">
+      <span className="font-semibold text-ink tabular-nums">{formatImpact(latest.value)}</span>
+      <span>{t.latestOrder("")}</span>
+      <span className="ref">{latest.ref}</span>
+    </p>
+  );
+}
+
+/** True once the meter has painted at zero, so the first fill animates too. */
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(id);
+  }, []);
+  return mounted;
+}
+
+const GROW =
+  "transition-[inline-size,inset-inline-start] duration-700 ease-out motion-reduce:transition-none";
+
 function over(limit: Limit): boolean {
   return Boolean(limit.headroomPct?.trim().startsWith("-"));
 }
@@ -128,14 +185,17 @@ const OVER_TEXT: Record<Tone, string> = {
  */
 export function Meter({ limit, className }: { limit: Limit; className?: string }) {
   const t = useT().limits;
+  const mounted = useMounted();
   if (!limit.capPct) {
     return <span className={cn("text-xs text-ink-muted", className)}>{t.noRelativeLimit}</span>;
   }
   const isOver = over(limit);
+  // Widths are CSS calc() on the API's strings; before the first frame they
+  // are zero, so the fill grows in, and later updates glide (CSS transition).
   const style = {
     "--cap": limit.capPct,
-    "--used": limit.usedPct,
-    "--pending": limit.pendingPct,
+    "--used": mounted ? limit.usedPct : "0",
+    "--pending": mounted ? limit.pendingPct : "0",
   } as CSSProperties;
   const label = t.meterLabel(
     formatPct(limit.usedPct),
@@ -152,11 +212,11 @@ export function Meter({ limit, className }: { limit: Limit; className?: string }
     >
       <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 border border-rule-strong bg-sheet" />
       <span
-        className={cn("absolute start-0 top-1/2 h-2 -translate-y-1/2", isOver ? OVER_BG[limit.overTone] : "bg-ink")}
+        className={cn("absolute start-0 top-1/2 h-2 -translate-y-1/2", GROW, isOver ? OVER_BG[limit.overTone] : "bg-ink")}
         style={{ inlineSize: "calc(min(var(--used), var(--scale)) / var(--scale) * 100%)" }}
       />
       <span
-        className="hatch absolute top-1/2 h-2 -translate-y-1/2 border-y border-e border-rule-strong"
+        className={cn("hatch absolute top-1/2 h-2 -translate-y-1/2 border-y border-e border-rule-strong", GROW)}
         style={{
           insetInlineStart: "calc(min(var(--used), var(--scale)) / var(--scale) * 100%)",
           inlineSize:
@@ -189,7 +249,7 @@ export function MeterKey() {
 }
 
 /** Compact rows for the workspace summary. */
-export function LimitRows({ limits }: { limits: Limit[] }) {
+export function LimitRows({ limits, latest = {} }: { limits: Limit[]; latest?: Record<string, Latest> }) {
   const t = useT().limits;
   const en = getLang() === "en";
   return (
@@ -197,7 +257,7 @@ export function LimitRows({ limits }: { limits: Limit[] }) {
       {limits.map((l) => (
         <li
           key={l.key}
-          className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_11rem_1fr_15rem]"
+          className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_14rem_1fr_15rem]"
         >
           <span className="margin-ref order-3 col-span-2 md:order-none md:col-span-1">
             {(en ? (l.citeEn ?? l.citeAr) : l.citeAr) ?? SOURCE_LABEL[l.source] ?? l.source}
@@ -211,6 +271,7 @@ export function LimitRows({ limits }: { limits: Limit[] }) {
               {amount(l, l.usedValue)}
               {l.capValue && <> {t.of} {amount(l, l.capValue)}</>}
             </span>
+            <LatestDelta latest={latest[l.key]} className="mt-0.5" />
           </span>
         </li>
       ))}
@@ -219,7 +280,7 @@ export function LimitRows({ limits }: { limits: Limit[] }) {
 }
 
 /** Full rows for the limits page: cap, used, pending, headroom and source. */
-export function LimitDetail({ limits }: { limits: Limit[] }) {
+export function LimitDetail({ limits, latest = {} }: { limits: Limit[]; latest?: Record<string, Latest> }) {
   const t = useT().limits;
   return (
     <ul className="divide-y divide-rule border-y border-rule-strong">
@@ -248,6 +309,7 @@ export function LimitDetail({ limits }: { limits: Limit[] }) {
                 )}
               </div>
               {l.description && <p className="mt-0.5 text-sm text-ink-muted">{l.description}</p>}
+              <LatestDelta latest={latest[l.key]} className="mt-1 text-sm" />
               <Meter limit={l} className="mt-3 max-w-3xl" />
               <dl className="mt-3 grid max-w-3xl grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
                 <Figure label={t.figCap} pct={l.capPct} value={amount(l, l.capValue)} />
@@ -285,5 +347,50 @@ function Figure({ label, pct, value, tone }: { label: string; pct: string | null
       <dd className={cn("font-medium", tone)}>{pct ? formatPct(pct) : t.noLimit}</dd>
       <dd className="text-xs text-ink-muted">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * The legal limit with the least headroom, as a headline above the detail:
+ * the ledger's own approved, cap, pending and headroom values, compared
+ * exactly. Nothing is computed beyond picking the smallest headroom.
+ */
+export function ClosestLegalLimit({ ledger }: { ledger: LedgerResponse }) {
+  const t = useT().limits;
+  const en = getLang() === "en";
+  const capped = lawLimits(ledger).filter((l) => l.capValue && l.headroomValue);
+  if (capped.length === 0) return null;
+  const closest = capped.reduce((a, b) =>
+    (compareDecimal(b.headroomValue ?? "", a.headroomValue ?? "") ?? 0) < 0 ? b : a,
+  );
+  const tight = over(closest) || closest.headroomPct?.startsWith("0");
+  return (
+    <a
+      href="#law"
+      data-testid="closest-legal-limit"
+      className={cn(
+        "mt-5 grid max-w-4xl gap-x-6 gap-y-2 border-s-4 bg-paper px-4 py-3 md:grid-cols-[1fr_auto] md:items-center",
+        tight ? "border-legal" : "border-ink",
+      )}
+    >
+      <span className="min-w-0">
+        <span className="block text-xs text-ink-muted">
+          {t.closestTitle}
+          <span className="ref ms-2 text-ink">{en ? closest.citeEn : closest.citeAr}</span>
+        </span>
+        <span className="mt-0.5 block font-doc text-xl font-semibold tabular-nums text-balance">
+          {t.closestUsed(formatMoney(closest.usedValue), formatMoney(closest.capValue))}
+        </span>
+        <span className="mt-0.5 block text-sm text-ink-muted tabular-nums">
+          {closest.name}
+          {" · "}
+          {t.closestPending(formatMoney(closest.pendingValue))}
+        </span>
+      </span>
+      <span className={cn("font-doc text-2xl font-semibold tabular-nums", tight ? "text-legal" : "text-ink")}>
+        {t.closestLeft(formatMoney(closest.headroomValue))}
+      </span>
+      <Meter limit={closest} className="md:col-span-2" />
+    </a>
   );
 }

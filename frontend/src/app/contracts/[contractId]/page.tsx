@@ -7,7 +7,7 @@ import { Empty, ErrorState, Field, Loading, Section, TermsKey } from "@/componen
 import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { LimitRows, MeterKey, lawLimits, policyLimits } from "@/components/workspace/limits";
+import { LimitRows, MeterKey, lawLimits, latestChanges, policyLimits } from "@/components/workspace/limits";
 import { api, type ApprovalStep, type ChangeRequest, type Contract } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
 import { countRequests, formatDate, formatImpact, formatMoney } from "@/lib/format";
@@ -174,7 +174,10 @@ function Workspace({ contract }: { contract: Contract }) {
             <p className="mb-4 max-w-prose text-sm text-ink-muted">
               {isGov ? t.limitsIntroGov : t.limitsIntroPrivate}
             </p>
-            <LimitRows limits={[...policyLimits(ledger.data), ...lawLimits(ledger.data)]} />
+            <LimitRows
+              limits={[...policyLimits(ledger.data), ...lawLimits(ledger.data)]}
+              latest={latestChanges(ledger.data)}
+            />
             <MeterKey />
           </>
         )}
