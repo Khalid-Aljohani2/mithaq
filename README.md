@@ -1,16 +1,16 @@
-# Mithaq · ميثاق
+# MithaqAi · ميثاقي
 
 > **One contract. Two parties. One record of every change.**
 
-Mithaq is an Arabic-first change-order governance agent for Saudi government
-contracts. Both sides of the same contract — the government entity and the
-contractor — work from **one shared change ledger**. A change request arrives as
+MithaqAi is an Arabic-first change-order governance agent for Saudi government
+contracts. The government entity and the contractor on the same contract work
+from **one shared change ledger**. A change request arrives as
 free Arabic prose; eleven named stages read it, match it against the contract's
 priced breakdown, price it from the contract's own unit rates, check it against
 both the organisation's policy and Article 67 of the new procurement law, and
 produce a recommendation with the article it rests on. **The agent never
 decides.** Authorised people approve every commitment, and the system refuses an
-approval that would take the contract past a statutory cap — even when every
+approval that would take the contract past a statutory cap, even when every
 individual request looked fine on its own.
 
 **What runs without an API key, and what needs one.** With no key the app
@@ -56,8 +56,8 @@ of proposal receipt on average, with a median of 55 days. The third row has not
 yet been checked against the PDF; see
 [`SOURCES.md`](SOURCES.md#problem-statement-figures-checked-2026-10-31).
 
-That last row is the one Mithaq is built around. The two parties did not
-disagree about the money — they disagreed about **when the change began**,
+That last row is the one MithaqAi is built around. The two parties did not
+disagree about the money. They disagreed about **when the change began**,
 because each kept its own record. Months of work proceed while a change is
 undocumented, and the cumulative position is known to nobody until an audit.
 
@@ -72,13 +72,13 @@ cumulatively:
 
 | Cap | Limit | Nature |
 |---|---|---|
-| New items — Article 67(1)(a) | 10% of contract value | blocking |
-| Increases to existing items — 67(1)(b) | 20% | blocking |
-| Decreases — 67(1)(c) | 20% | blocking |
-| New items and increases together — 67(2) | 20% | blocking |
+| New items under Article 67(1)(a) | 10% of contract value | blocking |
+| Increases to existing items under 67(1)(b) | 20% | blocking |
+| Decreases under 67(1)(c) | 20% | blocking |
+| New items and increases together under 67(2) | 20% | blocking |
 
 Blocking means what it says: **no internal approval lifts a legal cap.** A
-cumulative cap is only a cap if somebody is keeping the running total — which is
+cumulative cap is only a cap if somebody is keeping the running total, which is
 exactly the thing the 30-day record gap above makes impossible on paper.
 
 The verbatim Arabic of every article the engine relies on is stored in
@@ -90,7 +90,7 @@ programmatically from the official page and asserted to be a substring of it.
 
 ## What it looks like
 
-**The shared workspace** — the same ledger, the same totals, for both parties.
+**The shared workspace.** Both parties see the same ledger and the same totals.
 
 ![Workspace](docs/design/screens/workspace-government-1440-light.png)
 
@@ -109,7 +109,7 @@ citing the articles it rests on.
 
 ![Variation order document](docs/design/screens/vo-document-government-1440-light.png)
 
-**The limits page near the ceiling** — 945,000 approved against a 960,000
+**The limits page near the ceiling.** It shows 945,000 approved against a 960,000
 Article 67 cap, with 135,000 more pending and 15,000 of headroom left.
 
 ![Limits page near the Article 67 cap](docs/design/screens/limits-near-cap-1440-light.png)
@@ -119,7 +119,7 @@ Arabic, naming Article 67(1)(b) and Article 67(2).
 
 ![Final approval refused under Article 67](docs/design/screens/case-refused-at-final-1440-light.png)
 
-**The evaluation page**, served from a committed measurement — not a claim.
+**The evaluation page**, served from a committed measurement rather than a claim.
 
 ![Evaluation results](docs/design/screens/evaluation-1440-light.png)
 
@@ -156,12 +156,12 @@ file. See [decision 0001](docs/decisions/0001-pipeline-design.md).
 
 > **AI reads. Code decides money and law. People approve.**
 
-This is not a slogan in a document — it is enforced structurally, as NFR-15:
+This is not a slogan in a document. It is enforced structurally, as NFR-15:
 
 - **AI output schemas contain no money, status or state fields.** A model
   *cannot* return a cost impact or an approval status, because there is nowhere
   in the schema to put one.
-- **Provider methods take a schema and nothing else** — no repository, no
+- **Provider methods take a schema and nothing else:** no repository, no
   session, no clock. An AI stage has no route to storage.
 - **The state machine refuses committing transitions from an `AI` actor.**
   Entering approval, approving, issuing a VO: every one is in
@@ -180,14 +180,14 @@ else. That is the test of whether the boundary is real.
 
 A 25% increase refused as one request can be waved through as five requests of
 5% if nobody is adding them up. That evasion is the reason Article 67's caps are
-cumulative, and it is what Mithaq is for.
+cumulative, and it is what MithaqAi is for.
 
 The end-to-end test
 ([`test_ledger_accumulation.py`](backend/tests/test_ledger_accumulation.py))
 drives it over HTTP on the government contract, whose value is 4,800,000 SAR:
 
 1. **Eight requests of 135,000 SAR each** are submitted and analysed *before any
-   is approved* — so every one is judged against the ledger as it stood, and
+   is approved*, so every one is judged against the ledger as it stood, and
    every one is recommended for approval. **No single request ever looks wrong.**
 2. **Seven are approved**, reaching **945,000 of the 960,000 cap** (19.69%).
    Each is a real approval by a real chain, each with its variation order
@@ -204,8 +204,8 @@ slice 8: REFUSED at final approval
 ```
 
 The check runs at the **final** approval, not the first, because that is the
-moment the commitment is made — and between analysis and the last signature,
-other requests may have been approved against the same contract. Nothing is
+moment the commitment is made. Between analysis and the last signature, other
+requests may have been approved against the same contract. Nothing is
 recorded as approved, nothing is committed, and the request goes to legal
 review. There is deliberately no override, because no internal approval lifts a
 legal cap. See [decision 0004](docs/decisions/0004-ledger-lifecycle.md).
@@ -217,7 +217,7 @@ You can reproduce this state in the running product in one call:
 
 ## Evaluation
 
-40 hand-built cases — **15 dev, 25 test**. Ground truth comes from
+There are 40 hand-built cases: **15 dev and 25 test**. Ground truth comes from
 *construction*: every case was written against a known contract line with an
 intended outcome, so its answer is what it was built to be, not what a model
 said about it. Prompts were tuned on the dev split only; the test split was not
@@ -225,7 +225,7 @@ opened until every prompt change was final, and nothing was changed after it
 ran.
 
 **Final run: `claude-opus-5-5`, test split, commit `0f9d437`.** Scored twice
-against both label sets — from the **same run**, so any difference is the
+against both label sets from the **same run**, so any difference is the
 labels and not sampling noise.
 
 | | Original labels | Audited labels |
@@ -248,15 +248,15 @@ the headline**. It also did not correct away a failure: TEST-11 is wrong under
 both label sets, and it is the case the audit examined and deliberately left
 alone.
 
-- [`docs/eval/summary.json`](docs/eval/summary.json) — the published
+- [`docs/eval/summary.json`](docs/eval/summary.json): the published
   measurement, traceable to the commit and the prompt versions
-- [`docs/eval_comparison.md`](docs/eval_comparison.md) — the four-model
+- [`docs/eval_comparison.md`](docs/eval_comparison.md): the four-model
   comparison the default was chosen from, and the per-stage latency
-- [`docs/eval_label_audit.md`](docs/eval_label_audit.md) — every label
+- [`docs/eval_label_audit.md`](docs/eval_label_audit.md): every label
   correction, argued from the glossary and the contract, never from a model's
   answer
-- [`docs/eval_sample.md`](docs/eval_sample.md) — worked examples
-- [decision 0002](docs/decisions/0002-default-model.md) — why `claude-opus-5-5`
+- [`docs/eval_sample.md`](docs/eval_sample.md): worked examples
+- [decision 0002](docs/decisions/0002-default-model.md): why `claude-opus-5-5`
   over three cheaper models that scored the same
 
 ---
@@ -314,13 +314,13 @@ provider.
 | Backend tests | **633 passing**, 1 skipped (an opt-in live-API test) |
 | Browser tests & screenshots | **95 passing** Playwright checks |
 | Rules engine coverage | **100%**, enforced as a gate |
-| CI | ruff, format, pytest on **Python 3.11 and 3.12**, eslint, typegen, tsc, next build — actions pinned to commit SHAs |
+| CI | ruff, format, pytest on **Python 3.11 and 3.12**, eslint, typegen, tsc, next build; actions pinned to commit SHAs |
 | Database | every money column `NUMERIC`; a float never touches money, a percentage or a legal limit |
 | Audit log | append-only by construction: there is an `append_audit` and a `list_audit`, and **no update or delete path exists anywhere in the code** |
 | Migrations | Alembic; CI asserts they apply cleanly and that seeding is idempotent |
 | Sourcing | every dependency version checked against the live registry and pinned exactly; every install command and legal citation recorded in [`SOURCES.md`](SOURCES.md) with its URL |
 | Decision records | [0001 pipeline](docs/decisions/0001-pipeline-design.md) · [0002 default model](docs/decisions/0002-default-model.md) · [0003 stage concurrency](docs/decisions/0003-stage-concurrency.md) · [0004 ledger lifecycle](docs/decisions/0004-ledger-lifecycle.md) |
-| Spec of record | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — FR-01..22, NFR-01..16 |
+| Spec of record | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md), covering FR-01..22 and NFR-01..16 |
 
 Both repositories (in-memory and PostgreSQL) run the same test suite, because
 the API must behave identically whichever is behind it.
@@ -473,7 +473,7 @@ the same server.
 
 ### Environment variables
 
-Names only — real values belong in `backend/.env` and `frontend/.env.local`,
+Names only. Real values belong in `backend/.env` and `frontend/.env.local`,
 both git-ignored. The example files ship with empty values.
 
 | Variable | Purpose |
@@ -515,7 +515,7 @@ Honest list. This is a hackathon build.
 - **No retrieval over full contract documents.** Today the contract is a
   structured priced breakdown. Real contracts are hundreds of pages of
   specifications, and matching a request against *those* needs retrieval over
-  the document set — the obvious next step, with an open-source RAG stack
+  the document set. That is the obvious next step, with an open-source RAG stack
   (embeddings + a vector store) so the contract text never leaves the tenant.
 - **Contract intake is a first pass.** A contract can be entered by hand, or a
   model can suggest the fields from a PDF or pasted text for a person to check
@@ -535,9 +535,9 @@ Honest list. This is a hackathon build.
   0004](docs/decisions/0004-ledger-lifecycle.md) rather than hidden. A
   transaction or row lock closes it; the demo is single-user.
 - **Two parties, one tenant.** There is no authentication: a persona switcher
-  stands in for sign-in. Real deployment needs identity, and the role checks —
-  which are enforced in the backend, not just hidden in the UI — need to hang
-  off it.
+  stands in for sign-in. Real deployment needs identity, and the role checks
+  need to hang off it. Those checks are enforced in the backend, not just
+  hidden in the UI.
 
 ---
 
@@ -556,7 +556,7 @@ recorded fallback.
 
 ## Legal disclaimer
 
-Mithaq **assists with** contract administration. It does **not** give legal
+MithaqAi **assists with** contract administration. It does **not** give legal
 advice, and nothing it produces is a legal opinion. Every recommendation is
 advisory and requires a human decision by an authorised person; findings that
 turn on an ambiguous provision are flagged for legal review rather than
