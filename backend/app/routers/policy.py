@@ -7,10 +7,11 @@ apart on what a request needs (NFR-16).
 
 from fastapi import APIRouter
 
-from app.pipeline.documents import CHECKLISTS
+from app.pipeline.documents import CHECKLISTS, DOCUMENT_CATALOG
 from app.policy.loader import get_policy
 from app.schemas.policy import (
     DocumentChecklist,
+    DocumentName,
     PolicyThresholdOut,
     RequiredDocumentsResponse,
 )
@@ -30,7 +31,11 @@ async def required_documents() -> RequiredDocumentsResponse:
         checklists=[
             DocumentChecklist(impact_type=impact, required=list(documents))
             for impact, documents in CHECKLISTS.items()
-        ]
+        ],
+        documents=[
+            DocumentName(code=code, name_ar=name_ar, name_en=name_en)
+            for code, name_ar, name_en in DOCUMENT_CATALOG
+        ],
     )
 
 

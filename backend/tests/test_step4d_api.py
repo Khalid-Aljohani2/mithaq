@@ -801,3 +801,18 @@ def test_a_per_stage_override_still_wins() -> None:
 def test_minimum_confidence_was_not_tuned() -> None:
     """Step 4D kept it at 0.70, and in particular did not tune it on the test split."""
     assert get_policy().minimum_confidence == Decimal("0.70")
+
+
+def test_required_documents_name_every_checklist_document_in_both_languages() -> None:
+    """Every document a checklist requires has an English name for the UI."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    body = TestClient(app).get("/api/policy/required-documents").json()
+    names = {d["name_ar"]: d for d in body["documents"]}
+    for checklist in body["checklists"]:
+        for required in checklist["required"]:
+            assert required in names
+            assert names[required]["name_en"]
+            assert names[required]["code"]

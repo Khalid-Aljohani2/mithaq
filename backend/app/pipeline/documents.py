@@ -12,6 +12,16 @@ from dataclasses import dataclass
 
 from app.domain.enums import ImpactType
 
+#: Every document the checklists name: a stable code, the Arabic name (what
+#: requests carry today and what stage 2 compares) and the English name shown
+#: in the English interface.
+DOCUMENT_CATALOG: tuple[tuple[str, str, str], ...] = (
+    ("FORMAL_REQUEST", "طلب تغيير رسمي", "Formal change request"),
+    ("COST_ESTIMATE", "عرض سعر أو تحليل تكلفة", "Price quote or cost analysis"),
+    ("UPDATED_SCHEDULE", "برنامج زمني محدّث", "Updated schedule"),
+    ("SUBSTITUTE_SPEC", "مواصفات المنتج البديل", "Substitute product specifications"),
+)
+
 #: Required documents per impact type (FR-04).
 CHECKLISTS: dict[ImpactType, tuple[str, ...]] = {
     ImpactType.NONE: ("طلب تغيير رسمي",),
@@ -53,8 +63,9 @@ class DocumentCheck:
     @property
     def summary_en(self) -> str:
         if self.complete:
-            return f"All {len(self.required)} required documents provided."
-        return f"Missing {len(self.missing)} of {len(self.required)} required documents."
+            return "All required documents are attached."
+        missing = len(self.missing)
+        return f"{missing} required document{' is' if missing == 1 else 's are'} missing."
 
 
 def check_documents(impact_type: ImpactType, attachments: tuple[str, ...]) -> DocumentCheck:

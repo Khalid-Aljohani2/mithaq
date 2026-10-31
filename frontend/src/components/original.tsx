@@ -1,9 +1,33 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { useDocumentNames } from "@/lib/documents";
 import { usePrefs } from "@/lib/prefs";
+
+/**
+ * The text of children, walking into nested elements (a blockquote around the
+ * request text, say). Null when there is no text to judge by.
+ */
+function plainText(children: ReactNode): string | null {
+  let text = "";
+  const walk = (node: ReactNode) => {
+    Children.forEach(node, (child) => {
+      if (typeof child === "string" || typeof child === "number") text += String(child);
+      else if (isValidElement<{ children?: ReactNode }>(child)) walk(child.props.children);
+    });
+  };
+  walk(children);
+  return text.trim() ? text : null;
+}
+
+/** True when most letters are Arabic script. Digits and punctuation do not count. */
+export function isMainlyArabic(text: string): boolean {
+  const arabic = text.match(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g)?.length ?? 0;
+  const latin = text.match(/[A-Za-zÀ-ɏ]/g)?.length ?? 0;
+  return arabic > 0 && arabic >= latin;
+}
 
 /**
  * Contract content written in Arabic (descriptions, request text, legal
@@ -22,6 +46,17 @@ export function ArabicOriginal({
   showLabel?: boolean;
 }) {
   const { lang, t } = usePrefs();
+  // Only text that is mainly Arabic is labelled and set right to left. Any
+  // other free text (an English request, a Latin name) keeps its own
+  // direction and no label.
+  const text = plainText(children);
+  if (text !== null && !isMainlyArabic(text)) {
+    return (
+      <Tag dir="auto" className={cn("[text-align:match-parent]", className)}>
+        {children}
+      </Tag>
+    );
+  }
   if (lang === "ar") {
     return <Tag className={className}>{children}</Tag>;
   }
@@ -57,7 +92,8 @@ export function ArabicOriginal({
  */
 export function DocumentName({ name, className }: { name: string; className?: string }) {
   const { lang, t } = usePrefs();
-  const english = lang === "en" ? t.common.documentName[name] : undefined;
+  const catalog = useDocumentNames();
+  const english = lang === "en" ? (catalog[name] ?? t.common.documentName[name]) : undefined;
   if (english) {
     return (
       <span className={className} title={name}>

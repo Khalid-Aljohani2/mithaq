@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 
 import { Empty, ErrorState, Loading, Section, TermsKey } from "@/components/file";
-import { ArabicOriginal } from "@/components/original";
+import { DocumentName } from "@/components/original";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -207,9 +207,7 @@ function NewRequestForm({ contract }: { contract: Contract }) {
                     onChange={() => toggle(doc)}
                     className="size-4 accent-[var(--seal)]"
                   />
-                  <ArabicOriginal as="span" showLabel={false}>
-                    {doc}
-                  </ArabicOriginal>
+                  <DocumentName name={doc} />
                 </label>
               </li>
             ))}

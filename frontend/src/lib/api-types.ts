@@ -1146,6 +1146,18 @@ export interface components {
             required: string[];
         };
         /**
+         * DocumentName
+         * @description One checklist document: a stable code and its name in each language.
+         */
+        DocumentName: {
+            /** Code */
+            code: string;
+            /** Name Ar */
+            name_ar: string;
+            /** Name En */
+            name_en: string;
+        };
+        /**
          * EvalFieldAccuracy
          * @description How one labelled field scored, under both label sets.
          *
@@ -1543,6 +1555,8 @@ export interface components {
         RequiredDocumentsResponse: {
             /** Checklists */
             checklists: components["schemas"]["DocumentChecklist"][];
+            /** Documents */
+            documents: components["schemas"]["DocumentName"][];
         };
         /**
          * Role
