@@ -12,7 +12,7 @@ replay recorded outputs, so every run produces the same screens.
 # Terminal 1: backend from the main checkout, in-memory store, scripted provider.
 # The variables apply to this process only; no .env file changes.
 cd ..\ScopeGuardAi\backend
-$env:DATABASE_URL = ""; $env:LLM_PROVIDER = "scripted"; $env:ALLOWED_ORIGINS = "http://localhost:3010"
+$env:DATABASE_URL = " "; $env:LLM_PROVIDER = "scripted"; $env:ALLOWED_ORIGINS = "http://localhost:3010"
 $env:REMINDER_PENDING_APPROVAL_HOURS = "0"   # reminders show at once, for the drawer screen
 $env:DEMO_RESET_TOKEN = "screens-demo-token" # the salami preset screens need the reset endpoint
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8010
@@ -71,3 +71,20 @@ The run's last tests change state: the finance manager signs CR-D through the
 UI, a notification opens its case file, the awaiting request is resubmitted
 with its missing document and re-analysed, and both VOs are printed to PDF and
 asserted to be exactly one page each.
+
+## Step 8: home, guide bar, both languages, both themes
+
+`e2e/ux.spec.ts` runs after `screens.spec.ts` (Playwright runs files in name
+order), so the government contract is already in the salami preset state. It
+writes `docs/design/screens/ux/<screen>-<width>-<scheme>-<lang>.png`:
+
+- home, government workspace, a VO-issued case, its VO document, the limits
+  page near the Article 67 ceiling and the evaluation page, at 1440 wide, in
+  Arabic and English, light and dark;
+- home and workspace at 390 wide in both languages;
+- the guide bar started from the home page, with Go driving Acts 1 and 2,
+  and the presenter notes open (`guide-act1-notes-*`).
+
+It also asserts that the theme choice is applied by the head script before
+React runs, that print stays light under the dark theme, and that the
+language toggle sets `lang` and `dir` and survives a reload.
