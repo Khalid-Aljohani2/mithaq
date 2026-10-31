@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 
 import { Providers } from "./providers";
-import { Letterhead } from "@/components/shell/letterhead";
+import { Letterhead, SkipLink } from "@/components/shell/letterhead";
+import { PREFS_SCRIPT } from "@/lib/prefs-script";
 
 // The interface face.
 const plex = IBM_Plex_Sans_Arabic({
   variable: "--font-ui",
   subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+// The interface face for English: the Latin cut of the same family.
+const plexLatin = IBM_Plex_Sans({
+  variable: "--font-ui-latin",
+  subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "swap",
 });
@@ -31,16 +40,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="ar"
       dir="rtl"
-      className={`${plex.variable} ${naskh.variable} h-full antialiased`}
+      className={`${plex.variable} ${plexLatin.variable} ${naskh.variable} h-full antialiased`}
+      // PREFS_SCRIPT sets lang, dir and data-theme before React hydrates.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PREFS_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <Providers>
-          <a
-            href="#main"
-            className="sr-only z-50 bg-sheet print:hidden px-3 py-2 focus:not-sr-only focus:absolute focus:start-2 focus:top-2"
-          >
-            انتقل إلى المحتوى
-          </a>
+          <SkipLink />
           <div className="print:hidden">
             <Letterhead />
           </div>
