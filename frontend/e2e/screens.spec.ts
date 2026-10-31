@@ -90,7 +90,7 @@ const SCREENS: Screen[] = [
     persona: { party: "GOVERNMENT_ENTITY", role: "FINANCE_MANAGER" },
     ready: "التوقيع باسم",
   },
-  { name: "case-vo-issued", url: caseUrl(PRIV, "CR-C-SUBSTITUTION"), ready: "عرض أمر التغيير وطباعته" },
+  { name: "case-vo-issued", url: caseUrl(PRIV, "CR-C-SUBSTITUTION"), ready: "فتح أمر التغيير" },
   {
     name: "case-legal-block",
     url: caseUrl(GOV, "CR-D-GOV"),

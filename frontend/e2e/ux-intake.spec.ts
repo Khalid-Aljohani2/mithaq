@@ -90,8 +90,11 @@ test("create a project by hand, open it, see its limits, submit a request", asyn
   // The exact value is accepted and the new contract opens.
   await page.locator('[name="original_value"]').fill(VALUE);
   await page.locator("[data-create-project]").click();
-  await page.waitForURL(/\/contracts\/CT-2027-\d+$/, { timeout: 20_000 });
-  const contractUrl = page.url();
+  await page.waitForURL(/\/contracts\/CT-2027-\d+\?created=1$/, { timeout: 20_000 });
+  const contractUrl = page.url().replace(/\?.*$/, "");
+  // The next step after creating: a confirmation and "New change request".
+  await expect(page.locator('[data-next-step="project-created"]')).toBeVisible();
+  await expect(page.locator("[data-first-request]")).toHaveAttribute("href", /\/new$/);
 
   // Its limits: the Article 67 meters appear for a government contract.
   await page.locator("#limits-title").waitFor({ timeout: 20_000 });
