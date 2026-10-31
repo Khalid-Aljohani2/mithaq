@@ -40,6 +40,14 @@ class ContractRepository(ABC):
     def get_contract(self, contract_id: str) -> Contract | None:
         """Return one contract, or None if it does not exist."""
 
+    @abstractmethod
+    def add_contract(self, contract: Contract) -> Contract:
+        """Store a new contract and its breakdown. Refuses an id already in use.
+
+        There is no update or delete: a contract's baseline is what every
+        change is measured against, so it is entered once (FR-01).
+        """
+
     # ---- Article 67 ledger ----
 
     @abstractmethod

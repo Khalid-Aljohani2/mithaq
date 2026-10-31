@@ -25,6 +25,9 @@ PROMPT_VERSIONS: dict[str, str] = {
     # neither appeared in a dev failure.
     "ORCHESTRATOR": "v1",
     "ISSUE_VO": "v1",
+    # Contract intake: reads an uploaded contract into an editable draft. It
+    # saves nothing; a person reviews and submits the form (ADR 0006).
+    "CONTRACT_DRAFT": "v1",
 }
 
 #: Prompt filename stem per stage.
@@ -35,6 +38,7 @@ _STEMS: dict[str, str] = {
     "RISK_COMPLIANCE": "risk",
     "ORCHESTRATOR": "narrative",
     "ISSUE_VO": "vo_draft",
+    "CONTRACT_DRAFT": "contract_draft",
 }
 
 #: The markers the request text is wrapped in. Everything between them is data.
