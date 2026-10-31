@@ -253,6 +253,7 @@ class VariationOrderRow(Base):
     number: Mapped[str] = mapped_column(String(32), nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     scope_ar: Mapped[str] = mapped_column(Text, nullable=False)
+    scope_en: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     value: Mapped[Decimal] = mapped_column(Money, nullable=False)
     time_extension_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cited_line_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)

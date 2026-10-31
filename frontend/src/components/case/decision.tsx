@@ -10,7 +10,7 @@ import type { BreakdownLine, ChangeRequest, Contract } from "@/lib/api";
 import { formatConfidence, formatDays, formatImpact, formatMoney, formatPct } from "@/lib/format";
 import { RECOMMENDATION, REASON_CODE, ROLE_LABEL, type Tone } from "@/lib/labels";
 import type { Compliance, Impact, Narrative } from "@/lib/payload";
-import { useT } from "@/lib/prefs";
+import { usePrefs, useT } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 
 export function RecommendationBlock({
@@ -23,8 +23,19 @@ export function RecommendationBlock({
   recorded: boolean;
 }) {
   const t = useT();
+  const { lang } = usePrefs();
   if (!request.recommendation) return null;
   const rec = RECOMMENDATION[request.recommendation];
+  // The English wording when the agent gave it (narrative v2), the Arabic
+  // original otherwise. Narratives recorded before v2 have Arabic only.
+  const english = lang === "en";
+  const summaryEn = english ? narrative.summaryEn : null;
+  const reasonsEn =
+    english && narrative.reasonsEn.length === narrative.reasons.length && narrative.reasons.length
+      ? narrative.reasonsEn
+      : null;
+  const actionsEn =
+    english && narrative.nextActionsEn.length ? narrative.nextActionsEn : null;
   // The agent's own reasons when it gave them; the code labels otherwise.
   // Showing both repeats the same points in two wordings.
   const reasons = narrative.reasons.length
@@ -43,16 +54,26 @@ export function RecommendationBlock({
         </span>
       </div>
       <p className={cn("mt-1 font-doc text-xl font-semibold", toneText(rec.tone))}>{rec.verb}</p>
-      {narrative.summary && (
-        <ArabicOriginal as="p" className="mt-2 text-sm">
-          {narrative.summary}
-        </ArabicOriginal>
+      {summaryEn ? (
+        <p className="mt-2 text-sm">{summaryEn}</p>
+      ) : (
+        narrative.summary && (
+          <ArabicOriginal as="p" className="mt-2 text-sm">
+            {narrative.summary}
+          </ArabicOriginal>
+        )
       )}
 
       {reasons.length > 0 && (
         <>
           <h3 className="mt-4 text-xs font-medium text-ink-muted">{t.case.reasons}</h3>
-          {narrative.reasons.length ? (
+          {reasonsEn ? (
+            <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
+              {reasonsEn.map((r) => (
+                <li key={r} className="py-1.5">{r}</li>
+              ))}
+            </ul>
+          ) : narrative.reasons.length ? (
             <ArabicOriginal showLabel={false}>
               <ul className="mt-1 divide-y divide-rule border-y border-rule text-sm">
                 {reasons.map((r) => (
@@ -81,7 +102,17 @@ export function RecommendationBlock({
           </ArabicOriginal>
         </>
       )}
-      {narrative.nextActions.length > 0 && (
+      {actionsEn && (
+        <>
+          <h3 className="mt-4 text-xs font-medium text-ink-muted">{t.case.nextActions}</h3>
+          <ol className="mt-1 list-decimal divide-y divide-rule border-y border-rule ps-5 text-sm">
+            {actionsEn.map((a) => (
+              <li key={a} className="py-1.5">{a}</li>
+            ))}
+          </ol>
+        </>
+      )}
+      {!actionsEn && narrative.nextActions.length > 0 && (
         <>
           <h3 className="mt-4 text-xs font-medium text-ink-muted">{t.case.nextActions}</h3>
           <ArabicOriginal showLabel={false}>

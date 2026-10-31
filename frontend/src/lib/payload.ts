@@ -36,6 +36,10 @@ export type Narrative = {
   summary: string | null;
   reasons: string[];
   nextActions: string[];
+  /** The same prose in English, from the same model call (narrative v2). */
+  summaryEn: string | null;
+  reasonsEn: string[];
+  nextActionsEn: string[];
   reasonCodes: string[];
   conflicts: string[];
 };
@@ -47,6 +51,9 @@ export function readNarrative(stage: StageResult | undefined): Narrative {
     summary: str(narrative.summary_ar) ?? str(stage?.summary_ar),
     reasons: strList(narrative.reasons_ar),
     nextActions: strList(narrative.next_actions_ar),
+    summaryEn: str(narrative.summary_en),
+    reasonsEn: strList(narrative.reasons_en),
+    nextActionsEn: strList(narrative.next_actions_en),
     reasonCodes: strList(payload.reason_codes),
     conflicts: strList(payload.conflicts),
   };

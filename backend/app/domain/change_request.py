@@ -209,6 +209,8 @@ class VariationOrder(BaseModel):
     number: str
     issued_at: datetime
     scope_ar: str
+    #: English rendering of the scope paragraph; the Arabic is the formal text.
+    scope_en: str = ""
     value: Decimal
     time_extension_days: int
     cited_line_ids: tuple[str, ...]

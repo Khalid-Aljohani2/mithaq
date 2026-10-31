@@ -328,6 +328,39 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
         "CANNOT_PRICE": "تعذّر تسعير الطلب من بيانات العقد، ويلزم توضيح من مقدّم الطلب.",
         "NEW_ITEM_RATE_HUMAN_ENTERED": "البند جديد ولا يوجد سعر تعاقدي مقابل، والسعر مُدخل بشريًا.",
     }
+    headlines_en = {
+        "CLOSE_IN_SCOPE": (
+            "The request is covered by the existing contract and is recommended for"
+            " closure as in scope."
+        ),
+        "APPROVE": "The request is recommended for approval once the approval chain completes.",
+        "REJECT": "The request is recommended for rejection: it breaches a legal limit that"
+        " cannot be exceeded.",
+        "REQUEST_REVISION": "The request is recommended for return so the gaps can be completed"
+        " before approval.",
+    }
+    reasons_en = {
+        "IN_SCOPE": "The request is covered by existing lines in the bill of quantities.",
+        "WITHIN_ALL_LIMITS": "The financial impact is within the policy and legal limits.",
+        "POLICY_EXCEPTION_REQUIRED": (
+            "The cumulative increase exceeds the internal policy limit and needs an exception."
+        ),
+        "LEGAL_CAP_EXCEEDED": "The increase exceeds the legal limit in Article 67.",
+        "TECHNICAL_APPROVAL_REQUIRED": (
+            "The request changes an approved product and needs technical approval."
+        ),
+        "UNIT_RATE_DEVIATION": (
+            "The proposed unit rate deviates from the contract rate by more than the allowed limit."
+        ),
+        "DOCUMENTS_MISSING": "The required documents are incomplete.",
+        "CANNOT_PRICE": (
+            "The request could not be priced from the contract data; the requester must clarify it."
+        ),
+        "NEW_ITEM_RATE_HUMAN_ENTERED": (
+            "The item is new with no contract rate to match, so its rate was entered by a person."
+        ),
+    }
+    approve = recommendation == "APPROVE"
     return NarrativeOutput(
         provider=PROVIDER_NAME,
         recorded=True,
@@ -336,10 +369,53 @@ def narrative_for(recommendation: str, reason_codes: tuple[str, ...]) -> Narrati
         reasons_ar=tuple(reasons[code] for code in reason_codes if code in reasons),
         next_actions_ar=(
             ("رفع الطلب إلى أصحاب الصلاحية حسب سلسلة الاعتماد.",)
-            if recommendation == "APPROVE"
+            if approve
             else ("إبلاغ مقدم الطلب بالنتيجة والأسباب.",)
         ),
+        summary_en=headlines_en.get(recommendation, "The request has been reviewed."),
+        reasons_en=tuple(reasons_en[code] for code in reason_codes if code in reasons_en),
+        next_actions_en=(
+            ("Send the request to the approvers, following the approval chain.",)
+            if approve
+            else ("Tell the requester the outcome and the reasons.",)
+        ),
     )
+
+
+#: English wording of each recorded request's change, for the VO scope
+#: paragraph. Written by hand from the Arabic; it adds no figure the Arabic
+#: does not state.
+_REQUEST_EN: dict[str, str] = {
+    TEXT_IN_SCOPE: (
+        "three training workshops for the entity's staff on using the system during"
+        " the pilot operation, one training day per workshop."
+    ),
+    TEXT_PCR_SMALL: (
+        "one additional integration point with the electronic correspondence system,"
+        " at the contracted unit rate, the contract's four integration points being"
+        " fully used."
+    ),
+    TEXT_SUBSTITUTION: (
+        "replacing the approved A-2400 servers, which the supplier has discontinued,"
+        " with the same number of B-3100 servers of higher specification, at a unit"
+        " rate of 56,000 SAR instead of 45,000 SAR, new and with a five-year warranty."
+    ),
+    TEXT_PCR_OVER_POLICY: (
+        "an advanced reporting and analytics module outside the contract scope,"
+        " with interactive dashboards, scheduled reports and a link to the data"
+        " warehouse, offered by the contractor at 1,008,000 SAR over forty-five days."
+    ),
+    TEXT_NCR: (
+        "reducing the training days from forty to twenty-five, and reducing the line"
+        " value by the equivalent of the cancelled days."
+    ),
+    TEXT_GOV_WITHIN_LIMITS: (
+        "twelve additional production servers of the contract's approved A-2400"
+        " model at the contracted unit rate, because expected beneficiary numbers"
+        " exceed the tender estimates, with no extension to the contract term."
+    ),
+}
+_REQUEST_FALLBACK_EN = "the change described in the original Arabic request."
 
 
 def vo_scope_for(requested_change_ar: str) -> VODraftOutput:
@@ -351,5 +427,11 @@ def vo_scope_for(requested_change_ar: str) -> VODraftOutput:
         scope_ar=(
             f"يشمل أمر التغيير هذا: {requested_change_ar} "
             "وذلك وفقًا للبنود المشار إليها أدناه وبما لا يخل بباقي أحكام العقد."
+        ),
+        scope_en=(
+            "This variation order covers: "
+            f"{_REQUEST_EN.get(requested_change_ar, _REQUEST_FALLBACK_EN)}"
+            " It is carried out under the lines cited below, without prejudice to the other"
+            " terms of the contract."
         ),
     )

@@ -262,6 +262,8 @@ def test_vo_is_issued_with_signatures_and_values() -> None:
     assert vo["value"] == "132000"
     assert len(vo["signatures"]) == 2
     assert vo["scope_ar"]
+    # vo_draft v2: the English wording comes from the same call.
+    assert vo["scope_en"].startswith("This variation order covers: replacing")
     assert vo["recorded"] is True
     assert body["request"]["state"] == "VO_ISSUED"
 

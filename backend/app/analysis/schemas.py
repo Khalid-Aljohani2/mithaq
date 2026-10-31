@@ -176,9 +176,18 @@ class NarrativeInput(BaseModel):
 
 
 class NarrativeOutput(AIOutput):
+    """Arabic and English prose about the same decision, from one call.
+
+    The English fields mirror the Arabic ones item for item, so an English
+    reader sees the same explanation and never a second opinion.
+    """
+
     summary_ar: str = ""
     reasons_ar: tuple[str, ...] = ()
     next_actions_ar: tuple[str, ...] = ()
+    summary_en: str = ""
+    reasons_en: tuple[str, ...] = ()
+    next_actions_en: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -199,3 +208,5 @@ class VODraftOutput(AIOutput):
     """Only prose. The value, duration and citations are computed."""
 
     scope_ar: str = ""
+    #: English rendering of the same paragraph. The Arabic stays the formal text.
+    scope_en: str = ""

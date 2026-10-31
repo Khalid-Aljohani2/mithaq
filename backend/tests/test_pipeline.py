@@ -350,3 +350,43 @@ def test_recorded_outputs_are_labelled(private: Contract) -> None:
     ai_stages = [s for s in result.stages if s.provider == "scripted"]
     assert ai_stages
     assert all(stage.recorded for stage in ai_stages)
+
+
+# ---------------------------------------------------------------------------
+# Narrative v2: Arabic and English from the same call
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cr_id", [r.id for r in build_demo_requests()])
+def test_every_recorded_narrative_has_english(
+    cr_id: str, private: Contract, government: Contract
+) -> None:
+    request = demo(cr_id)
+    contract = government if request.contract_id == government.id else private
+    result = analyse(contract, cr_id)
+    narrative = result.narrative
+    assert narrative is not None
+    assert narrative.summary_en
+    assert narrative.summary_en.isascii()
+    # Item for item: an English reader sees the same reasons, in order.
+    assert len(narrative.reasons_en) == len(narrative.reasons_ar)
+    assert len(narrative.next_actions_en) == len(narrative.next_actions_ar)
+    stage = next(s for s in result.stages if s.stage.value == "ORCHESTRATOR")
+    assert stage.payload["narrative"]["summary_en"] == narrative.summary_en
+
+
+def test_recorded_vo_scope_has_english_for_every_demo_request() -> None:
+    from app.analysis.recorded.demo_outputs import vo_scope_for
+    from app.analysis.schemas import VODraftInput
+
+    provider = ScriptedProvider()
+    for request in build_demo_requests():
+        draft = provider.vo_draft(
+            VODraftInput(
+                cr_id=request.id, contract_title_ar="", requested_change_ar=request.body_ar
+            )
+        )
+        assert draft.scope_ar
+        assert draft.scope_en.startswith("This variation order covers: ")
+        assert "original Arabic request" not in draft.scope_en
+        assert draft == vo_scope_for(request.body_ar)

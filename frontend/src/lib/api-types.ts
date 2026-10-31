@@ -1731,6 +1731,11 @@ export interface components {
             issued_at: string;
             /** Scope Ar */
             scope_ar: string;
+            /**
+             * Scope En
+             * @default
+             */
+            scope_en: string;
             /** Value */
             value: string;
             /** Time Extension Days */

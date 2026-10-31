@@ -20,7 +20,7 @@ import {
   formatNumber,
 } from "@/lib/format";
 import { CONTRACT_TYPE_LABEL, ROLE_LABEL, partyLabel } from "@/lib/labels";
-import { useT } from "@/lib/prefs";
+import { usePrefs, useT } from "@/lib/prefs";
 import { useResource } from "@/lib/use-resource";
 
 /**
@@ -103,6 +103,11 @@ function VoDocument({
     .filter((l): l is BreakdownLine => Boolean(l));
   const client = partyLabel("GOVERNMENT_ENTITY", contract.contract_type);
   const t = useT().vo;
+  const { lang, t: all } = usePrefs();
+  // The Arabic paragraph is the formal text. In English the drafted English
+  // wording leads and the Arabic stays one click away; orders issued before
+  // the English wording existed show the Arabic as before.
+  const scopeEn = lang === "en" && vo.scope_en ? vo.scope_en : null;
 
   return (
     <div className="px-4 pt-6 pb-16 md:px-8 print:p-0">
@@ -163,9 +168,21 @@ function VoDocument({
         </header>
 
         <DocSection n={1} title={t.scopeTitle}>
-          <ArabicOriginal>
-            <p className="text-[0.9375rem] leading-7 whitespace-pre-line print:text-sm print:leading-6">{vo.scope_ar}</p>
-          </ArabicOriginal>
+          {scopeEn ? (
+            <>
+              <p className="text-[0.9375rem] leading-7 print:text-sm print:leading-6">{scopeEn}</p>
+              <details className="mt-2 font-sans text-xs text-ink-muted print:hidden">
+                <summary className="cursor-pointer">{all.shell.originalArabic}</summary>
+                <ArabicOriginal showLabel={false} className="mt-1 text-sm text-ink">
+                  <p className="leading-7 whitespace-pre-line">{vo.scope_ar}</p>
+                </ArabicOriginal>
+              </details>
+            </>
+          ) : (
+            <ArabicOriginal>
+              <p className="text-[0.9375rem] leading-7 whitespace-pre-line print:text-sm print:leading-6">{vo.scope_ar}</p>
+            </ArabicOriginal>
+          )}
         </DocSection>
 
         <DocSection n={2} title={t.linesTitle}>

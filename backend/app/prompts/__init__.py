@@ -21,10 +21,11 @@ PROMPT_VERSIONS: dict[str, str] = {
     "SCOPE_ANALYSIS": "v2",
     "TECHNICAL_ASSESSMENT": "v2",
     "RISK_COMPLIANCE": "v2",
-    # Unchanged: these two write prose about a decision already made, and
-    # neither appeared in a dev failure.
-    "ORCHESTRATOR": "v1",
-    "ISSUE_VO": "v1",
+    # These two write prose about a decision already made, and neither
+    # appeared in a dev failure. v2 (both): the same call also returns the English wording, so the
+    # English interface shows the narrative and the VO scope in English.
+    "ORCHESTRATOR": "v2",
+    "ISSUE_VO": "v2",
     # Contract intake: reads an uploaded contract into an editable draft. It
     # saves nothing; a person reviews and submits the form (ADR 0006).
     "CONTRACT_DRAFT": "v1",

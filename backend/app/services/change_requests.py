@@ -774,6 +774,7 @@ def issue_variation_order(
         number=number,
         issued_at=now,
         scope_ar=draft.scope_ar,
+        scope_en=draft.scope_en,
         value=request.cost_impact or Decimal("0"),
         time_extension_days=request.time_impact_days or 0,
         cited_line_ids=request.matched_line_ids,
