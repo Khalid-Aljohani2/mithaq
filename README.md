@@ -33,9 +33,11 @@ contracts:
 
 Source: [*Construction Contract Modifications: A Joint Study by USACE and
 AGC*](https://www.agc.org/sites/default/files/USACE-AGC%20Joint%20Study%20on%20Construction%20Contract%20Modifications.pdf)
-(February 2021). The PDF's text could not be extracted in this environment, so
-these figures were read out of that document indirectly and corroborated twice
-rather than quoted from the primary text — recorded as such in
+(February 2021). The first two rows were verified against the primary PDF,
+page 2: a contractor submitted a proposal in about 30 days from the request for
+proposal on average, and the Government issued the modification within 90 days
+of proposal receipt on average, with a median of 55 days. The third row has not
+yet been checked against the PDF; see
 [`SOURCES.md`](SOURCES.md#problem-statement-figures-checked-2026-10-31).
 
 That last row is the one Mithaq is built around. The two parties did not

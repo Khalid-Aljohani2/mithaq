@@ -282,15 +282,15 @@ request; the government then issues the modification in roughly **90 days** on
 average with a **55-day median**; and the two sides' recorded initiation dates
 for the same change differ by about **30 days**.
 
-**How these were obtained, stated plainly.** The URL above was verified to
-resolve and to be the right document, but its text could not be extracted in
-this environment — the PDF is a scanned/encoded layout, no PDF text extractor
-is installed, and adding one would have meant a new dependency. The figures
-therefore come from search-engine extraction of that same document, run twice
-with different queries and agreeing both times. That is weaker than reading the
-primary text, which is why it is recorded here rather than presented as a
-direct quotation. **Verify against the PDF before relying on the exact
-numbers.**
+**Verified against the primary PDF, page 2.** The study states that a
+contractor submitted a proposal in about 30 days from the request for proposal
+on average, and that the Government issued the modification within 90 days of
+proposal receipt on average, with a median of 55 days.
+
+**Not yet verified against the PDF:** the figure of about 30 days between the
+two sides' recorded initiation dates for the same change. It still rests on
+search-engine extraction of the same document, run twice and agreeing both
+times.
 
 ## Could not verify from an official source
 
