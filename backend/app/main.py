@@ -1,9 +1,13 @@
 """Mithaq FastAPI application entrypoint."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 
 from app.config import get_settings
+from app.errors import CONTRACT_INTAKE_PATHS, contract_invalid_detail
 from app.logging_config import configure_logging
 from app.rate_limit import AIRateLimitMiddleware
 from app.routers import (
@@ -34,6 +38,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request: Request, exc: RequestValidationError) -> Response:
+    """Give the contract intake routes their ``CONTRACT_INVALID`` shape.
+
+    Every other route keeps FastAPI's default 422 body unchanged.
+    """
+    if request.method == "POST" and request.url.path.rstrip("/") in CONTRACT_INTAKE_PATHS:
+        return JSONResponse(
+            status_code=422, content={"detail": contract_invalid_detail(exc.errors())}
+        )
+    return await request_validation_exception_handler(request, exc)
+
 
 app.include_router(health.router)
 app.include_router(contracts.router)

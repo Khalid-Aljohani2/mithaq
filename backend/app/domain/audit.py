@@ -34,6 +34,10 @@ class AuditAction(StrEnum):
     EXECUTION_STARTED = "EXECUTION_STARTED"
     CR_CLOSED = "CR_CLOSED"
     DEMO_RESET = "DEMO_RESET"
+    #: A contract entered by an authorised person on the entity side. A
+    #: contract-level event: ``entity_type`` is CONTRACT and ``entity_id`` and
+    #: ``contract_id`` are both the new contract's id.
+    CONTRACT_CREATED = "CONTRACT_CREATED"
 
 
 class AuditEvent(BaseModel):

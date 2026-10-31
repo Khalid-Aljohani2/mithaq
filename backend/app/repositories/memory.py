@@ -52,6 +52,13 @@ class InMemoryContractRepository(ContractRepository):
     def get_contract(self, contract_id: str) -> Contract | None:
         return self._contracts.get(contract_id)
 
+    def add_contract(self, contract: Contract) -> Contract:
+        if contract.id in self._contracts:
+            msg = f"contract {contract.id} already exists"
+            raise ValueError(msg)
+        self._contracts[contract.id] = contract
+        return contract
+
     # ---- ledger ----
 
     def get_ledger(self, contract_id: str) -> ChangeLedger:
@@ -206,7 +213,11 @@ class InMemoryContractRepository(ContractRepository):
     # ---- demo ----
 
     def reset(self) -> None:
-        """Restore the seed. Audit history is deliberately kept."""
+        """Restore the seed. Audit history is deliberately kept.
+
+        Contracts created through ``POST /api/contracts`` are dropped: only
+        the seed contracts survive a reset. Their audit rows remain.
+        """
         self._contracts = {c.id: c for c in build_demo_contracts()}
         self._orders = {}
         self._requests = {r.id: r for r in build_demo_requests()}

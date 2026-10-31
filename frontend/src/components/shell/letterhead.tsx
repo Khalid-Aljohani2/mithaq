@@ -185,6 +185,14 @@ function ContractSwitcher() {
           {status === "loading" && (
             <p className="px-4 py-3 text-sm text-ink-muted">{t.shell.loadingContracts}</p>
           )}
+          <Link
+            href="/projects/new"
+            onClick={() => setOpen(false)}
+            className="block border-t border-rule px-4 py-3 text-sm font-medium text-seal hover:bg-paper"
+            data-switcher-new-project
+          >
+            + {t.project.newProject}
+          </Link>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

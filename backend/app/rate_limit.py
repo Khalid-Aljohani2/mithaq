@@ -22,7 +22,7 @@ from starlette.types import ASGIApp
 from app.config import Settings
 
 #: Only the endpoints that can spend money on model calls.
-RATE_LIMITED_SUFFIXES: tuple[str, ...] = ("/analyse", "/variation-order")
+RATE_LIMITED_SUFFIXES: tuple[str, ...] = ("/analyse", "/variation-order", "/contracts/draft")
 
 
 def is_rate_limited_path(path: str) -> bool:

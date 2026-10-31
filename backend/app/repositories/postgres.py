@@ -311,6 +311,14 @@ class PostgresContractRepository(ContractRepository):
             row = session.get(ContractRow, contract_id)
             return None if row is None else _to_contract(row)
 
+    def add_contract(self, contract: Contract) -> Contract:
+        with session_scope() as session:
+            if session.get(ContractRow, contract.id) is not None:
+                msg = f"contract {contract.id} already exists"
+                raise ValueError(msg)
+            _insert_contract(session, contract)
+        return contract
+
     # ---- ledger ----
 
     def get_ledger(self, contract_id: str) -> ChangeLedger:
@@ -635,7 +643,12 @@ class PostgresContractRepository(ContractRepository):
     # ---- demo ----
 
     def reset(self) -> None:
-        """Restore the seed. Audit rows are deliberately left alone (FR-13)."""
+        """Restore the seed. Audit rows are deliberately left alone (FR-13).
+
+        Every contract row is deleted, including contracts created through
+        ``POST /api/contracts``; only the seed contracts are re-inserted. The
+        audit rows of a dropped contract remain (the log is append-only).
+        """
         with session_scope() as session:
             for table in (
                 ExecutionRecordRow,

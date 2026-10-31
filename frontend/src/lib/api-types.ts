@@ -37,7 +37,34 @@ export interface paths {
          */
         get: operations["list_contracts_api_contracts_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Contract
+         * @description Enter a new contract and its priced baseline (FR-01). A person's action.
+         */
+        post: operations["create_contract_api_contracts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Contract From Document
+         * @description Read an uploaded contract into an editable draft. Saves and audits nothing.
+         *
+         *     Deliberately takes no repository: the AI path cannot create a contract,
+         *     it can only suggest the fields a person then reviews and submits (NFR-15).
+         */
+        post: operations["draft_contract_from_document_api_contracts_draft_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -577,7 +604,7 @@ export interface components {
          * @description What happened.
          * @enum {string}
          */
-        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_DOCUMENTS_SUPPLIED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_LEGAL_CAP_REFUSED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET";
+        AuditAction: "CR_RECEIVED" | "CR_ANALYSED" | "CR_DOCUMENTS_SUPPLIED" | "CR_IN_APPROVAL" | "CR_STEP_APPROVED" | "CR_APPROVED" | "CR_LEGAL_CAP_REFUSED" | "CR_REJECTED" | "CR_REVISION_REQUESTED" | "VO_ISSUED" | "EXECUTION_STARTED" | "CR_CLOSED" | "DEMO_RESET" | "CONTRACT_CREATED";
         /**
          * AuditEvent
          * @description One immutable entry in the audit log.
@@ -645,6 +672,24 @@ export interface components {
              * @default []
              */
             restrictions_ar: string[];
+        };
+        /**
+         * BreakdownLineInput
+         * @description One breakdown line as a person enters it. The server computes id and total.
+         */
+        BreakdownLineInput: {
+            /** Description Ar */
+            description_ar: string;
+            /** Unit Ar */
+            unit_ar: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit Rate */
+            unit_rate: number | string;
+            /** Approved Product Ar */
+            approved_product_ar?: string | null;
+            /** Restrictions Ar */
+            restrictions_ar?: string[];
         };
         /**
          * CRState
@@ -894,6 +939,113 @@ export interface components {
              * Format: date
              */
             end_date: string;
+        };
+        /**
+         * ContractCreateInput
+         * @description A new contract and its priced baseline, entered by an authorised person (FR-01).
+         *
+         *     Types are checked here; business rules (positive amounts, decimal places,
+         *     the breakdown summing to the contract value, dates in order) are checked
+         *     by ``app.services.contracts`` so every problem is reported at once, with a
+         *     stable code, in both languages.
+         */
+        ContractCreateInput: {
+            party: components["schemas"]["Party"];
+            role: components["schemas"]["Role"];
+            /** Created By */
+            created_by: string;
+            /** Title Ar */
+            title_ar: string;
+            /** Entity Name */
+            entity_name: string;
+            /** Contractor Name */
+            contractor_name: string;
+            contract_type: components["schemas"]["ContractType"];
+            /** Original Value */
+            original_value: number | string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Breakdown */
+            breakdown: components["schemas"]["BreakdownLineInput"][];
+        };
+        /**
+         * ContractDraft
+         * @description What the model read from a contract document. A suggestion, never a record.
+         *
+         *     Every field is optional: a field the document does not state is null, and
+         *     a person completes and submits the form. Nothing here is saved (NFR-15).
+         */
+        ContractDraft: {
+            /** Title Ar */
+            title_ar?: string | null;
+            /** Entity Name */
+            entity_name?: string | null;
+            /** Contractor Name */
+            contractor_name?: string | null;
+            contract_type?: components["schemas"]["ContractType"] | null;
+            /** Original Value */
+            original_value?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Breakdown */
+            breakdown?: components["schemas"]["ContractDraftLine"][];
+            /** Notes En */
+            notes_en?: string[];
+            /** Notes Ar */
+            notes_ar?: string[];
+        };
+        /**
+         * ContractDraftInput
+         * @description An uploaded contract to be read into a draft. Exactly one of text or PDF.
+         */
+        ContractDraftInput: {
+            party: components["schemas"]["Party"];
+            role: components["schemas"]["Role"];
+            /** Text */
+            text?: string | null;
+            /** Pdf Base64 */
+            pdf_base64?: string | null;
+            /** Filename */
+            filename?: string | null;
+        };
+        /**
+         * ContractDraftLine
+         * @description A breakdown line as read from a document. Anything unread is null.
+         */
+        ContractDraftLine: {
+            /** Description Ar */
+            description_ar?: string | null;
+            /** Unit Ar */
+            unit_ar?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Unit Rate */
+            unit_rate?: string | null;
+            /** Approved Product Ar */
+            approved_product_ar?: string | null;
+            /** Restrictions Ar */
+            restrictions_ar?: string[];
+        };
+        /**
+         * ContractDraftResponse
+         * @description A draft plus the model and prompt version that produced it (NFR-12).
+         */
+        ContractDraftResponse: {
+            draft: components["schemas"]["ContractDraft"];
+            /** Model */
+            model: string;
+            /** Prompt Version */
+            prompt_version: string;
         };
         /**
          * ContractListResponse
@@ -1652,6 +1804,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractListResponse"];
+                };
+            };
+        };
+    };
+    create_contract_api_contracts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractCreateInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contract"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_contract_from_document_api_contracts_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
