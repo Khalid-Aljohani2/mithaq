@@ -335,15 +335,23 @@ def live(monkeypatch: pytest.MonkeyPatch) -> Iterator[_FakeClient]:
     app.dependency_overrides[get_settings] = lambda: settings
     parsed = contract_draft._DraftPayload(
         title_ar="عقد صيانة",
+        entity_name="",
+        contractor_name="",
         contract_type="GOVERNMENT",
         original_value="1,000.50",
         start_date="2027-01-01",
         end_date="not a date",
         breakdown=[
             contract_draft._LinePayload(
-                description_ar="بند", unit_ar="عدد", quantity="2", unit_rate="500.25"
+                description_ar="بند",
+                unit_ar="عدد",
+                quantity="2",
+                unit_rate="500.25",
+                approved_product_ar="",
+                restrictions_ar=[],
             )
         ],
+        notes_en=[],
         notes_ar=["تاريخ النهاية غير واضح"],
     )
     fake = _FakeClient(parsed)
@@ -359,7 +367,7 @@ def test_draft_with_pdf_returns_a_draft_and_saves_nothing(
     response = _draft(text=None, pdf_base64=_PDF, filename="c.pdf")
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["prompt_version"] == "v1"
+    assert body["prompt_version"] == "v2"
     assert body["model"]
     draft = body["draft"]
     assert draft["original_value"] == "1000.50"

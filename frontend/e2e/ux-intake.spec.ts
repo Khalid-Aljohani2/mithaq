@@ -114,3 +114,53 @@ test("create a project by hand, open it, see its limits, submit a request", asyn
   await page.locator("main h1").first().waitFor();
   await shoot(page, "new-project-first-request-1440-light-ar");
 });
+
+/**
+ * Choosing a PDF starts the draft at once, shows the elapsed seconds, then
+ * fills the form and brings Step 1 into view. The draft call is intercepted,
+ * so the suite never reaches the model.
+ */
+test("choosing a PDF drafts the form without pressing the button", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prime(page, "en");
+  let calls = 0;
+  await page.route("**/api/contracts/draft", async (route) => {
+    calls += 1;
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        model: "test",
+        prompt_version: "v2",
+        draft: {
+          title_ar: "عقد تجريبي",
+          entity_name: "جهة افتراضية",
+          contractor_name: "شركة افتراضية",
+          contract_type: "GOVERNMENT",
+          original_value: "1000",
+          start_date: "2027-01-01",
+          end_date: "2027-12-31",
+          breakdown: [
+            { description_ar: "بند", unit_ar: "عدد", quantity: "2", unit_rate: "500", approved_product_ar: null, restrictions_ar: [] },
+          ],
+          notes_en: [],
+          notes_ar: [],
+        },
+      }),
+    });
+  });
+  await page.goto("/projects/new");
+  await page.locator('[name="title_ar"]').waitFor({ timeout: 20_000 });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "contract.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%%EOF\n"),
+  });
+  await expect(page.locator("[data-draft-progress]")).toBeVisible();
+  await expect(page.locator("[data-draft-progress]")).toHaveCount(0, { timeout: 20_000 });
+  expect(calls).toBe(1);
+  await expect(page.locator('[name="title_ar"]')).toHaveValue("عقد تجريبي");
+  await expect(page.locator("[data-grand-total]")).toContainText("1,000");
+  await expect(page.locator("#project-step-1-title")).toBeInViewport();
+});
