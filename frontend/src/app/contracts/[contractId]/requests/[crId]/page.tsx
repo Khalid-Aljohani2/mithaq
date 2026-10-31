@@ -16,6 +16,7 @@ import {
 import { AwaitingDocuments } from "@/components/case/documents";
 import { LegalRefusal } from "@/components/case/legal-refusal";
 import { RequestZone } from "@/components/case/request-zone";
+import { NextStep } from "@/components/case/next-step";
 import { VoBlock } from "@/components/case/vo-block";
 import { Trace, buildRows } from "@/components/case/trace";
 import { Empty, ErrorState, Field, Loading, TermsKey } from "@/components/file";
@@ -268,6 +269,13 @@ function CaseFile({
       {/* Case header */}
       <header className="rule-double grid gap-3 pt-6 pb-5 md:grid-cols-[1fr_auto] md:items-end">
         <div>
+          <Link
+            href={`/contracts/${encodeURIComponent(contract.id)}`}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "mb-3 print:hidden" })}
+            data-back-to-contract
+          >
+            {t.case.backToContract}
+          </Link>
           <nav aria-label={t.case.breadcrumb} className="text-xs text-ink-muted">
             <Link href={`/contracts/${encodeURIComponent(contract.id)}`} className="underline-offset-4 hover:underline">
               {t.case.contractRegister} <span className="ref">{contract.id}</span>
@@ -321,6 +329,19 @@ function CaseFile({
 
         {/* Last zone (end side): decision. First on narrow screens. */}
         <div className="order-1 space-y-6 lg:order-none">
+          {settled && state === "RECOMMENDED" && data.chain.length > 0 && (
+            <NextStep
+              id="start-approval"
+              actions={
+                <Button onClick={startApproval} disabled={busy}>
+                  {busy ? t.case.sending : t.case.startApproval}
+                </Button>
+              }
+            >
+              {t.case.nextStartApproval}
+              <span className="mt-1 block text-xs text-ink-muted">{t.case.startApprovalNote}</span>
+            </NextStep>
+          )}
           {settled && (
             <VoBlock
               contractId={contract.id}
@@ -338,7 +359,6 @@ function CaseFile({
             data={data}
             running={running}
             settled={settled}
-            busy={busy}
             narrative={narrative}
             compliance={compliance}
             impact={impact}
@@ -349,7 +369,6 @@ function CaseFile({
             refusal={refusal}
             onAnalyse={analyse}
             onSupplied={setData}
-            onStartApproval={startApproval}
             onDecide={decide}
           />
         </div>
@@ -364,7 +383,6 @@ function DecisionZone({
   data,
   running,
   settled,
-  busy,
   narrative,
   compliance,
   impact,
@@ -375,7 +393,6 @@ function DecisionZone({
   refusal,
   onAnalyse,
   onSupplied,
-  onStartApproval,
   onDecide,
 }: {
   contract: Contract;
@@ -383,7 +400,6 @@ function DecisionZone({
   data: ChangeRequestResponse;
   running: boolean;
   settled: boolean;
-  busy: boolean;
   narrative: ReturnType<typeof readNarrative>;
   compliance: ReturnType<typeof readCompliance>;
   impact: ReturnType<typeof readImpact>;
@@ -394,7 +410,6 @@ function DecisionZone({
   refusal: { articles: string[]; ledger: LedgerResponse | null } | null;
   onAnalyse: () => Promise<void> | void;
   onSupplied: (data: ChangeRequestResponse) => void;
-  onStartApproval: () => void;
   onDecide: Decide;
 }) {
   const t = useT();
@@ -479,16 +494,6 @@ function DecisionZone({
         )}
         {refusal && (
           <LegalRefusal request={request} articles={refusal.articles} ledger={refusal.ledger} />
-        )}
-        {state === "RECOMMENDED" && data.chain.length > 0 && (
-          <div className="mt-4">
-            <Button onClick={onStartApproval} disabled={busy}>
-              {busy ? t.case.sending : t.case.startApproval}
-            </Button>
-            <p className="mt-2 text-xs text-ink-muted">
-              {t.case.startApprovalNote}
-            </p>
-          </div>
         )}
       </section>
     </>

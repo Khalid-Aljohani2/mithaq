@@ -50,6 +50,11 @@ const ar = {
 
   // VO block in the case file
   issueTitle: "إصدار أمر التغيير",
+  nextStep: "الخطوة التالية",
+  backToContract: "العودة إلى العقد",
+  chainComplete: "اكتملت التواقيع: أصدر أمر التغيير",
+  openVo: "فتح أمر التغيير",
+  seeLimits: "عرض الحدود المحدّثة",
   issueIntro:
     "اكتملت سلسلة الاعتماد. يصدر VO (أمر تغيير) بالقيمة والمدة المعتمدتين، ويحمل تواقيع السلسلة وختم الاعتماد.",
   issue: "إصدار أمر التغيير",
@@ -106,6 +111,11 @@ const en: typeof ar = {
     ". The agent recommends and drafts; nothing is binding without the signatures of the authorised signatories above.",
 
   issueTitle: "Issue the variation order",
+  nextStep: "Next step",
+  backToContract: "Back to contract",
+  chainComplete: "All signatures are in: issue the variation order",
+  openVo: "Open the variation order",
+  seeLimits: "See updated limits",
   issueIntro:
     "The approval chain is complete. The VO is issued at the approved value and time, and carries the chain's signatures and the approval seal.",
   issue: "Issue variation order",

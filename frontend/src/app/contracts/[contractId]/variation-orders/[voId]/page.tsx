@@ -113,9 +113,18 @@ function VoDocument({
     <div className="px-4 pt-6 pb-16 md:px-8 print:p-0">
       {/* Screen-only toolbar */}
       <div className="mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href={caseHref} className="text-sm underline-offset-4 hover:underline">
-          {t.caseFile} <span className="ref">{vo.cr_id}</span>
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href={`/contracts/${encodeURIComponent(vo.contract_id)}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            data-back-to-contract
+          >
+            {t.backToContract}
+          </Link>
+          <Link href={caseHref} className="text-sm underline-offset-4 hover:underline">
+            {t.caseFile} <span className="ref">{vo.cr_id}</span>
+          </Link>
+        </div>
         <div className="flex items-center gap-3">
           {vo.recorded && <Badge variant="muted">{t.recorded}</Badge>}
           <Button onClick={() => window.print()}>{t.print}</Button>

@@ -60,8 +60,9 @@ export function VoBlock({
 
   if (!hasVo && !issued) {
     return (
-      <section aria-labelledby="vo-issue" className="border-t-2 border-seal pt-4">
-        <h2 id="vo-issue" className="font-doc text-xl font-semibold">{t.issueTitle}</h2>
+      <section aria-labelledby="vo-issue" data-next-step="issue-vo" className="border-s-4 border-seal bg-sheet px-4 py-3">
+        <p className="text-xs font-semibold text-seal">{t.nextStep}</p>
+        <h2 id="vo-issue" className="mt-1 font-doc text-xl font-semibold">{t.chainComplete}</h2>
         <p className="mt-2 text-sm">
           {t.issueIntro}
         </p>
@@ -82,7 +83,7 @@ export function VoBlock({
     : null;
 
   return (
-    <section aria-labelledby="vo-ready" className="border-s-4 border-seal bg-seal-wash px-4 py-3">
+    <section aria-labelledby="vo-ready" data-next-step="vo-issued" className="border-s-4 border-seal bg-seal-wash px-4 py-3">
       <h2 id="vo-ready" className="text-sm font-semibold text-seal">
         {t.issued}
         {vo && (
@@ -97,11 +98,20 @@ export function VoBlock({
           <p className="mt-1 text-sm">
             {t.issuedSummary(formatDate(vo.issued_at), formatImpact(vo.value), formatDays(vo.time_extension_days))}
           </p>
-          {href && (
-            <Link href={href} className={buttonVariants({ variant: "outline", className: "mt-3" })}>
-              {t.view}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {href && (
+              <Link href={href} className={buttonVariants()} data-open-vo>
+                {t.openVo}
+              </Link>
+            )}
+            <Link
+              href={`/contracts/${encodeURIComponent(contractId)}/limits`}
+              className={buttonVariants({ variant: "outline" })}
+              data-see-limits
+            >
+              {t.seeLimits}
             </Link>
-          )}
+          </div>
         </>
       ) : single.status === "error" ? (
         <p className="mt-1 text-sm">{t.loadFailed(errorMessage(single.error))}</p>

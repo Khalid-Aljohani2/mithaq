@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 import { Empty, ErrorState, Field, Loading, Section, TermsKey } from "@/components/file";
@@ -98,6 +99,7 @@ function Workspace({ contract }: { contract: Contract }) {
 
   return (
     <Page>
+      <CreatedPanel contractId={contract.id} newHref={newHref} />
       <div className="pt-6">
         <TermsKey terms={terms} />
       </div>
@@ -226,6 +228,26 @@ function Workspace({ contract }: { contract: Contract }) {
         )}
       </Section>
     </Page>
+  );
+}
+
+/** Right after the project was created: say so, and offer its first request. */
+function CreatedPanel({ contractId, newHref }: { contractId: string; newHref: string }) {
+  const t = useT().workspace;
+  const created = useSearchParams().get("created") === "1";
+  if (!created) return null;
+  return (
+    <section
+      role="status"
+      data-next-step="project-created"
+      className="mt-6 border-s-4 border-seal bg-seal-wash px-4 py-3"
+    >
+      <p className="font-medium text-seal">{t.created(contractId)}</p>
+      <p className="mt-1 text-sm">{t.createdNext}</p>
+      <Link href={newHref} className={buttonVariants({ className: "mt-3" })} data-first-request>
+        {t.newRequest}
+      </Link>
+    </section>
   );
 }
 

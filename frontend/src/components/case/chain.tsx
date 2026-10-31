@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { Seal } from "@/components/glyphs";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ApprovalDecision, ApprovalStep, ContractType } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { CHAIN_REASON, ROLE_LABEL, partyLabel } from "@/lib/labels";
-import { useT } from "@/lib/prefs";
-import type { Persona } from "@/lib/session";
+import { useDemoMode } from "@/lib/demo";
+import { demoSignatory } from "@/lib/directory";
+import { usePrefs, useT } from "@/lib/prefs";
+import { useSession, type Persona } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export type Decide = (
@@ -43,6 +45,8 @@ export function ApprovalChain({
   onDecide: Decide;
 }) {
   const next = active ? chain.find((s) => s.decision === "PENDING") : undefined;
+  // The slot whose name field should take focus after "Sign as" switched role.
+  const [focusSlot, setFocusSlot] = useState<number | null>(null);
   const sorted = [...chain].sort((a, b) => a.position - b.position);
 
   return (
@@ -61,6 +65,8 @@ export function ApprovalChain({
             mine={mine}
             articleRefs={articleRefs}
             stamped={justSigned === step.position}
+            focusName={focusSlot === step.position}
+            onSignAs={() => setFocusSlot(step.position)}
             onDecide={onDecide}
           />
         );
@@ -76,6 +82,8 @@ function Slot({
   mine,
   articleRefs,
   stamped,
+  focusName,
+  onSignAs,
   onDecide,
 }: {
   step: ApprovalStep;
@@ -84,10 +92,13 @@ function Slot({
   mine: boolean;
   articleRefs: string[];
   stamped: boolean;
+  focusName: boolean;
+  onSignAs: () => void;
   onDecide: Decide;
 }) {
   const reduce = useReducedMotion();
   const t = useT();
+  const { setPersona } = useSession();
   const who = `${ROLE_LABEL[step.role]}${t.case.whoSep}${partyLabel(step.party, contractType)}`;
   const why = CHAIN_REASON[step.reason_code] ?? step.reason_code;
   const cites =
@@ -137,11 +148,24 @@ function Slot({
         )}
 
         {isNext && !mine && (
-          <p className="mt-3 border-s-2 border-amber ps-3 text-xs">
-            {t.case.nextFor(who)}
-          </p>
+          <div className="mt-3 border-s-2 border-amber ps-3">
+            <p className="text-xs">{t.case.nextFor(who)}</p>
+            {/* One click takes this slot's role, so nobody hunts for the switcher. */}
+            <Button
+              type="button"
+              size="sm"
+              className="mt-2"
+              data-sign-as
+              onClick={() => {
+                setPersona({ party: step.party, role: step.role });
+                onSignAs();
+              }}
+            >
+              {t.case.signAsRole(who)}
+            </Button>
+          </div>
         )}
-        {mine && <SlotActions step={step} onDecide={onDecide} />}
+        {mine && <SlotActions step={step} focusName={focusName} onDecide={onDecide} />}
       </div>
 
       {step.decision === "APPROVED" && step.decided_at && (
@@ -202,11 +226,30 @@ function SignatureLine({ step }: { step: ApprovalStep }) {
   );
 }
 
-function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide }) {
+function SlotActions({
+  step,
+  focusName,
+  onDecide,
+}: {
+  step: ApprovalStep;
+  focusName: boolean;
+  onDecide: Decide;
+}) {
   const t = useT();
+  const { lang } = usePrefs();
+  const demoMode = useDemoMode();
   const nameId = useId();
   const reasonId = useId();
-  const [name, setName] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  // Null until the person types: in demo mode the field shows a name from the
+  // fictional directory, which stays editable. Without demo mode it is empty.
+  const [typed, setTyped] = useState<string | null>(null);
+  const name = typed ?? (demoMode ? (demoSignatory(step.party, step.role, lang) ?? "") : "");
+  const setName = setTyped;
+
+  useEffect(() => {
+    if (focusName) nameRef.current?.focus();
+  }, [focusName]);
   const [mode, setMode] = useState<"REJECTED" | "REVISION_REQUESTED" | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -231,7 +274,9 @@ function SlotActions({ step, onDecide }: { step: ApprovalStep; onDecide: Decide 
           {t.case.signAs}
         </label>
         <Input
+          ref={nameRef}
           id={nameId}
+          data-sign-name
           value={name}
           onChange={(e) => setName(e.target.value)}
           aria-invalid={touched && nameMissing}

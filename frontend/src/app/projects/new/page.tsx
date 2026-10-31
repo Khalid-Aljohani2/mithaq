@@ -467,7 +467,7 @@ function NewProjectForm() {
         })),
       });
       contracts.reload();
-      router.push(`/contracts/${encodeURIComponent(created.id)}`);
+      router.push(`/contracts/${encodeURIComponent(created.id)}?created=1`);
     } catch (e) {
       if (e instanceof ApiError && e.problems.length) setServerProblems(e.problems);
       setError(errorMessage(e));
