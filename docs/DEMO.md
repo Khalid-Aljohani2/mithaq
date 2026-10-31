@@ -147,6 +147,34 @@ Take order: reset to the plain seed, run Acts 1 to 4, then load the salami
 preset from the notes and run Acts 5 and 6. The run of show in section 6
 has the clicks and lines for each moment.
 
+### Act 0: project intake (optional, before Act 1)
+
+A new contract, created in the app, ready for change requests. Persona:
+**Government entity, Project manager** (only the client side's project
+manager or CEO may create a contract; the backend enforces it).
+
+1. From the home page, or the bottom of the contract switcher, open **New
+   project**.
+2. **With the live provider:** paste the contents of
+   `docs/demo/sample-project-ar.txt` (or upload it as a PDF) under **Upload
+   project details** and click **Draft the form with AI**. Every field the
+   model filled carries an **AI draft** mark until a person edits or
+   confirms it. Say it: the AI drafts, nothing is saved yet.
+   **With the scripted provider:** drafting shows a message that it needs the
+   live provider; fill the form by hand from the same file.
+3. Review the seven lines. The grand total, computed by code, must equal the
+   contract value exactly (2,495,000 SAR in the sample); change one rate to
+   show the form refusing and saying why, then put it back.
+4. Type your name and click **Create**. The new contract opens with its
+   policy and Article 67 meters at zero, and accepts change requests like the
+   seeded ones.
+
+> **Say:** the model reads the document and drafts; code checks every number;
+> a person creates the contract.
+
+A demo reset rebuilds the seed (see section 2), so record Act 0 after any
+reset you need, or accept that the new contract disappears on the next reset.
+
 ## 4. Language and theme
 
 The letterhead has two toggles: **English / العربية** and light or dark.

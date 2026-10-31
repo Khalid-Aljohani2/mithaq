@@ -51,6 +51,25 @@ export type UsageSnapshot = Schemas["UsageSnapshot"];
 export type VariationOrder = Schemas["VariationOrder"];
 export type VariationOrderResponse = Schemas["VariationOrderResponse"];
 
+/**
+ * One refused field of a form, as the backend reports it in a 422 detail.
+ * Error bodies are not part of the OpenAPI schema, so this one is written
+ * here, matching app/errors.py.
+ */
+export type FieldProblem = {
+  field: string;
+  code: string;
+  message_ar: string;
+  message_en: string;
+};
+
+export type CreateContractLine = Schemas["BreakdownLineInput"];
+export type CreateContractInput = Schemas["ContractCreateInput"];
+export type DraftContractInput = Schemas["ContractDraftInput"];
+export type DraftContractLine = Schemas["ContractDraftLine"];
+export type ContractDraft = Schemas["ContractDraft"];
+export type DraftContractResponse = Schemas["ContractDraftResponse"];
+
 export type DemoResetResponse = Schemas["DemoResetResponse"];
 export type DemoStatusResponse = Schemas["DemoStatusResponse"];
 
@@ -86,6 +105,8 @@ export class ApiError extends Error {
     readonly detail: string,
     /** Articles a refusal rests on, when the backend refused under the law. */
     readonly articles: string[] = [],
+    /** Per-field problems, when the backend refused a form (CONTRACT_INVALID). */
+    readonly problems: FieldProblem[] = [],
   ) {
     super(detail || code || `HTTP ${status}`);
     this.name = "ApiError";
@@ -97,8 +118,9 @@ function readDetail(body: unknown): {
   code: string;
   detail: string;
   articles: string[];
+  problems: FieldProblem[];
 } {
-  const none = { code: "", detail: "", articles: [] };
+  const none = { code: "", detail: "", articles: [], problems: [] };
   if (typeof body !== "object" || body === null || !("detail" in body)) {
     return none;
   }
@@ -114,6 +136,7 @@ function readDetail(body: unknown): {
       code: "VALIDATION",
       detail: messages.filter(Boolean).join("; "),
       articles: [],
+      problems: [],
     };
   }
   if (typeof detail === "object" && detail !== null) {
@@ -124,9 +147,27 @@ function readDetail(body: unknown): {
         "articles" in detail && Array.isArray(detail.articles)
           ? detail.articles.map(String)
           : [],
+      problems:
+        "problems" in detail && Array.isArray(detail.problems)
+          ? detail.problems.flatMap(readProblem)
+          : [],
     };
   }
   return none;
+}
+
+function readProblem(item: unknown): FieldProblem[] {
+  if (typeof item !== "object" || item === null) return [];
+  const text = (key: string): string =>
+    key in item ? String((item as Record<string, unknown>)[key] ?? "") : "";
+  return [
+    {
+      field: text("field"),
+      code: text("code"),
+      message_ar: text("message_ar"),
+      message_en: text("message_en"),
+    },
+  ];
 }
 
 async function request<T>(
@@ -153,8 +194,8 @@ async function request<T>(
 
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);
-    const { code, detail, articles } = readDetail(body);
-    throw new ApiError(response.status, code, detail, articles);
+    const { code, detail, articles, problems } = readDetail(body);
+    throw new ApiError(response.status, code, detail, articles, problems);
   }
   return (await response.json()) as T;
 }
@@ -170,6 +211,20 @@ export const api = {
 
   contract: (id: string, signal?: AbortSignal) =>
     request<Contract>(`/api/contracts/${enc(id)}`, { signal }),
+
+  /** Register a new project. Human action: only people create contracts. */
+  createContract: (body: CreateContractInput) =>
+    request<Contract>("/api/contracts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Ask the AI to draft the form. It returns a draft and saves nothing. */
+  draftContract: (body: DraftContractInput) =>
+    request<DraftContractResponse>("/api/contracts/draft", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   ledger: (id: string, signal?: AbortSignal) =>
     request<LedgerResponse>(`/api/contracts/${enc(id)}/ledger`, { signal }),

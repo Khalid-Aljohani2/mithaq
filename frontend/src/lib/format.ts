@@ -75,6 +75,31 @@ export function formatMoney(value: Decimal | null | undefined): string {
   return money().format(asLiteral(value));
 }
 
+const moneyExact = perLang((locale) => new Intl.NumberFormat(locale, {
+  numberingSystem: "latn",
+  style: "currency",
+  currency: "SAR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 6,
+}));
+
+const moneyExactSigned = perLang((locale) => new Intl.NumberFormat(locale, {
+  numberingSystem: "latn",
+  style: "currency",
+  currency: "SAR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 6,
+  signDisplay: "exceptZero",
+}));
+
+/**
+ * As formatMoney, without rounding: every decimal of an exact line total is
+ * shown (up to six), so a total that misses the value by a fraction says so.
+ */
+export function formatMoneyExact(value: Decimal, signed = false): string {
+  return (signed ? moneyExactSigned() : moneyExact()).format(asLiteral(value));
+}
+
 /** As formatMoney, with an explicit + or - sign for impacts. */
 export function formatImpact(value: Decimal | null | undefined): string {
   if (value === null || value === undefined || value === "") return getDict().common.notSet;

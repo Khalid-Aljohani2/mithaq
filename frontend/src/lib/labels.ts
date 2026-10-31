@@ -198,6 +198,8 @@ export function errorMessage(error: unknown): string {
       case "CHAIN_COMPLETE":
       case "CR_NOT_FOUND":
       case "CONTRACT_NOT_FOUND":
+      case "CONTRACT_INVALID":
+      case "DRAFT_NEEDS_LIVE_PROVIDER":
         return e[error.code];
       case "LEGAL_CAP_EXCEEDED":
         // The one refusal no internal approval can lift, so it says which

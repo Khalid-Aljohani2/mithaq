@@ -13,7 +13,8 @@ import { useResource } from "@/lib/use-resource";
 
 /** The front page: what this is, who decides what, the measured result, and two ways in. */
 export default function Home() {
-  const t = useT().home;
+  const dict = useT();
+  const t = dict.home;
   const contracts = useContracts();
   const summary = useResource((signal) => api.evalSummary(signal), []);
 
@@ -105,6 +106,13 @@ export default function Home() {
           ) : contracts.status === "ready" ? (
             <span className="text-sm text-ink-muted">{t.noContracts}</span>
           ) : null}
+          <Link
+            href="/projects/new"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+            data-home-new-project
+          >
+            {dict.project.newProject}
+          </Link>
         </div>
       </Section>
     </div>

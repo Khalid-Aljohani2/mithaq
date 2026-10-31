@@ -12,6 +12,7 @@ import { evaluation } from "./evaluation";
 import { forms } from "./forms";
 import { home } from "./home";
 import { limits } from "./limits";
+import { project } from "./project";
 import { shell } from "./shell";
 import { vo } from "./vo";
 import { workspace } from "./workspace";
@@ -30,6 +31,7 @@ export const ar = {
   audit: audit.ar,
   evaluation: evaluation.ar,
   forms: forms.ar,
+  project: project.ar,
 };
 
 export type Dict = typeof ar;
@@ -46,6 +48,7 @@ export const en: Dict = {
   audit: audit.en,
   evaluation: evaluation.en,
   forms: forms.en,
+  project: project.en,
 };
 
 export const DICTS: Record<Lang, Dict> = { ar, en };
