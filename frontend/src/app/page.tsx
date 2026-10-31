@@ -65,7 +65,7 @@ export default function Home() {
         ) : !summary.data.available ? (
           <p className="text-sm text-ink-muted">{t.notMeasured}</p>
         ) : (
-          <dl className="grid gap-4 sm:grid-cols-3">
+          <dl className="grid gap-4 sm:grid-cols-2">
             <Field label={t.recAccuracy}>
               <span className="ref text-3xl font-semibold" dir="ltr">
                 {rec?.accuracy_pct ?? summary.data.overall_accuracy_pct}%
@@ -74,13 +74,6 @@ export default function Home() {
                 {t.onSplit(summary.data.case_count)}
               </span>
             </Field>
-            {summary.data.overall_accuracy_pct && (
-              <Field label={t.overall}>
-                <span className="ref text-xl" dir="ltr">
-                  {summary.data.overall_accuracy_pct}%
-                </span>
-              </Field>
-            )}
             {summary.data.injection_total > 0 && (
               <Field label={t.injection}>
                 <span className="ref text-xl" dir="ltr">

@@ -77,7 +77,9 @@ export function GuideBar() {
         </p>
 
         <span className="inline-flex flex-wrap items-center gap-2">
+          {/* Outline, not filled: the screen's own next action stays the one primary. */}
           <Button
+            variant="outline"
             size="sm"
             onClick={() => {
               void go(state.act).then((missing) => setMissingVo(missing));
@@ -109,7 +111,6 @@ export function GuideBar() {
 
         <span className="ms-auto inline-flex flex-wrap items-center gap-2">
           <ResetFlash />
-          {demoMode && <ResetControls />}
           <Button variant="ghost" size="sm" onClick={leave} data-guide-leave>
             {t.leave}
           </Button>
@@ -123,6 +124,12 @@ export function GuideBar() {
               <li key={n}>{n}</li>
             ))}
           </ul>
+          {/* Reset lives with the notes so it stays off camera unless opened. */}
+          {demoMode && (
+            <div className="mt-3 ps-3">
+              <ResetControls />
+            </div>
+          )}
         </div>
       )}
     </div>

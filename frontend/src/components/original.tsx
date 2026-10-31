@@ -26,7 +26,13 @@ export function ArabicOriginal({
     return <Tag className={className}>{children}</Tag>;
   }
   return (
-    <Tag lang="ar" dir="rtl" className={cn("text-start", className)}>
+    <Tag
+      lang="ar"
+      dir="rtl"
+      // A labelled passage reads as an Arabic block; a short inline value
+      // (a name, a title) keeps the alignment of the English around it.
+      className={cn(showLabel ? "text-start" : "[text-align:match-parent]", className)}
+    >
       {showLabel && (
         <span
           lang="en"
