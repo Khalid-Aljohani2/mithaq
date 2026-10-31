@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 
 import { Section } from "@/components/file";
 import { Badge } from "@/components/ui/badge";
@@ -135,7 +135,9 @@ function NewProjectForm() {
 
   const [header, setHeader] = useState<Header>(EMPTY_HEADER);
   const [createdBy, setCreatedBy] = useState("");
-  const [lines, setLines] = useState<Line[]>(() => [newLine()]);
+  // The first row has a fixed key: the module counter runs on the server and
+  // again in the browser, and its ids must match for hydration.
+  const [lines, setLines] = useState<Line[]>(() => [{ ...newLine(), key: 0 }]);
   const [aiFields, setAiFields] = useState<HeaderField[]>([]);
   const [touched, setTouched] = useState(false);
   const [serverProblems, setServerProblems] = useState<FieldProblem[]>([]);
@@ -150,6 +152,20 @@ function NewProjectForm() {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<{ amber: boolean; text: string } | null>(null);
   const [draftResult, setDraftResult] = useState<{ filled: number; response: DraftContractResponse } | null>(null);
+  // Seconds since the draft call started; the backend reports no finer progress.
+  const [draftSeconds, setDraftSeconds] = useState(0);
+  // The pasted text last sent, so leaving the field again does not redraft it.
+  const lastDraftedText = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!drafting) return;
+    const started = Date.now();
+    const timer = window.setInterval(
+      () => setDraftSeconds(Math.floor((Date.now() - started) / 1000)),
+      250,
+    );
+    return () => window.clearInterval(timer);
+  }, [drafting]);
 
   const canCreate =
     persona.party === "GOVERNMENT_ENTITY" &&
@@ -302,6 +318,8 @@ function NewProjectForm() {
       return;
     }
     setFile(chosen);
+    // Choosing a PDF starts the draft straight away.
+    void onDraft({ file: chosen });
   }
   function clearFile() {
     setFile(null);
@@ -368,31 +386,47 @@ function NewProjectForm() {
     return filled.length + lineCount;
   }
 
-  async function onDraft() {
-    if (!file && !pasted.trim()) {
+  /**
+   * Run the AI draft. Called with the source when it is just chosen (the file
+   * or text state has not updated yet), or with none from the button.
+   */
+  async function onDraft(source?: { file?: File; text?: string }) {
+    if (drafting) return;
+    const useFile = source ? (source.file ?? null) : file;
+    const useText = (source ? (source.text ?? "") : pasted).trim();
+    if (!useFile && !useText) {
       setDraftError({ amber: false, text: t.draftNeedsInput });
       return;
     }
+    setDraftSeconds(0);
     setDrafting(true);
     setDraftError(null);
     setDraftResult(null);
     try {
       let body: DraftContractInput;
-      if (file) {
+      if (useFile) {
         let pdf: string;
         try {
-          pdf = await readPdf(file);
+          pdf = await readPdf(useFile);
         } catch {
           setDraftError({ amber: false, text: t.readFailed });
           return;
         }
-        body = { party: persona.party, role: persona.role, pdf_base64: pdf, filename: file.name };
+        body = { party: persona.party, role: persona.role, pdf_base64: pdf, filename: useFile.name };
       } else {
-        body = { party: persona.party, role: persona.role, text: pasted.trim() };
+        lastDraftedText.current = useText;
+        body = { party: persona.party, role: persona.role, text: useText };
       }
       const response = await api.draftContract(body);
       const filled = applyDraft(response.draft);
       setDraftResult({ filled, response });
+      // Take the reader to the filled form.
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.requestAnimationFrame(() =>
+        document
+          .getElementById("project-step-1-title")
+          ?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }),
+      );
     } catch (e) {
       const needsLive = e instanceof ApiError && e.code === "DRAFT_NEEDS_LIVE_PROVIDER";
       setDraftError({ amber: needsLive, text: needsLive ? errorMessage(e) : t.draftFailed(errorMessage(e)) });
@@ -483,6 +517,11 @@ function NewProjectForm() {
               id={fid("paste")}
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
+              onBlur={(e) => {
+                // Pasted text starts the draft when the field loses focus.
+                const text = e.target.value.trim();
+                if (text && !file && text !== lastDraftedText.current) void onDraft({ text });
+              }}
               rows={4}
               dir="auto"
               placeholder={t.pastePlaceholder}
@@ -491,10 +530,25 @@ function NewProjectForm() {
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button type="button" variant="outline" onClick={onDraft} disabled={drafting} data-draft-project>
-            {drafting ? t.drafting : t.draft}
+          <Button type="button" variant="outline" onClick={() => void onDraft()} disabled={drafting} data-draft-project>
+            {drafting ? t.drafting : draftResult ? t.draftAgain : t.draft}
           </Button>
+          {!drafting && !draftResult && <span className="text-xs text-ink-muted">{t.draftAuto}</span>}
         </div>
+        {drafting && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-draft-progress
+            className="mt-4 flex max-w-prose items-center gap-3 border-s-4 border-ink bg-sheet px-4 py-3"
+          >
+            <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-ink motion-reduce:animate-none" />
+            <span className="font-medium">{t.readingContract}</span>
+            <span className="ms-auto tabular-nums text-ink-muted" dir="ltr">
+              {t.elapsed(draftSeconds)}
+            </span>
+          </div>
+        )}
         {draftError && (
           <p
             role="alert"
@@ -528,6 +582,7 @@ function NewProjectForm() {
 
       <form onSubmit={onSubmit} noValidate>
         <Section
+          id="project-step-1"
           margin={<StepRef n={1} />}
           title={t.parties}
           action={

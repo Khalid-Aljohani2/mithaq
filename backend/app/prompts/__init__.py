@@ -28,7 +28,9 @@ PROMPT_VERSIONS: dict[str, str] = {
     "ISSUE_VO": "v2",
     # Contract intake: reads an uploaded contract into an editable draft. It
     # saves nothing; a person reviews and submits the form (ADR 0006).
-    "CONTRACT_DRAFT": "v1",
+    # v2: no nullable fields (empty string or UNKNOWN instead); the API refused
+    # v1's schema as too complex.
+    "CONTRACT_DRAFT": "v2",
 }
 
 #: Prompt filename stem per stage.

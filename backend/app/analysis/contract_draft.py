@@ -21,6 +21,7 @@ import logging
 import time
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from typing import Literal
 
 import anthropic
 from pydantic import BaseModel, Field, ValidationError
@@ -52,28 +53,40 @@ class DraftFailedError(Exception):
 # The model-facing schema. Numbers are strings so the model's digits reach
 # Decimal() untouched; dates are strings so a malformed one becomes a note
 # instead of a failed call.
+#
+# Every field is required and none is nullable: an empty string means "not
+# stated", and UNKNOWN is the unknown contract type. Structured outputs count
+# optional and nullable fields against a complexity limit, and fifteen of them
+# made the API refuse the schema ("Schema is too complex"). to_draft maps
+# empty and UNKNOWN back to null, so the API response is unchanged.
 
 
 class _LinePayload(BaseModel):
-    description_ar: str | None = None
-    unit_ar: str | None = None
-    quantity: str | None = Field(default=None, description="As written, digits only")
-    unit_rate: str | None = Field(default=None, description="As written, digits only")
-    approved_product_ar: str | None = None
-    restrictions_ar: list[str] = Field(default_factory=list)
+    description_ar: str
+    unit_ar: str
+    quantity: str = Field(description="As written, digits only; empty if not stated")
+    unit_rate: str = Field(description="As written, digits only; empty if not stated")
+    approved_product_ar: str = Field(description="Empty if none is named")
+    restrictions_ar: list[str]
 
 
 class _DraftPayload(BaseModel):
-    title_ar: str | None = None
-    entity_name: str | None = None
-    contractor_name: str | None = None
-    contract_type: ContractType | None = None
-    original_value: str | None = Field(default=None, description="Digits only, no currency")
-    start_date: str | None = Field(default=None, description="YYYY-MM-DD")
-    end_date: str | None = Field(default=None, description="YYYY-MM-DD")
-    breakdown: list[_LinePayload] = Field(default_factory=list)
-    notes_en: list[str] = Field(default_factory=list)
-    notes_ar: list[str] = Field(default_factory=list)
+    title_ar: str
+    entity_name: str
+    contractor_name: str
+    contract_type: Literal["GOVERNMENT", "PRIVATE", "UNKNOWN"]
+    original_value: str = Field(description="Digits only, no currency; empty if not stated")
+    start_date: str = Field(description="YYYY-MM-DD; empty if not stated")
+    end_date: str = Field(description="YYYY-MM-DD; empty if not stated")
+    breakdown: list[_LinePayload]
+    notes_en: list[str]
+    notes_ar: list[str]
+
+
+def _text(raw: str) -> str | None:
+    """An empty answer means the document did not state it."""
+    stripped = raw.strip()
+    return stripped or None
 
 
 def make_client(settings: Settings) -> anthropic.Anthropic:
@@ -136,20 +149,22 @@ def to_draft(payload: _DraftPayload) -> ContractDraft:
     notes: list[str] = []
     lines = [
         ContractDraftLine(
-            description_ar=line.description_ar,
-            unit_ar=line.unit_ar,
+            description_ar=_text(line.description_ar),
+            unit_ar=_text(line.unit_ar),
             quantity=_decimal(line.quantity, f"line {i + 1} quantity", notes),
             unit_rate=_decimal(line.unit_rate, f"line {i + 1} unit rate", notes),
-            approved_product_ar=line.approved_product_ar,
-            restrictions_ar=list(line.restrictions_ar),
+            approved_product_ar=_text(line.approved_product_ar),
+            restrictions_ar=[r.strip() for r in line.restrictions_ar if r.strip()],
         )
         for i, line in enumerate(payload.breakdown)
     ]
     return ContractDraft(
-        title_ar=payload.title_ar,
-        entity_name=payload.entity_name,
-        contractor_name=payload.contractor_name,
-        contract_type=payload.contract_type,
+        title_ar=_text(payload.title_ar),
+        entity_name=_text(payload.entity_name),
+        contractor_name=_text(payload.contractor_name),
+        contract_type=(
+            None if payload.contract_type == "UNKNOWN" else ContractType(payload.contract_type)
+        ),
         original_value=_decimal(payload.original_value, "contract value", notes),
         start_date=_date(payload.start_date, "start date", notes),
         end_date=_date(payload.end_date, "end date", notes),
@@ -188,7 +203,9 @@ def draft_contract(
             _log(model, started, "unparseable", attempt)
             continue
         except anthropic.APIError as error:
-            _log(model, started, "api_error", attempt)
+            # The class and status say what failed without logging any content.
+            status = getattr(error, "status_code", None)
+            _log(model, started, f"api_error:{type(error).__name__}:{status}", attempt)
             raise DraftFailedError(f"the model call failed: {type(error).__name__}") from error
         parsed = getattr(response, "parsed_output", None)
         if not isinstance(parsed, _DraftPayload):
