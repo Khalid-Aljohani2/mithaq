@@ -143,7 +143,7 @@ function VoDocument({
               <dd className="font-medium">{formatDate(vo.issued_at)}</dd>
             </dl>
           </div>
-          <ArabicOriginal as="p" showLabel={false} className="mt-3 text-base font-semibold print:mt-1">
+          <ArabicOriginal as="span" showLabel={false} className="mt-3 block text-base font-semibold text-balance print:mt-1">
             {contract.title_ar}
           </ArabicOriginal>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 print:mt-2 print:grid-cols-2">
@@ -240,12 +240,13 @@ function VoDocument({
           <h2 id="vo-signatures" className="text-base font-bold">{t.signatures}</h2>
           <ol className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 pe-28 sm:grid-cols-2 sm:pe-32 print:mt-1 print:grid-cols-2 print:gap-y-2 print:pe-32">
             {vo.signatures.map((sig, i) => (
-              <li key={`${sig.role}-${i}`} className="border-b border-rule pb-2">
-                <p className="font-sans text-xs text-ink-muted">
+              <li key={`${sig.role}-${i}`}>
+                {/* A signature over its line, the signatory's capacity under it. */}
+                <p className="border-b border-ink pb-1 text-lg font-semibold text-seal print:text-base">{sig.decided_by}</p>
+                <p className="mt-1.5 font-sans text-xs font-medium">
                   {t.signer(ROLE_LABEL[sig.role], partyLabel(sig.party, contract.contract_type))}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-seal print:mt-0.5 print:text-base">{sig.decided_by}</p>
-                <p className="font-sans text-xs text-ink-muted">{formatDateTime(sig.decided_at)}</p>
+                <p className="font-sans text-xs text-ink-muted tabular-nums">{formatDateTime(sig.decided_at)}</p>
               </li>
             ))}
           </ol>
@@ -266,10 +267,10 @@ function VoDocument({
 
 function DocSection({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <section className="grid grid-cols-[1.75rem_1fr] gap-x-2 border-b border-rule py-4 break-inside-avoid print:py-2.5">
+    <section className="grid grid-cols-[1.75rem_1fr] items-baseline gap-x-2 border-b border-rule py-4 break-inside-avoid print:py-2.5">
       <span className="font-sans text-sm font-semibold tabular-nums">{n}</span>
       <div className="min-w-0">
-        <h2 className="text-base font-bold">{title}</h2>
+        <h2 className="text-base font-bold text-balance">{title}</h2>
         <div className="mt-2 print:mt-1">{children}</div>
       </div>
     </section>

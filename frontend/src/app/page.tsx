@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 import { ErrorState, Field, Loading, Section } from "@/components/file";
+import { ActorGlyph } from "@/components/glyphs";
 import { buttonVariants } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { STAGES } from "@/lib/labels";
 import { useContracts } from "@/lib/contracts";
 import { startDemo } from "@/lib/demo";
 import { useT } from "@/lib/prefs";
@@ -24,16 +26,16 @@ export default function Home() {
   const rec = summary.data?.fields.find((f) => f.field === "recommendation");
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
       <h1 className="text-2xl font-semibold">
         <span dir="ltr" className="inline-block">
           Mithaq<span className="font-normal text-ink-muted">Ai</span>
         </span>
       </h1>
-      <p className="mt-1 font-naskh text-lg">{t.tagline}</p>
+      <p className="mt-1 font-naskh text-xl text-balance">{t.tagline}</p>
 
       <Section margin={t.whatMargin}>
-        <p className="max-w-prose leading-relaxed">{t.what}</p>
+        <p className="max-w-prose leading-relaxed text-pretty">{t.what}</p>
       </Section>
 
       <Section margin={t.principleMargin} title={t.principleHeading} id="principle">
@@ -43,6 +45,16 @@ export default function Home() {
               <span className="ref text-xs text-ink-muted">{i + 1}</span>
               <p className="font-semibold">{p.label}</p>
               <p className="mt-1 text-sm text-ink-muted">{p.body}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-5 text-xs text-ink-muted">{t.stagesCaption}</p>
+        <ol className="mt-2 grid grid-cols-2 border-s border-t border-rule-strong sm:grid-cols-3 lg:grid-cols-4" data-testid="home-stages">
+          {STAGES.map((s) => (
+            <li key={s.stage} className="flex items-center gap-2 border-e border-b border-rule px-2 py-1.5">
+              <span className="w-5 shrink-0 text-end text-xs font-semibold tabular-nums">{s.no}</span>
+              <ActorGlyph actor={s.actor} className="size-5" />
+              <span className="min-w-0 text-xs leading-tight text-ink-muted">{s.name}</span>
             </li>
           ))}
         </ol>
