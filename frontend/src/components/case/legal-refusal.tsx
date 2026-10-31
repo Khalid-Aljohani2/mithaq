@@ -8,6 +8,7 @@ import {
   absDecimal,
   addDecimal,
   compareDecimal,
+  formatImpact,
   formatMoney,
   subtractDecimal,
 } from "@/lib/format";
@@ -62,7 +63,7 @@ export function LegalRefusal({
   const line = ledger && cost ? citedUsage(ledger, articles, cost) : null;
 
   useEffect(() => {
-    ref.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    ref.current?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
   }, [reduce]);
 
   return (
@@ -84,7 +85,7 @@ export function LegalRefusal({
         {line && cost && (
           <dl className="font-doc tabular-nums">
             <Sum label={t.case.refusedApproved} value={formatMoney(line.usage.before_value)} />
-            <Sum label={t.case.refusedThis} value={`+ ${formatMoney(cost)}`} />
+            <Sum label={t.case.refusedThis} value={formatImpact(cost)} />
             <Sum label={t.case.refusedNew} value={formatMoney(line.total)} strong />
             <Sum label={t.case.refusedCap} value={formatMoney(line.usage.cap_value)} muted />
             <p className="mt-2 border-s-4 border-legal bg-legal-wash px-3 py-1.5 font-sans text-sm font-semibold text-legal">
