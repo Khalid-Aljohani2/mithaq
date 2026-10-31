@@ -35,6 +35,37 @@ export default function Home() {
       </h1>
       <p className="mt-1 font-naskh text-xl text-balance">{t.tagline}</p>
 
+      {/* The next action comes first, so it is in frame without scrolling. */}
+      <Section margin={t.entriesMargin}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/demo"
+            onClick={startDemo}
+            className={buttonVariants({ size: "lg" })}
+            data-home-demo
+          >
+            {t.startDemo}
+          </Link>
+          {target ? (
+            <Link
+              href={`/contracts/${encodeURIComponent(target.id)}`}
+              className={buttonVariants({ variant: "outline", size: "lg" })}
+            >
+              {t.openContract}
+            </Link>
+          ) : contracts.status === "ready" ? (
+            <span className="text-sm text-ink-muted">{t.noContracts}</span>
+          ) : null}
+          <Link
+            href="/projects/new"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+            data-home-new-project
+          >
+            {dict.project.newProject}
+          </Link>
+        </div>
+      </Section>
+
       <Section margin={t.whatMargin}>
         <p className="max-w-prose leading-relaxed text-pretty">{t.what}</p>
       </Section>
@@ -98,35 +129,6 @@ export default function Home() {
         )}
       </Section>
 
-      <Section margin={t.entriesMargin}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/demo"
-            onClick={startDemo}
-            className={buttonVariants({ size: "lg" })}
-            data-home-demo
-          >
-            {t.startDemo}
-          </Link>
-          {target ? (
-            <Link
-              href={`/contracts/${encodeURIComponent(target.id)}`}
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              {t.openContract}
-            </Link>
-          ) : contracts.status === "ready" ? (
-            <span className="text-sm text-ink-muted">{t.noContracts}</span>
-          ) : null}
-          <Link
-            href="/projects/new"
-            className={buttonVariants({ variant: "outline", size: "lg" })}
-            data-home-new-project
-          >
-            {dict.project.newProject}
-          </Link>
-        </div>
-      </Section>
     </div>
   );
 }
