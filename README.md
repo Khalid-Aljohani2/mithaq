@@ -13,6 +13,22 @@ decides.** Authorised people approve every commitment, and the system refuses an
 approval that would take the contract past a statutory cap — even when every
 individual request looked fine on its own.
 
+**What runs without an API key, and what needs one.** With no key the app
+runs on recorded AI outputs: the two seeded contracts, analysis of every seeded
+request, approvals, variation orders, the limits page, the demo presets and the
+evaluation page all work. You can also enter a new contract by hand on
+`/projects/new`. Two things need a live model and your own Anthropic API key:
+
+- **Drafting a new contract from a PDF or pasted text.** Without a key,
+  `POST /api/contracts/draft` returns `409 DRAFT_NEEDS_LIVE_PROVIDER`.
+- **Analysing a change request you type in yourself.** Without a key it is
+  saved, but `POST /api/change-requests/{id}/analyse` returns
+  `422 NO_RECORDING`, because recorded outputs exist only for the seeded
+  requests.
+
+To turn these on, put `LLM_PROVIDER=anthropic` and `LLM_API_KEY=<your key>` in
+`backend/.env` (see [Using your own API key](#using-your-own-api-key)).
+
 ---
 
 ## The problem
@@ -283,9 +299,11 @@ flowchart TB
     class RULES,REG code
 ```
 
-The **recorded fallback** is why the whole product runs with no API key: every
-seeded request has recorded AI outputs keyed by a fingerprint of its text, and
-the UI labels them as recorded rather than passing them off as live analysis.
+The **recorded fallback** is why the demo runs with no API key: every seeded
+request has recorded AI outputs keyed by a fingerprint of its text, and the UI
+labels them as recorded rather than passing them off as live analysis. Text
+that was never recorded, such as a request you type in yourself, needs the live
+provider.
 
 ---
 
@@ -312,7 +330,8 @@ the API must behave identically whichever is behind it.
 ## Run it locally
 
 **Prerequisites:** Python 3.11+ and Node 20.9+. No API key, no database and no
-Docker are needed for the quick start.
+Docker are needed for the quick start. Without a key you get the seeded demo
+and manual contract entry; see the top of this README for what needs a key.
 
 ### Quick start: in memory, recorded AI outputs
 
@@ -353,11 +372,58 @@ Open <http://localhost:3000>. In development the frontend calls
 preset on the `/demo` page, for requests from this machine only; the guided
 demo is in [`docs/DEMO.md`](docs/DEMO.md).
 
-To use other ports, start the backend with `--port 8070`, set
-`ALLOWED_ORIGINS=http://localhost:3070` for the backend and
-`NEXT_PUBLIC_API_URL=http://localhost:8070` in `frontend/.env.local`, then run
-`npx next dev --port 3070` (Windows PowerShell 5.1 drops the `--` in
-`npm run dev -- --port 3070`).
+To use other ports, for example 8070 and 3070, the backend must allow the new
+frontend origin and the frontend must be told the new backend address. Backend,
+Windows PowerShell, in `backend/`:
+
+```powershell
+$env:ALLOWED_ORIGINS = "http://localhost:3070"; $env:DEMO_MODE = "true"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8070
+```
+
+or on macOS or Linux:
+
+```bash
+ALLOWED_ORIGINS=http://localhost:3070 DEMO_MODE=true .venv/bin/python -m uvicorn app.main:app --port 8070
+```
+
+Frontend, in `frontend/`, after `npm ci`. Windows PowerShell:
+
+```powershell
+Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_URL=http://localhost:8070" -Encoding ascii
+npx next dev --port 3070
+```
+
+or on macOS or Linux:
+
+```bash
+echo "NEXT_PUBLIC_API_URL=http://localhost:8070" > .env.local
+npx next dev --port 3070
+```
+
+Use `npx next dev` rather than `npm run dev -- --port 3070`, because Windows
+PowerShell 5.1 drops the `--`. Delete `frontend/.env.local` to go back to the
+default ports.
+
+### Using your own API key
+
+Drafting contracts from a document and analysing requests you type in need the
+live provider. Create `backend/.env` with these two lines (the key is never
+logged or echoed, and `.env` is git-ignored). Windows PowerShell, in
+`backend/`:
+
+```powershell
+Set-Content -Path .env -Value "LLM_PROVIDER=anthropic", "LLM_API_KEY=your-key-here" -Encoding ascii
+```
+
+or on macOS or Linux:
+
+```bash
+printf 'LLM_PROVIDER=anthropic\nLLM_API_KEY=your-key-here\n' > .env
+```
+
+Then restart the backend. If you copy `.env.example` instead, fill in or
+delete the empty `REMINDER_*` lines, as described under PostgreSQL below.
 
 ### With PostgreSQL
 
@@ -431,11 +497,14 @@ database, use a single space: `$env:DATABASE_URL = " "`.
 
 ### No API key? It still runs.
 
-Leave `LLM_PROVIDER` empty and the whole product works on recorded AI outputs —
+Leave `LLM_PROVIDER` empty and the seeded demo works on recorded AI outputs:
 every seeded request, the full pipeline, the ledger, the approvals, the
 variation orders. That is how CI runs it, how the screenshots are captured, and
 how the demo preset is built. Nothing is mocked out; the recorded outputs go
-through exactly the same stages.
+through exactly the same stages. Contracts entered by hand work too. Drafting a
+contract from a document (`409 DRAFT_NEEDS_LIVE_PROVIDER`) and analysing a new
+request you typed in (`422 NO_RECORDING`) need a key; see
+[Using your own API key](#using-your-own-api-key).
 
 ---
 
@@ -448,8 +517,10 @@ Honest list. This is a hackathon build.
   specifications, and matching a request against *those* needs retrieval over
   the document set — the obvious next step, with an open-source RAG stack
   (embeddings + a vector store) so the contract text never leaves the tenant.
-- **No contract upload.** Contracts are seeded. Ingesting a real one — parsing
-  a bill of quantities into priced lines — is the gate to any pilot.
+- **Contract intake is a first pass.** A contract can be entered by hand, or a
+  model can suggest the fields from a PDF or pasted text for a person to check
+  (live provider only). Reliably parsing a real bill of quantities into priced
+  lines is still the gate to any pilot.
 - **The executive regulations are not published yet** (Article 99), so no rule
   depends on them. Several Article 67 readings are flagged
   `needs_legal_review: true` in the YAML rather than guessed at.
