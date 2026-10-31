@@ -9,7 +9,10 @@ services:
       POSTGRES_PASSWORD: mithaq_local_dev
       POSTGRES_DB: mithaq
     ports:
-      - "5433:5432"
+      # Bound to this machine only. The password above is a local dev default
+      # and is public in this repository, so the database must not be
+      # reachable from the network.
+      - "127.0.0.1:5433:5432"
     volumes:
       # Postgres 18+ stores data in a major-version subdirectory, so the mount
       # goes at /var/lib/postgresql, not /var/lib/postgresql/data.
