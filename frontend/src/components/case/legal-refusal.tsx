@@ -97,7 +97,7 @@ export function LegalRefusal({
         <div className="border-t border-rule pt-3">
           <p className="text-xs text-ink-muted">{t.case.refusedCited}</p>
           {line?.usage.article_ref_ar && (
-            <p dir="rtl" lang="ar" className="mt-1 text-start font-doc text-sm font-semibold">
+            <p dir="rtl" lang="ar" className="mt-1 font-doc text-sm font-semibold [text-align:match-parent]">
               {line.usage.article_ref_ar}
             </p>
           )}
