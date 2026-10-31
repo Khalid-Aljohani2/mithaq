@@ -3,6 +3,7 @@ import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic } from "next/fon
 import "./globals.css";
 
 import { Providers } from "./providers";
+import { GuideBar } from "@/components/demo/guide-bar";
 import { Letterhead, SkipLink } from "@/components/shell/letterhead";
 import { PREFS_SCRIPT } from "@/lib/prefs-script";
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SkipLink />
           <div className="print:hidden">
             <Letterhead />
+            <GuideBar />
           </div>
           <main id="main" className="flex-1">
             {children}
