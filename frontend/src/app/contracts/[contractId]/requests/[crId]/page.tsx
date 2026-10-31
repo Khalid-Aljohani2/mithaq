@@ -14,6 +14,7 @@ import {
   contractLines,
 } from "@/components/case/decision";
 import { AwaitingDocuments } from "@/components/case/documents";
+import { LegalRefusal } from "@/components/case/legal-refusal";
 import { RequestZone } from "@/components/case/request-zone";
 import { VoBlock } from "@/components/case/vo-block";
 import { Trace, buildRows } from "@/components/case/trace";
@@ -22,9 +23,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   api,
+  ApiError,
   type ChangeRequest,
   type ChangeRequestResponse,
   type Contract,
+  type LedgerResponse,
   type TraceResponse,
 } from "@/lib/api";
 import { useContracts, useCurrentContract } from "@/lib/contracts";
@@ -154,6 +157,7 @@ function CaseFile({
   const [actionError, setActionError] = useState<string | null>(null);
   const [justSigned, setJustSigned] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState<{ articles: string[]; ledger: LedgerResponse | null } | null>(null);
   const autoRan = useRef(false);
 
   // Reveal stages one by one once the analysis response has landed.
@@ -212,6 +216,7 @@ function CaseFile({
 
   const decide: Decide = async (step, decision, decidedBy, reason) => {
     setActionError(null);
+    setRefusal(null);
     try {
       const result = await api.decide(request.id, {
         party: persona.party,
@@ -225,6 +230,17 @@ function CaseFile({
       reloadTrace();
       return true;
     } catch (e) {
+      if (e instanceof ApiError && e.code === "LEGAL_CAP_EXCEEDED") {
+        // The refusal panel shows the arithmetic from the ledger's own values.
+        setRefusal({ articles: e.articles, ledger: null });
+        try {
+          const ledger = await api.ledger(contract.id);
+          setRefusal({ articles: e.articles, ledger });
+        } catch {
+          // The panel still states the refusal and the article without numbers.
+        }
+        return false;
+      }
       setActionError(t.case.decisionFailed(errorMessage(e)));
       return false;
     }
@@ -330,6 +346,7 @@ function CaseFile({
             recorded={recorded}
             persona={persona}
             justSigned={justSigned}
+            refusal={refusal}
             onAnalyse={analyse}
             onSupplied={setData}
             onStartApproval={startApproval}
@@ -355,6 +372,7 @@ function DecisionZone({
   recorded,
   persona,
   justSigned,
+  refusal,
   onAnalyse,
   onSupplied,
   onStartApproval,
@@ -373,6 +391,7 @@ function DecisionZone({
   recorded: boolean;
   persona: ReturnType<typeof useSession>["persona"];
   justSigned: number | null;
+  refusal: { articles: string[]; ledger: LedgerResponse | null } | null;
   onAnalyse: () => Promise<void> | void;
   onSupplied: (data: ChangeRequestResponse) => void;
   onStartApproval: () => void;
@@ -457,6 +476,9 @@ function DecisionZone({
               onDecide={onDecide}
             />
           </div>
+        )}
+        {refusal && (
+          <LegalRefusal request={request} articles={refusal.articles} ledger={refusal.ledger} />
         )}
         {state === "RECOMMENDED" && data.chain.length > 0 && (
           <div className="mt-4">

@@ -123,6 +123,19 @@ function Slot({
 
         <SignatureLine step={step} />
 
+        {stamped && step.decision === "APPROVED" && step.decided_by && (
+          <motion.p
+            role="status"
+            data-testid="signed-confirmation"
+            initial={reduce ? false : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: reduce ? 0 : 0.35 }}
+            className="mt-2 inline-flex items-start gap-2 border-s-2 border-seal ps-3 text-sm text-seal text-pretty"
+          >
+            {t.case.signedConfirm(step.decided_by, ROLE_LABEL[step.role])}
+          </motion.p>
+        )}
+
         {isNext && !mine && (
           <p className="mt-3 border-s-2 border-amber ps-3 text-xs">
             {t.case.nextFor(who)}

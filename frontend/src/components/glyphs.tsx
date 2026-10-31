@@ -58,6 +58,8 @@ export function Seal({
       role="img"
       aria-label={`${label}${getDict().common.listSep}${date}`}
       className={cn("text-seal", className)}
+      shapeRendering="geometricPrecision"
+      textRendering="geometricPrecision"
     >
       <defs>
         <path id="seal-arc-top" d="M 20 60 A 40 40 0 0 1 100 60" />

@@ -2,13 +2,13 @@
 
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ActorGlyph } from "@/components/glyphs";
 import { ArabicOriginal } from "@/components/original";
 import { Badge } from "@/components/ui/badge";
 import type { ActorType, ApprovalStep, ChangeRequest, StageResult } from "@/lib/api";
-import { formatDateTime, formatDays, formatDuration, formatImpact } from "@/lib/format";
+import { formatDateTime, formatDays, formatDuration, formatImpact, formatNumber } from "@/lib/format";
 import { STAGES } from "@/lib/labels";
 import { payloadEntries } from "@/lib/payload";
 import { getDict, getLang, usePrefs, useT } from "@/lib/prefs";
@@ -140,9 +140,31 @@ export function buildRows(
 }
 
 /**
- * The 11-stage trace (FR-15). While analysis runs, stages 1 to 7 wait under a
- * moving rule. When the response lands, `revealed` counts up and each stage
- * settles in order: the one orchestrated motion moment on the page.
+ * Seconds since the analysis call started. The backend reports nothing until
+ * the call returns, so this is the only live number on screen: the clock is
+ * true, a per-stage progress bar would not be.
+ */
+function useElapsed(running: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const start = Date.now();
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    const first = window.setTimeout(tick, 0);
+    const timer = window.setInterval(tick, 250);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
+  }, [running]);
+  return running ? elapsed : 0;
+}
+
+/**
+ * The 11-stage trace (FR-15). While analysis runs, stages 1 to 7 wait in a
+ * neutral state under one moving rule and a seconds counter: the server sends
+ * no per-stage progress, so none is shown. When the response lands,
+ * `revealed` counts up and each stage settles in order.
  */
 export function Trace({
   rows,
@@ -156,20 +178,40 @@ export function Trace({
   totalMs: number | null;
 }) {
   const reduce = useReducedMotion();
-  const t = useT();
+  const { lang, t } = usePrefs();
+  const elapsed = useElapsed(running);
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold">{t.case.traceHeading}</h2>
-        <span className="text-xs text-ink-muted" aria-live="polite">
-          {running
-            ? t.case.agentAnalysingNow
-            : totalMs !== null
-              ? t.case.analysisTime(formatDuration(totalMs))
-              : null}
-        </span>
+        <h2 className="text-lg font-semibold text-balance">{t.case.traceHeading}</h2>
+        {!running && totalMs !== null && (
+          <span className="text-xs text-ink-muted tabular-nums">
+            {t.case.analysisTime(formatDuration(totalMs))}
+          </span>
+        )}
       </div>
       <ActorKey />
+      {running && (
+        <div className="mt-3 border border-rule-strong bg-sheet px-3 py-2.5" role="status" aria-live="polite">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium">{t.case.runningOnServer}</span>
+            <span className="font-doc text-base font-semibold tabular-nums" data-testid="analysis-elapsed">
+              {t.case.elapsed(formatNumber(elapsed))}
+            </span>
+          </div>
+          <span aria-hidden className="mt-2 block h-0.5 w-full overflow-hidden bg-rule">
+            <motion.span
+              className="block h-full w-1/3 bg-ink"
+              initial={{ x: lang === "en" ? "-100%" : "100%" }}
+              animate={
+                reduce ? { x: "0%" } : { x: lang === "en" ? ["-100%", "300%"] : ["100%", "-300%"] }
+              }
+              transition={reduce ? { duration: 0 } : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </span>
+          <p className="mt-2 text-xs text-ink-muted text-pretty">{t.case.runningNote}</p>
+        </div>
+      )}
       <ol className="relative mt-3">
         {/* The spine that joins the markers. */}
         <span aria-hidden className="absolute inset-y-4 start-[0.6875rem] w-px bg-rule-strong" />
@@ -179,8 +221,7 @@ export function Trace({
           return (
             <TraceRow
               key={row.no}
-              row={hidden ? { ...row, marker: pending && i === 0 ? "active" : "waiting", status: pending ? t.case.queued : row.status, summary: null, result: null } : row}
-              running={pending && i === 0}
+              row={hidden ? { ...row, marker: "waiting", status: pending ? t.case.inCall : t.case.queued, summary: null, result: null } : row}
               reduce={Boolean(reduce)}
               justRevealed={!hidden && i === revealed - 1 && row.no <= 7}
             />
@@ -226,16 +267,14 @@ function MarkerDot({ marker }: { marker: Marker }) {
 
 function TraceRow({
   row,
-  running,
   reduce,
   justRevealed,
 }: {
   row: Row;
-  running: boolean;
   reduce: boolean;
   justRevealed: boolean;
 }) {
-  const { lang, t } = usePrefs();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const detail = row.result;
   const panelId = `stage-${row.no}-detail`;
@@ -278,19 +317,6 @@ function TraceRow({
             </button>
           )}
         </div>
-
-        {running && (
-          <span aria-hidden className="mt-2 block h-0.5 w-full overflow-hidden bg-rule">
-            <motion.span
-              className="block h-full w-1/3 bg-ink"
-              initial={{ x: lang === "en" ? "-100%" : "100%" }}
-              animate={
-                reduce ? { x: "0%" } : { x: lang === "en" ? ["-100%", "300%"] : ["100%", "-300%"] }
-              }
-              transition={reduce ? { duration: 0 } : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </span>
-        )}
 
         {row.summary && (
           <motion.div

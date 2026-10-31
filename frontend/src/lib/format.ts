@@ -174,3 +174,55 @@ export function formatDuration(ms: number): string {
   if (ms < 1000) return c.ms(plain().format(ms));
   return c.seconds(plain().format(Math.round(ms / 100) / 10));
 }
+
+/** A decimal string as a scaled BigInt, or null if it is not a plain decimal. */
+function scaled(value: string, places: number): bigint | null {
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!m) return null;
+  const [, sign, int, frac = ""] = m;
+  const n = BigInt(int + frac.padEnd(places, "0").slice(0, places));
+  return sign ? -n : n;
+}
+
+function unscaled(n: bigint, places: number): string {
+  const ten = BigInt(10);
+  const scale = ten ** BigInt(places);
+  const neg = n < BigInt(0);
+  const abs = neg ? -n : n;
+  const whole = abs / scale;
+  const rest = (abs % scale).toString().padStart(places, "0").replace(/0+$/, "");
+  return `${neg ? "-" : ""}${whole}${rest ? `.${rest}` : ""}`;
+}
+
+const PLACES = 4;
+
+/** Exact decimal sum of API decimal strings, for display. */
+export function addDecimal(...values: string[]): string | null {
+  let total = BigInt(0);
+  for (const v of values) {
+    const n = scaled(v, PLACES);
+    if (n === null) return null;
+    total += n;
+  }
+  return unscaled(total, PLACES);
+}
+
+/** Exact a minus b, for display. */
+export function subtractDecimal(a: string, b: string): string | null {
+  const x = scaled(a, PLACES);
+  const y = scaled(b, PLACES);
+  return x === null || y === null ? null : unscaled(x - y, PLACES);
+}
+
+/** Exact comparison: negative, zero or positive. Null if either is not a decimal. */
+export function compareDecimal(a: string, b: string): number | null {
+  const x = scaled(a, PLACES);
+  const y = scaled(b, PLACES);
+  if (x === null || y === null) return null;
+  return x === y ? 0 : x > y ? 1 : -1;
+}
+
+/** The absolute value of a decimal string. */
+export function absDecimal(value: string): string {
+  return value.trim().replace(/^-/, "");
+}
